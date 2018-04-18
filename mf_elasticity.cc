@@ -563,7 +563,7 @@ namespace Cook_Membrane
       return get_tau_vol(det_F) + get_tau_iso(b_bar);
     }
 
-    // The action of the fourth-order elasticity tensor in the spatial setting
+    // The action of the fourth-order material elasticity tensor in the spatial setting
     // on symmetric tensor.
     // $\mathfrak{c}$ is calculated from the SEF $\Psi$ as $ J
     // \mathfrak{c}_{ijkl} = F_{iA} F_{jB} \mathfrak{C}_{ABCD} F_{kC} F_{lD}$
@@ -600,11 +600,22 @@ namespace Cook_Membrane
 
       // 2) the isochoric part of the tangent $J
       // \mathfrak{c}_\textrm{iso}$:
-      const SymmetricTensor<2, dim> tau_bar = get_tau_bar(b_bar);
-      const SymmetricTensor<2, dim> tau_iso = get_tau_iso(b_bar);
+
+      // trace of fictitious Kirchhoff stress
+      // $\overline{\boldsymbol{\tau}}$:
+      // 2.0 * c_1 * b_bar
+      const NumberType tr_tau_bar = trace(b_bar) * 2.0 * c_1;
+
+      // The isochoric Kirchhoff stress
+      // $\boldsymbol{\tau}_{\textrm{iso}} =
+      // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
+      SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
+      tau_iso *= 2.0 * c_1;
+      for (unsigned int i = 0; i < dim; ++i)
+        tau_iso[i][i] -= tr_tau_bar/dim;
 
       // term with deviatoric part of the tensor
-      res += (2.0 / dim) * trace(tau_bar) * dev_src;
+      res += ((2.0 / dim) * tr_tau_bar) * dev_src;
 
       // term with tau_iso_x_I + I_x_tau_iso
       res -= (2.0 / dim) * tau_iso * tr;
