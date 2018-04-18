@@ -563,16 +563,19 @@ namespace Cook_Membrane
       return get_tau_vol(det_F) + get_tau_iso(b_bar);
     }
 
-    // The fourth-order elasticity tensor in the spatial setting
+    // The action of the fourth-order elasticity tensor in the spatial setting
+    // on symmetric tensor.
     // $\mathfrak{c}$ is calculated from the SEF $\Psi$ as $ J
     // \mathfrak{c}_{ijkl} = F_{iA} F_{jB} \mathfrak{C}_{ABCD} F_{kC} F_{lD}$
     // where $ \mathfrak{C} = 4 \frac{\partial^2 \Psi(\mathbf{C})}{\partial
     // \mathbf{C} \partial \mathbf{C}}$
-    SymmetricTensor<4,dim,NumberType>
-    get_Jc(const NumberType                        &det_F,
-           const SymmetricTensor<2,dim,NumberType> &b_bar) const
+    SymmetricTensor<2,dim,NumberType>
+    act_Jc(const NumberType                        &det_F,
+           const SymmetricTensor<2,dim,NumberType> &b_bar,
+           const SymmetricTensor<2,dim,NumberType> &src) const
     {
-      return get_Jc_vol(det_F) + get_Jc_iso(b_bar);
+      const SymmetricTensor<4,dim,NumberType> tmp = get_Jc_vol(det_F) + get_Jc_iso(b_bar);
+      return tmp * src;
     }
 
   private:
@@ -735,11 +738,12 @@ namespace Cook_Membrane
     }
 
     // And the tangent:
-    SymmetricTensor<4,dim,NumberType>
-    get_Jc(const NumberType                        &det_F,
-           const SymmetricTensor<2,dim,NumberType> &b_bar) const
+    SymmetricTensor<2,dim,NumberType>
+    act_Jc(const NumberType                        &det_F,
+           const SymmetricTensor<2,dim,NumberType> &b_bar,
+           const SymmetricTensor<2,dim,NumberType> &src) const
     {
-      return material->get_Jc(det_F,b_bar);
+      return material->act_Jc(det_F,b_bar,src);
     }
 
     // In terms of member functions, this class stores for the quadrature
@@ -1747,8 +1751,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 Assert(k_group <= u_dof, ExcInternalError());
             }
 
-          const SymmetricTensor<2,dim,NumberType> tau = lqph[q_point]->get_tau(det_F,b_bar);
-          const SymmetricTensor<4,dim,NumberType> Jc  = lqph[q_point]->get_Jc(det_F,b_bar);
+          const auto &mat = lqph[q_point];
+
+          const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
           const Tensor<2,dim,NumberType> tau_ns (tau);
 
           // Next we define some aliases to make the assembly process easier to
@@ -1767,8 +1772,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                   // contribution. It comprises a material contribution, and a
                   // geometrical stress contribution which is only added along
                   // the local matrix diagonals:
-                  data.cell_matrix(i, j) += symm_grad_Nx[i] * Jc // The material contribution:
-                                            * symm_grad_Nx[j] * JxW;
+                  data.cell_matrix(i, j) += symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j]) // The material contribution:
+                                            * JxW;
                   // geometrical stress contribution
                   const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
                   data.cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
