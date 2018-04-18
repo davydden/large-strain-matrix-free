@@ -64,10 +64,6 @@
 #include <deal.II/numerics/vector_tools.h>
 
 #include <deal.II/base/config.h>
-#if DEAL_II_VERSION_MAJOR >= 9 && defined(DEAL_II_WITH_TRILINOS)
-  #include <deal.II/differentiation/ad.h>
-  #define ENABLE_SACADO_FORMULATION
-#endif
 
 // These must be included below the AD headers so that
 // their math functions are available for use in the
@@ -92,45 +88,6 @@ namespace Cook_Membrane
 // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
-// @sect4{Assembly method}
-
-// Here we specify whether automatic differentiation is to be used to assemble
-// the linear system, and if so then what order of differentiation is to be
-// employed.
-    struct AssemblyMethod
-    {
-      unsigned int automatic_differentiation_order;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
-
-      void
-      parse_parameters(ParameterHandler &prm);
-    };
-
-
-    void AssemblyMethod::declare_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Assembly method");
-      {
-        prm.declare_entry("Automatic differentiation order", "0",
-                          Patterns::Integer(0,2),
-                          "The automatic differentiation order to be used in the assembly of the linear system.\n"
-                          "# Order = 0: Both the residual and linearisation are computed manually.\n"
-                          "# Order = 1: The residual is computed manually but the linearisation is performed using AD.\n"
-                          "# Order = 2: Both the residual and linearisation are computed using AD.");
-      }
-      prm.leave_subsection();
-    }
-
-    void AssemblyMethod::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Assembly method");
-      {
-        automatic_differentiation_order = prm.get_integer("Automatic differentiation order");
-      }
-      prm.leave_subsection();
-    }
 
 // @sect4{Finite Element system}
 
@@ -408,7 +365,6 @@ namespace Cook_Membrane
 // Finally we consolidate all of the above structures into a single container
 // that holds all of our run-time selections.
     struct AllParameters :
-      public AssemblyMethod,
       public FESystem,
       public Geometry,
       public Materials,
@@ -436,7 +392,6 @@ namespace Cook_Membrane
 
     void AllParameters::declare_parameters(ParameterHandler &prm)
     {
-      AssemblyMethod::declare_parameters(prm);
       FESystem::declare_parameters(prm);
       Geometry::declare_parameters(prm);
       Materials::declare_parameters(prm);
@@ -447,7 +402,6 @@ namespace Cook_Membrane
 
     void AllParameters::parse_parameters(ParameterHandler &prm)
     {
-      AssemblyMethod::parse_parameters(prm);
       FESystem::parse_parameters(prm);
       Geometry::parse_parameters(prm);
       Materials::parse_parameters(prm);
@@ -1832,204 +1786,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
   };
 
-#ifdef ENABLE_SACADO_FORMULATION
-
-
-  template <int dim>
-  struct Assembler<dim,Sacado::Fad::DFad<double> > : Assembler_Base<dim,Sacado::Fad::DFad<double> >
-  {
-    typedef Sacado::Fad::DFad<double> ADNumberType;
-    using typename Assembler_Base<dim,ADNumberType>::ScratchData_ASM;
-    using typename Assembler_Base<dim,ADNumberType>::PerTaskData_ASM;
-
-    virtual ~Assembler() {}
-
-    virtual void
-    assemble_system_tangent_residual_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
-                                              ScratchData_ASM &scratch,
-                                              PerTaskData_ASM &data)
-    {
-      // Aliases for data referenced from the Solid class
-      const unsigned int &n_q_points = data.solid->n_q_points;
-      const unsigned int &dofs_per_cell = data.solid->dofs_per_cell;
-      const FESystem<dim> &fe = data.solid->fe;
-      const unsigned int &u_dof = data.solid->u_dof;
-      const FEValuesExtractors::Vector &u_fe = data.solid->u_fe;
-
-      data.reset();
-      scratch.reset();
-      scratch.fe_values_ref.reinit(cell);
-      cell->get_dof_indices(data.local_dof_indices);
-
-      const std::vector<std::shared_ptr<const PointHistory<dim,ADNumberType> > > lqph =
-          const_cast<const Solid<dim,ADNumberType> *>(data.solid)->quadrature_point_history.get_data(cell);
-      Assert(lqph.size() == n_q_points, ExcInternalError());
-
-      const unsigned int n_independent_variables = data.local_dof_indices.size();
-      std::vector<double> local_dof_values(n_independent_variables);
-      cell->get_dof_values(scratch.solution_total,
-          local_dof_values.begin(),
-          local_dof_values.end());
-
-      // We now retrieve a set of degree-of-freedom values that
-      // have the operations that are performed with them tracked.
-      std::vector<ADNumberType> local_dof_values_ad (n_independent_variables);
-      for (unsigned int i=0; i<n_independent_variables; ++i)
-        local_dof_values_ad[i] = ADNumberType(n_independent_variables, i, local_dof_values[i]);
-
-      // Compute all values, gradients etc. based on sensitive
-      // AD degree-of-freedom values.
-      scratch.fe_values_ref[u_fe].get_function_gradients_from_local_dof_values(
-          local_dof_values_ad,
-          scratch.solution_grads_u_total);
-
-      // Accumulate the residual value for each degree of freedom.
-      // Note: Its important that the vectors is initialised (zero'd) correctly.
-      std::vector<ADNumberType> residual_ad (dofs_per_cell, ADNumberType(0.0));
-      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-      {
-        const Tensor<2,dim,ADNumberType> &grad_u = scratch.solution_grads_u_total[q_point];
-        const Tensor<2,dim,ADNumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
-        const ADNumberType               det_F = determinant(F);
-//        const Tensor<2,dim,ADNumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
-        const Tensor<2,dim,ADNumberType> F_bar = ADNumberType(std::pow(determinant(F),-1.0/dim))*F;
-        const SymmetricTensor<2,dim,ADNumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
-        const Tensor<2,dim,ADNumberType> F_inv = invert(F);
-        Assert(det_F > ADNumberType(0.0), ExcInternalError());
-
-        for (unsigned int k = 0; k < dofs_per_cell; ++k)
-          {
-            const unsigned int k_group = fe.system_to_base_index(k).first.first;
-
-            if (k_group == u_dof)
-              {
-                scratch.grad_Nx[q_point][k] = scratch.fe_values_ref[u_fe].gradient(k, q_point) * F_inv;
-                scratch.symm_grad_Nx[q_point][k] = symmetrize(scratch.grad_Nx[q_point][k]);
-              }
-            else
-              Assert(k_group <= u_dof, ExcInternalError());
-          }
-
-        const SymmetricTensor<2,dim,ADNumberType> tau = lqph[q_point]->get_tau(det_F,b_bar);
-
-        // Next we define some position-dependent aliases, again to
-        // make the assembly process easier to follow.
-        const std::vector<SymmetricTensor<2, dim,ADNumberType> > &symm_grad_Nx = scratch.symm_grad_Nx[q_point];
-        const double JxW = scratch.fe_values_ref.JxW(q_point);
-
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          residual_ad[i] += (symm_grad_Nx[i] * tau) * JxW;
-      }
-
-      for (unsigned int I=0; I<n_independent_variables; ++I)
-      {
-        const ADNumberType &residual_I = residual_ad[I];
-        data.cell_rhs(I) = -residual_I.val(); // RHS = - residual
-        for (unsigned int J=0; J<n_independent_variables; ++J)
-        {
-          // Compute the gradients of the residual entry [forward-mode]
-          data.cell_matrix(I,J) = residual_I.dx(J); // linearisation_IJ
-        }
-      }
-    }
-
-  };
-
-
-  template <int dim>
-  struct Assembler<dim,Sacado::Rad::ADvar<Sacado::Fad::DFad<double> > > : Assembler_Base<dim,Sacado::Rad::ADvar<Sacado::Fad::DFad<double> > >
-  {
-    typedef Sacado::Fad::DFad<double>       ADDerivType;
-    typedef Sacado::Rad::ADvar<ADDerivType> ADNumberType;
-    using typename Assembler_Base<dim,ADNumberType>::ScratchData_ASM;
-    using typename Assembler_Base<dim,ADNumberType>::PerTaskData_ASM;
-
-    virtual ~Assembler() {}
-
-    virtual void
-    assemble_system_tangent_residual_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
-                                              ScratchData_ASM &scratch,
-                                              PerTaskData_ASM &data)
-    {
-      // Aliases for data referenced from the Solid class
-      const unsigned int &n_q_points = data.solid->n_q_points;
-      const FEValuesExtractors::Vector &u_fe = data.solid->u_fe;
-
-      data.reset();
-      scratch.reset();
-      scratch.fe_values_ref.reinit(cell);
-      cell->get_dof_indices(data.local_dof_indices);
-
-      const std::vector<std::shared_ptr<const PointHistory<dim,ADNumberType> > > lqph =
-          data.solid->quadrature_point_history.get_data(cell);
-      Assert(lqph.size() == n_q_points, ExcInternalError());
-
-      const unsigned int n_independent_variables = data.local_dof_indices.size();
-      std::vector<double> local_dof_values(n_independent_variables);
-      cell->get_dof_values(scratch.solution_total,
-          local_dof_values.begin(),
-          local_dof_values.end());
-
-      // We now retrieve a set of degree-of-freedom values that
-      // have the operations that are performed with them tracked.
-      std::vector<ADNumberType> local_dof_values_ad (n_independent_variables);
-      for (unsigned int i=0; i<n_independent_variables; ++i)
-        local_dof_values_ad[i] = ADDerivType(n_independent_variables, i, local_dof_values[i]);
-
-      // Compute all values, gradients etc. based on sensitive
-      // AD degree-of-freedom values.
-      scratch.fe_values_ref[u_fe].get_function_gradients_from_local_dof_values(
-          local_dof_values_ad,
-          scratch.solution_grads_u_total);
-
-      // Next we compute the total potential energy of the element.
-      // This is defined as follows:
-      // Total energy = (internal - external) energies
-      // Note: Its important that this value is initialised (zero'd) correctly.
-      ADNumberType cell_energy_ad = ADNumberType(0.0);
-      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-      {
-        const Tensor<2,dim,ADNumberType> &grad_u = scratch.solution_grads_u_total[q_point];
-        const Tensor<2,dim,ADNumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
-        const ADNumberType               det_F = determinant(F);
-        const Tensor<2,dim,ADNumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
-        const SymmetricTensor<2,dim,ADNumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
-        Assert(det_F > ADNumberType(0.0), ExcInternalError());
-
-        // Next we define some position-dependent aliases, again to
-        // make the assembly process easier to follow.
-        const double JxW = scratch.fe_values_ref.JxW(q_point);
-
-        const ADNumberType Psi = lqph[q_point]->get_Psi(det_F,b_bar);
-
-        // We extract the configuration-dependent material energy
-        // from our QPH history objects for the current quadrature point
-        // and integrate its contribution to increment the total
-        // cell energy.
-        cell_energy_ad += Psi * JxW;
-      }
-
-      // Compute derivatives of reverse-mode AD variables
-      ADNumberType::Gradcomp();
-
-      for (unsigned int I=0; I<n_independent_variables; ++I)
-      {
-        // This computes the adjoint df/dX_{i} [reverse-mode]
-        const ADDerivType residual_I = local_dof_values_ad[I].adj();
-        data.cell_rhs(I) = -residual_I.val(); // RHS = - residual
-        for (unsigned int J=0; J<n_independent_variables; ++J)
-        {
-          // Compute the gradients of the residual entry [forward-mode]
-          data.cell_matrix(I,J) = residual_I.dx(J); // linearisation_IJ
-        }
-      }
-    }
-
-  };
-
-
-#endif
-
 
 // Since we use TBB for assembly, we simply setup a copy of the
 // data structures required for the process and pass them, along
@@ -2279,7 +2035,6 @@ int main (int argc, char *argv[])
                                              argv[1] :
                                              "parameters.prm";
       Parameters::AllParameters parameters(parameter_filename);
-      if (parameters.automatic_differentiation_order == 0)
       {
         std::cout << "Assembly method: Residual and linearisation are computed manually." << std::endl;
 
@@ -2290,40 +2045,6 @@ int main (int argc, char *argv[])
         typedef double NumberType;
         Solid<dim,NumberType> solid_3d(parameters);
         solid_3d.run();
-      }
- #ifdef ENABLE_SACADO_FORMULATION
-       else if (parameters.automatic_differentiation_order == 1)
-       {
-         std::cout << "Assembly method: Residual computed manually; linearisation performed using AD." << std::endl;
-
-         // Allow multi-threading
-         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
-                                                             dealii::numbers::invalid_unsigned_int);
-
-         typedef Sacado::Fad::DFad<double> NumberType;
-         Solid<dim,NumberType> solid_3d(parameters);
-         solid_3d.run();
-       }
-       else if (parameters.automatic_differentiation_order == 2)
-       {
-         std::cout << "Assembly method: Residual and linearisation computed using AD." << std::endl;
-
-         // Sacado Rad-Fad is not thread-safe, so disable threading.
-         // Parallisation using MPI would be possible though.
-         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
-                                                             1);
-
-         typedef Sacado::Rad::ADvar< Sacado::Fad::DFad<double> > NumberType;
-         Solid<dim,NumberType> solid_3d(parameters);
-         solid_3d.run();
-       }
- #endif
-      else
-      {
-        AssertThrow(false,
-            ExcMessage("The selected assembly method is not supported. "
-                       "You need deal.II 9.0 and Trilinos with the Sacado package "
-                       "to enable assembly using automatic differentiation."));
       }
     }
   catch (std::exception &exc)
