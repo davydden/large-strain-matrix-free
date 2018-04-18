@@ -134,7 +134,7 @@ namespace Cook_Membrane
 
 // @sect4{Finite Element system}
 
-// Here we specify the polynomial order used to approximate the solution.  
+// Here we specify the polynomial order used to approximate the solution.
 // The quadrature order should be adjusted accordingly.
     struct FESystem
     {
@@ -407,7 +407,7 @@ namespace Cook_Membrane
 
 // Finally we consolidate all of the above structures into a single container
 // that holds all of our run-time selections.
-    struct AllParameters : 
+    struct AllParameters :
       public AssemblyMethod,
       public FESystem,
       public Geometry,
@@ -546,7 +546,7 @@ namespace Cook_Membrane
 
 // @sect3{Compressible neo-Hookean material within a one-field formulation}
 
-// As discussed in the literature and step-44, Neo-Hookean materials are a type 
+// As discussed in the literature and step-44, Neo-Hookean materials are a type
 // of hyperelastic materials.  The entire domain is assumed to be composed of a
 // compressible neo-Hookean material.  This class defines the behaviour of
 // this material within a one-field formulation.  Compressible neo-Hookean
@@ -571,8 +571,8 @@ namespace Cook_Membrane
 // and provides a central point that one would need to modify if one were to
 // implement a different material model. For it to work, we will store one
 // object of this type per quadrature point, and in each of these objects
-// store the current state (characterized by the values or measures  of the 
-// displacement field) so that we can compute the elastic coefficients 
+// store the current state (characterized by the values or measures  of the
+// displacement field) so that we can compute the elastic coefficients
 // linearized around the current state.
   template <int dim,typename NumberType>
   class Material_Compressible_Neo_Hook_One_Field
@@ -689,9 +689,9 @@ namespace Cook_Membrane
     }
 
     // Calculate the volumetric part of the tangent $J
-    // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its 
-    // definition when compared to step-44. The extra terms result from two 
-    // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on 
+    // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
+    // definition when compared to step-44. The extra terms result from two
+    // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on
     // $\boldsymbol{F}$.
     SymmetricTensor<4,dim,NumberType>
     get_Jc_vol(const NumberType &det_F) const
@@ -909,7 +909,7 @@ namespace Cook_Membrane
     // There are two reasons that we retain the block system in this problem.
     // The first is pure laziness to perform further modifications to the
     // code from which this work originated. The second is that a block system
-    // would typically necessary when extending this code to multiphysics 
+    // would typically necessary when extending this code to multiphysics
     // problems.
     static const unsigned int        n_blocks = 1;
     static const unsigned int        n_components = dim;
@@ -982,7 +982,7 @@ namespace Cook_Membrane
 
     void
     print_conv_footer();
-    
+
     void
     print_vertical_tip_displacement();
   };
@@ -1016,7 +1016,7 @@ namespace Cook_Membrane
     n_q_points (qf_cell.size()),
     n_q_points_f (qf_face.size())
   {
-    
+
   }
 
 // The class destructor simply clears the data held by the DOFHandler
@@ -1032,7 +1032,7 @@ namespace Cook_Membrane
 // interchangeable. We choose to increment time linearly using a constant time
 // step size.
 //
-// We start the function with preprocessing, and then output the initial grid 
+// We start the function with preprocessing, and then output the initial grid
 // before starting the simulation proper with the first time (and loading)
 // increment.
 //
@@ -1045,7 +1045,7 @@ namespace Cook_Membrane
     time.increment();
 
     // We then declare the incremental solution update $\varDelta
-    // \mathbf{\Xi}:= \{\varDelta \mathbf{u}\}$ and start the loop over the 
+    // \mathbf{\Xi}:= \{\varDelta \mathbf{u}\}$ and start the loop over the
     // time domain.
     //
     // At the beginning, we reset the solution update for this time step...
@@ -1065,9 +1065,9 @@ namespace Cook_Membrane
         output_results();
         time.increment();
       }
-      
-    // Lastly, we print the vertical tip displacement of the Cook cantilever 
-    // after the full load is applied 
+
+    // Lastly, we print the vertical tip displacement of the Cook cantilever
+    // after the full load is applied
     print_vertical_tip_displacement();
   }
 
@@ -1079,7 +1079,7 @@ namespace Cook_Membrane
 // On to the first of the private member functions. Here we create the
 // triangulation of the domain, for which we choose a scaled an anisotripically
 // discretised rectangle which is subsequently transformed into the correct
-// of the Cook cantilever. Each relevant boundary face is then given a boundary 
+// of the Cook cantilever. Each relevant boundary face is then given a boundary
 // ID number.
 //
 // We then determine the volume of the reference configuration and print it
@@ -1090,15 +1090,15 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 {
   const double &x = pt_in[0];
   const double &y = pt_in[1];
-  
+
   const double y_upper = 44.0 + (16.0/48.0)*x; // Line defining upper edge of beam
   const double y_lower =  0.0 + (44.0/48.0)*x; // Line defining lower edge of beam
   const double theta = y/44.0; // Fraction of height along left side of beam
   const double y_transform = (1-theta)*y_lower + theta*y_upper; // Final transformation
-  
+
   Point<dim> pt_out = pt_in;
   pt_out[1] = y_transform;
-  
+
   return pt_out;
 }
 
@@ -1111,11 +1111,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // (modelling a plane strain condition)
     if (dim == 3)
       repetitions[dim-1] = 1;
-      
+
     const Point<dim> bottom_left = (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
     const Point<dim> top_right = (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation, 
+    GridGenerator::subdivided_hyper_rectangle(triangulation,
                                               repetitions,
                                               bottom_left,
                                               top_right);
@@ -1142,12 +1142,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
          else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) < tol_boundary)
            cell->face(face)->set_boundary_id(2); // +Z and -Z faces
        }
-   
+
     // Transform the hyper-rectangle into the beam shape
     GridTools::transform(&grid_y_transform<dim>, triangulation);
 
     GridTools::scale(parameters.scale, triangulation);
-    
+
     vol_reference = GridTools::volume(triangulation);
     vol_current = vol_reference;
     std::cout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
@@ -1189,7 +1189,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       csp.block(u_dof, u_dof).reinit(n_dofs_u, n_dofs_u);
       csp.collect_sizes();
 
-      // Naturally, for a one-field vector-valued problem, all of the 
+      // Naturally, for a one-field vector-valued problem, all of the
       // components of the system are coupled.
       Table<2, DoFTools::Coupling> coupling(n_components, n_components);
       for (unsigned int ii = 0; ii < n_components; ++ii)
@@ -1396,7 +1396,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 // At the end we also output the result that can be compared to that found in
-// the literature, namely the displacement at the upper right corner of the 
+// the literature, namely the displacement at the upper right corner of the
 // beam.
   template <int dim,typename NumberType>
   void Solid<dim,NumberType>::print_vertical_tip_displacement()
@@ -1406,13 +1406,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     for (unsigned int i = 0; i < l_width; ++i)
       std::cout << "_";
     std::cout << std::endl;
-    
+
     Point<dim> soln_pt (48.0*parameters.scale,60.0*parameters.scale);
     if (dim == 3)
       soln_pt[2] = 0.5*parameters.scale;
     double vertical_tip_displacement = 0.0;
     double vertical_tip_displacement_check = 0.0;
-    
+
     typename DoFHandler<dim>::active_cell_iterator cell =
       dof_handler_ref.begin_active(), endc = dof_handler_ref.end();
     for (; cell != endc; ++cell)
@@ -1426,7 +1426,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // extract it directly as we're using FE_Q finite elements
         // that have support at the vertices
         vertical_tip_displacement = solution_n(cell->vertex_dof_index(v,u_dof+1));
-        
+
         // Sanity check using alternate method to extract the solution
         // at the given point. To do this, we must create an FEValues instance
         // to help us extract the solution value at the desired point
@@ -1436,13 +1436,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         AssertThrow(soln_qrule.size() == 1, ExcInternalError());
         FEValues<dim> fe_values_soln (fe, soln_qrule, update_values);
         fe_values_soln.reinit(cell);
-        
+
         // Extract y-component of solution at given point
         std::vector< Tensor<1,dim> > soln_values (soln_qrule.size());
         fe_values_soln[u_fe].get_function_values(solution_n,
                                                  soln_values);
         vertical_tip_displacement_check = soln_values[0][u_dof+1];
-        
+
         break;
       }
     }
@@ -1556,7 +1556,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       ScratchData_ASM(const FiniteElement<dim> &fe_cell,
                       const QGauss<dim> &qf_cell,
                       const UpdateFlags uf_cell,
-                      const QGauss<dim-1> & qf_face, 
+                      const QGauss<dim-1> & qf_face,
                       const UpdateFlags uf_face,
                       const BlockVector<double> &solution_total)
         :
@@ -1608,7 +1608,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     };
 
     // Of course, we still have to define how we assemble the tangent matrix
-    // contribution for a single cell. 
+    // contribution for a single cell.
     void
     assemble_system_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
                              ScratchData_ASM &scratch,
@@ -1677,12 +1677,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
                  ++f_q_point)
               {
-                // We specify the traction in reference configuration. 
-                // For this problem, a defined total vertical force is applied 
+                // We specify the traction in reference configuration.
+                // For this problem, a defined total vertical force is applied
                 // in the reference configuration.
                 // The direction of the applied traction is assumed not to
-                // evolve with the deformation of the domain. 
-                
+                // evolve with the deformation of the domain.
+
                 // Note that the contributions to the right hand side vector we
                 // compute here only exist in the displacement components of the
                 // vector.
@@ -1947,7 +1947,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
   };
 
-  
+
   template <int dim>
   struct Assembler<dim,Sacado::Rad::ADvar<Sacado::Fad::DFad<double> > > : Assembler_Base<dim,Sacado::Rad::ADvar<Sacado::Fad::DFad<double> > >
   {
@@ -2134,7 +2134,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                                  constraints,
                                                  fe.component_mask(u_fe));
     }
-    
+
     // Zero Z-displacement through thickness direction
     // This corresponds to a plane strain condition being imposed on the beam
     if (dim == 3)
@@ -2287,7 +2287,10 @@ int main (int argc, char *argv[])
   try
     {
       deallog.depth_console(0);
-      Parameters::AllParameters parameters("parameters.prm");
+      const std::string parameter_filename = argc > 1 ?
+                                             argv[1] :
+                                             "parameters.prm";
+      Parameters::AllParameters parameters(parameter_filename);
       if (parameters.automatic_differentiation_order == 0)
       {
         std::cout << "Assembly method: Residual and linearisation are computed manually." << std::endl;
