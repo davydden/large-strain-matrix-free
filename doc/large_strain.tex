@@ -1,0 +1,98 @@
+%\documentclass[12pt]{article}
+\documentclass[preprint,12pt,times]{elsarticle}
+
+% \usepackage{url}
+
+% \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
+%\usepackage{amssymb}
+\usepackage{amsmath}
+%\usepackage{amsfonts}
+\usepackage{bm}
+%\usepackage{bbm}
+%\usepackage{caption}
+%\usepackage{color}
+%\usepackage{geometry}
+%\usepackage{graphicx}
+%\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+%\usepackage{layouts}
+%\usepackage{mathrsfs}
+%\usepackage{pgfkeys,pgfmath,pgfcore}
+%\usepackage{srcltx}
+%\usepackage[labelformat=simple]{subcaption}
+%\usepackage{xspace}
+
+%\renewcommand{\thetable}{\arabic{table}}
+%\captionsetup[table]{labelformat=simple, labelsep=colon}
+
+%\pgfkeys{/pgf/number format/.cd,1000 sep={}}
+
+%% see http://tex.stackexchange.com/questions/2441/how-to-add-a-forced-line-break-inside-a-table-cell
+%\newcommand{\specialcell}[2][c]{%
+%  \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+% put your own definitions here:
+% \renewcommand\thesubfigure{(\alph{subfigure})}
+\def\gz  #1{           \mbox{$\boldsymbol{#1}$}}
+% \DeclareMathAlphabet{\bsf}{OT1}{cmss}{bx}{n}
+% \def\msf  #1{           \mbox{\!\!      $\sf #1$}}
+% \def\Grad #1 {{\rm Grad} #1}
+% \def\grad #1 {{\rm grad} #1}
+\def\Div {\mbox{Div\,}}
+\def\div {\mbox{div\,}}
+\def\d {\,\mbox{d}}
+\def\D {\,\mbox{D}}
+% \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+%\newcommand\normDouble[1]{\left\lVert#1\right\rVert}
+%\newcommand{\normXY}[1]{\lvert #1 \rvert_{2d}}
+%\newcommand{\dbracket}[1]{\left[\!\!\left[ #1 \right]\!\!\right]}
+
+\def\mcl  #1{               {\cal #1}}
+%\def\bcl  #1{\mbox{\boldmath$\cal #1$}}
+
+
+\begin{document}
+
+\section{Theoretical background}
+
+A brief summary of balance equations in large strain hyperelastic continuum.
+
+\subsection{Kinematics}
+
+Deformation of the body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$
+is defined via the mapping $\gz x = \gz \varphi (\gz X,t)$.
+
+Linear deformation map is assumed for the macroscopic point
+\begin{align}
+\d \gz x = \gz F \cdot \d \gz X,
+\end{align}
+where $\gz F := \gz \nabla_{X} \, \gz \varphi$ is the deformation gradient.
+
+\subsection{Kinetics}
+
+For conservative systems the total potential energy is introduced as
+\begin{align}
+\mcl E = \int_{\mcl B_0} \mcl U_0(\gz \varphi, \gz F; \gz X) \,
+\end{align}
+that must be stationary in order for the system to be in equilibrium:
+\begin{align}
+\delta \mcl E = 0 \, .
+\label{eq:stationary}
+\end{align}
+
+\section{Finite Element discretization}
+
+We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
+the associated FE space of continuous piecewise elements of a fixed polynomial degree. % : $V^h \subset H^1 (\mcl B_0)$.
+Macro- -deformation map are given in a
+a vector space spanned by standard vector--valued FE basis functions $\gz N^i(\gz x)$ (e.g. polynomials with local support):
+\begin{alignat}{2}
+       \gz \varphi^h &=:  \sum_{i \in \mcl I_\varphi}       \varphi_i \gz N^i_\varphi (\gz X) \quad \quad \quad
+\delta \gz \varphi^h &&=: \sum_{i \in \mcl I_\varphi} \delta \varphi_i \gz N^i_\varphi (\gz X) \,,
+\end{alignat}
+where superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the sets of unknown degrees of freedom for the
+macroscopic fields. For the sake of this study $\gz N^i_\varphi (\gz X)$ are such that only one component of the vector shape function is non-zero for each $i$.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{bibliography}
+
+\end{document}

@@ -1,1 +1,11 @@
 /*build/
+
+/doc/*.aux
+/doc/*.bbl
+/doc/*.blg
+/doc/*.fdb_latexmk
+/doc/*.fls
+/doc/*.log
+/doc/*.pdf
+/doc/*.spl
+/doc/*.synctex.gz
