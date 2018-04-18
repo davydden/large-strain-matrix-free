@@ -34,3 +34,8 @@ ENDIF()
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
 PROJECT(${TARGET})
 DEAL_II_INVOKE_AUTOPILOT()
+
+# Enable testing and descent into tests/ subdirectory:
+ENABLE_TESTING()
+INCLUDE(CTest)
+ADD_SUBDIRECTORY(tests)

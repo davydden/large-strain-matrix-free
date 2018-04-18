@@ -1001,7 +1001,7 @@ namespace Cook_Membrane
     triangulation(Triangulation<dim>::maximum_smoothing),
     time(parameters.end_time, parameters.delta_t),
     timer(std::cout,
-          TimerOutput::summary,
+          TimerOutput::never/*TimerOutput::summary*/,
           TimerOutput::wall_times),
     degree(parameters.poly_degree),
     // The Finite Element System is composed of dim continuous displacement
