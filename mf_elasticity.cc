@@ -1662,7 +1662,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       const Parameters::AllParameters &parameters = data.solid->parameters;
       const Time &time = data.solid->time;
       const FESystem<dim> &fe = data.solid->fe;
-      const unsigned int &u_dof = data.solid->u_dof;
 
       // Next we assemble the Neumann contribution. We first check to see it the
       // cell face exists on a boundary on which a traction is applied and add
@@ -1694,22 +1693,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
                 for (unsigned int i = 0; i < dofs_per_cell; ++i)
                   {
-                    const unsigned int i_group =
-                      fe.system_to_base_index(i).first.first;
+                    const unsigned int component_i =
+                      fe.system_to_component_index(i).first;
+                    const double Ni =
+                      scratch.fe_face_values_ref.shape_value(i,
+                                                              f_q_point);
+                    const double JxW = scratch.fe_face_values_ref.JxW(
+                                          f_q_point);
 
-                    if (i_group == u_dof)
-                      {
-                        const unsigned int component_i =
-                          fe.system_to_component_index(i).first;
-                        const double Ni =
-                          scratch.fe_face_values_ref.shape_value(i,
-                                                                 f_q_point);
-                        const double JxW = scratch.fe_face_values_ref.JxW(
-                                             f_q_point);
-
-                        data.cell_rhs(i) += (Ni * traction[component_i])
-                                            * JxW;
-                      }
+                    data.cell_rhs(i) += (Ni * traction[component_i])
+                                        * JxW;
                   }
               }
           }
@@ -1796,33 +1789,22 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
               const unsigned int component_i = fe.system_to_component_index(i).first;
-              const unsigned int i_group     = fe.system_to_base_index(i).first.first;
 
-              if (i_group == u_dof)
-                data.cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
-              else
-                Assert(i_group <= u_dof, ExcInternalError());
+              data.cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
 
               for (unsigned int j = 0; j <= i; ++j)
                 {
                   const unsigned int component_j = fe.system_to_component_index(j).first;
-                  const unsigned int j_group     = fe.system_to_base_index(j).first.first;
 
                   // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
                   // contribution. It comprises a material contribution, and a
                   // geometrical stress contribution which is only added along
                   // the local matrix diagonals:
-                  if ((i_group == j_group) && (i_group == u_dof))
-                    {
-                      data.cell_matrix(i, j) += symm_grad_Nx[i] * Jc // The material contribution:
-                                                * symm_grad_Nx[j] * JxW;
-                      if (component_i == component_j) // geometrical stress contribution
-                        data.cell_matrix(i, j) += grad_Nx[i][component_i] * tau_ns
-                                                  * grad_Nx[j][component_j] * JxW;
-                    }
-                  else
-                    Assert((i_group <= u_dof) && (j_group <= u_dof),
-                           ExcInternalError());
+                  data.cell_matrix(i, j) += symm_grad_Nx[i] * Jc // The material contribution:
+                                            * symm_grad_Nx[j] * JxW;
+                  if (component_i == component_j) // geometrical stress contribution
+                    data.cell_matrix(i, j) += grad_Nx[i][component_i] * tau_ns
+                                              * grad_Nx[j][component_j] * JxW;
                 }
             }
         }
@@ -1923,14 +1905,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         const double JxW = scratch.fe_values_ref.JxW(q_point);
 
         for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          {
-            const unsigned int i_group     = fe.system_to_base_index(i).first.first;
-
-            if (i_group == u_dof)
-              residual_ad[i] += (symm_grad_Nx[i] * tau) * JxW;
-            else
-              Assert(i_group <= u_dof, ExcInternalError());
-          }
+          residual_ad[i] += (symm_grad_Nx[i] * tau) * JxW;
       }
 
       for (unsigned int I=0; I<n_independent_variables; ++I)
