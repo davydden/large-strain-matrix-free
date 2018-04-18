@@ -1710,6 +1710,23 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
   };
 
+
+  /**
+   * Action of the geometric part of the 4-th order tangent tensor
+   * on the $Grad N(x)$
+   *
+   * In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
+   *
+   */
+  template <int dim, typename NumberType>
+  inline
+  Tensor<2, dim, NumberType>
+  egeo_grad(const Tensor<2, dim, NumberType> &grad_Nx, const Tensor<2,dim,NumberType> &tau_tot)
+  {
+    // the product is actually  GradN * tau^T but due to symmetry of tau we can do GradN * tau
+    return grad_Nx * tau_tot;
+  }
+
   template <int dim>
   struct Assembler<dim,double> : Assembler_Base<dim,double>
   {
@@ -1788,23 +1805,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
-              const unsigned int component_i = fe.system_to_component_index(i).first;
-
               data.cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
 
               for (unsigned int j = 0; j <= i; ++j)
                 {
-                  const unsigned int component_j = fe.system_to_component_index(j).first;
-
                   // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
                   // contribution. It comprises a material contribution, and a
                   // geometrical stress contribution which is only added along
                   // the local matrix diagonals:
                   data.cell_matrix(i, j) += symm_grad_Nx[i] * Jc // The material contribution:
                                             * symm_grad_Nx[j] * JxW;
-                  if (component_i == component_j) // geometrical stress contribution
-                    data.cell_matrix(i, j) += grad_Nx[i][component_i] * tau_ns
-                                              * grad_Nx[j][component_j] * JxW;
+                  // geometrical stress contribution
+                  const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
+                  data.cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
                 }
             }
         }
