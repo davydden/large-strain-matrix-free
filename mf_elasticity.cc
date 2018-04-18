@@ -618,8 +618,8 @@ namespace Cook_Membrane
       res += ((2.0 / dim) * tr_tau_bar) * dev_src;
 
       // term with tau_iso_x_I + I_x_tau_iso
-      res -= (2.0 / dim) * tau_iso * tr;
-      const double tau_iso_src = tau_iso * src;
+      res -= ((2.0 / dim) * tr) * tau_iso;
+      const NumberType tau_iso_src = tau_iso * src;
       for (unsigned int i = 0; i < dim; ++i)
         res[i][i] -= (2.0 / dim) * tau_iso_src;
 
