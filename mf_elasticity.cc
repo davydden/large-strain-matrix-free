@@ -574,8 +574,46 @@ namespace Cook_Membrane
            const SymmetricTensor<2,dim,NumberType> &b_bar,
            const SymmetricTensor<2,dim,NumberType> &src) const
     {
-      const SymmetricTensor<4,dim,NumberType> tmp = get_Jc_vol(det_F) + get_Jc_iso(b_bar);
-      return tmp * src;
+      SymmetricTensor<2,dim,NumberType> res;
+      const NumberType tr = trace(src);
+
+      SymmetricTensor<2,dim,NumberType> dev_src(src);
+      for (unsigned int i = 0; i < dim; ++i)
+        dev_src[i][i] -= tr/dim;
+
+      // 1) The volumetric part of the tangent $J
+      // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
+      // definition when compared to step-44. The extra terms result from two
+      // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on
+      // $\boldsymbol{F}$.
+      // See Holzapfel p265
+
+      // the term with the 4-th order symmetric tensor which gives symmetric
+      // part of the tensor it acts on
+      res = src;
+      res*= - det_F*(2.0 * get_dPsi_vol_dJ(det_F));
+
+      // term with IxI results in trace of the tensor times I
+      const NumberType tmp = det_F * (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F)) * tr;
+      for (unsigned int i = 0; i < dim; ++i)
+        res[i][i] += tmp;
+
+      // 2) the isochoric part of the tangent $J
+      // \mathfrak{c}_\textrm{iso}$:
+      const SymmetricTensor<2, dim> tau_bar = get_tau_bar(b_bar);
+      const SymmetricTensor<2, dim> tau_iso = get_tau_iso(b_bar);
+
+      // term with deviatoric part of the tensor
+      res += (2.0 / dim) * trace(tau_bar) * dev_src;
+
+      // term with tau_iso_x_I + I_x_tau_iso
+      res -= (2.0 / dim) * tau_iso * tr;
+      const double tau_iso_src = tau_iso * src;
+      for (unsigned int i = 0; i < dim; ++i)
+        res[i][i] -= (2.0 / dim) * tau_iso_src;
+
+      // c_bar==0 so we don't have a term with it.
+      return res;
     }
 
   private:
@@ -643,50 +681,6 @@ namespace Cook_Membrane
     get_d2Psi_vol_dJ2(const NumberType &det_F) const
     {
         return ( (kappa / 2.0) * (1.0 + 1.0 / (det_F * det_F)));
-    }
-
-    // Calculate the volumetric part of the tangent $J
-    // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
-    // definition when compared to step-44. The extra terms result from two
-    // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on
-    // $\boldsymbol{F}$.
-    SymmetricTensor<4,dim,NumberType>
-    get_Jc_vol(const NumberType &det_F) const
-    {
-        // See Holzapfel p265
-        return det_F
-        * ( (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F))*StandardTensors<dim>::IxI
-           - (2.0 * get_dPsi_vol_dJ(det_F))*StandardTensors<dim>::II );
-    }
-
-    // Calculate the isochoric part of the tangent $J
-    // \mathfrak{c}_\textrm{iso}$:
-    SymmetricTensor<4,dim,NumberType>
-    get_Jc_iso(const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      const SymmetricTensor<2, dim> tau_bar = get_tau_bar(b_bar);
-      const SymmetricTensor<2, dim> tau_iso = get_tau_iso(b_bar);
-      const SymmetricTensor<4, dim> tau_iso_x_I
-        = outer_product(tau_iso,
-                        StandardTensors<dim>::I);
-      const SymmetricTensor<4, dim> I_x_tau_iso
-        = outer_product(StandardTensors<dim>::I,
-                        tau_iso);
-      const SymmetricTensor<4, dim> c_bar = get_c_bar();
-
-      return (2.0 / dim) * trace(tau_bar)
-             * StandardTensors<dim>::dev_P
-             - (2.0 / dim) * (tau_iso_x_I + I_x_tau_iso)
-             + StandardTensors<dim>::dev_P * c_bar
-             * StandardTensors<dim>::dev_P;
-    }
-
-    // Calculate the fictitious elasticity tensor $\overline{\mathfrak{c}}$.
-    // For the material model chosen this is simply zero:
-    SymmetricTensor<4,dim,double>
-    get_c_bar() const
-    {
-      return SymmetricTensor<4, dim>();
     }
   };
 
