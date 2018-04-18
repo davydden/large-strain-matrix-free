@@ -248,7 +248,7 @@ namespace Cook_Membrane
                           Patterns::Double(0.0),
                           "Linear solver iterations (multiples of the system matrix size)");
 
-        prm.declare_entry("Preconditioner type", "ssor",
+        prm.declare_entry("Preconditioner type", "jacobi",
                           Patterns::Selection("jacobi|ssor"),
                           "Type of preconditioner");
 

@@ -26,13 +26,13 @@ subsection Linear solver
   set Residual                  = 1e-6
 
   # Preconditioner type
-  set Preconditioner type        = ssor
+  set Preconditioner type        = jacobi
 
   # Preconditioner relaxation value
   set Preconditioner relaxation  = 0.65
 
   # Type of solver used to solve the linear system
-  set Solver type               = Direct
+  set Solver type               = CG
 end
 
 
