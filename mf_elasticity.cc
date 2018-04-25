@@ -411,44 +411,6 @@ namespace Cook_Membrane
     }
   }
 
-// @sect3{Some standard tensors}
-
-// Now we define some frequently used second and fourth-order tensors:
-  template <int dim>
-  class StandardTensors
-  {
-  public:
-
-    // $\mathbf{I}$
-    static const SymmetricTensor<2, dim> I;
-    // $\mathbf{I} \otimes \mathbf{I}$
-    static const SymmetricTensor<4, dim> IxI;
-    // $\mathcal{S}$, note that as we only use this fourth-order unit tensor
-    // to operate on symmetric second-order tensors.  To maintain notation
-    // consistent with Holzapfel (2001) we name the tensor $\mathcal{I}$
-    static const SymmetricTensor<4, dim> II;
-    // Fourth-order deviatoric tensor such that
-    // $\textrm{dev} \{ \bullet \} = \{ \bullet \} -
-    //  [1/\textrm{dim}][ \{ \bullet\} :\mathbf{I}]\mathbf{I}$
-    static const SymmetricTensor<4, dim> dev_P;
-  };
-
-  template <int dim>
-  const SymmetricTensor<2, dim>
-  StandardTensors<dim>::I = unit_symmetric_tensor<dim>();
-
-  template <int dim>
-  const SymmetricTensor<4, dim>
-  StandardTensors<dim>::IxI = outer_product(I, I);
-
-  template <int dim>
-  const SymmetricTensor<4, dim>
-  StandardTensors<dim>::II = identity_tensor<dim>();
-
-  template <int dim>
-  const SymmetricTensor<4, dim>
-  StandardTensors<dim>::dev_P = deviator_tensor<dim>();
-
 // @sect3{Time class}
 
 // A simple class to store time data. Its functioning is transparent so no
@@ -663,7 +625,7 @@ namespace Cook_Membrane
     SymmetricTensor<2,dim,NumberType>
     get_tau_vol(const NumberType &det_F) const
     {
-        return NumberType(get_dPsi_vol_dJ(det_F) * det_F) * StandardTensors<dim>::I;
+        return NumberType(get_dPsi_vol_dJ(det_F) * det_F) * Physics::Elasticity::StandardTensors<dim>::I;
     }
 
     // Next, determine the isochoric Kirchhoff stress
@@ -672,7 +634,7 @@ namespace Cook_Membrane
     SymmetricTensor<2,dim,NumberType>
     get_tau_iso(const SymmetricTensor<2,dim,NumberType> &b_bar) const
     {
-      return StandardTensors<dim>::dev_P * get_tau_bar(b_bar);
+      return Physics::Elasticity::StandardTensors<dim>::dev_P * get_tau_bar(b_bar);
     }
 
     // Then, determine the fictitious Kirchhoff stress
