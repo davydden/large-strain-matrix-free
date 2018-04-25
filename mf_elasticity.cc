@@ -724,13 +724,6 @@ namespace Cook_Membrane
 
 // @sect3{Quasi-static compressible finite-strain solid}
 
-  // Forward declarations for classes that will
-  // perform assembly of the linear system.
-  template <int dim,typename NumberType>
-  struct Assembler_Base;
-  template <int dim,typename NumberType>
-  struct Assembler;
-
 // The Solid class is the central class in that it represents the problem at
 // hand. It follows the usual scheme in that all it really has is a
 // constructor, destructor and a <code>run()</code> function that dispatches
@@ -765,12 +758,6 @@ namespace Cook_Membrane
     // object that represents it:
     void
     assemble_system(const BlockVector<double> &solution_delta);
-
-    // We use a separate data structure to perform the assembly. It needs access
-    // to some low-level data, so we simply befriend the class instead of
-    // creating a complex interface to provide access as necessary.
-    friend struct Assembler_Base<dim,NumberType>;
-    friend struct Assembler<dim,NumberType>;
 
     // Apply Dirichlet boundary conditions on the displacement field
     void
@@ -1431,211 +1418,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     return solution_total;
   }
 
-
-// @sect4{Solid::assemble_system}
-
-  template <int dim,typename NumberType>
-  struct Assembler_Base
-  {
-    virtual ~Assembler_Base() {}
-
-    // Here we deal with the tangent matrix assembly structures. The
-    // PerTaskData object stores local contributions.
-    struct PerTaskData_ASM
-    {
-      const Solid<dim,NumberType>          *solid;
-      FullMatrix<double>                   cell_matrix;
-      Vector<double>                       cell_rhs;
-      std::vector<types::global_dof_index> local_dof_indices;
-
-      PerTaskData_ASM(const Solid<dim,NumberType> *solid)
-        :
-        solid (solid),
-        cell_matrix(solid->dofs_per_cell, solid->dofs_per_cell),
-        cell_rhs(solid->dofs_per_cell),
-        local_dof_indices(solid->dofs_per_cell)
-      {}
-
-      void reset()
-      {
-        cell_matrix = 0.0;
-        cell_rhs = 0.0;
-      }
-    };
-
-    // On the other hand, the ScratchData object stores the larger objects such as
-    // the shape-function values array (<code>Nx</code>) and a shape function
-    // gradient and symmetric gradient vector which we will use during the
-    // assembly.
-    struct ScratchData_ASM
-    {
-      const BlockVector<double>               &solution_total;
-      std::vector<Tensor<2, dim,NumberType> >  solution_grads_u_total;
-
-      FEValues<dim>                fe_values_ref;
-      FEFaceValues<dim>            fe_face_values_ref;
-
-      std::vector<std::vector<Tensor<2, dim,NumberType> > >         grad_Nx;
-      std::vector<std::vector<SymmetricTensor<2,dim,NumberType> > > symm_grad_Nx;
-
-      ScratchData_ASM(const FiniteElement<dim> &fe_cell,
-                      const QGauss<dim> &qf_cell,
-                      const UpdateFlags uf_cell,
-                      const QGauss<dim-1> & qf_face,
-                      const UpdateFlags uf_face,
-                      const BlockVector<double> &solution_total)
-        :
-        solution_total(solution_total),
-        solution_grads_u_total(qf_cell.size()),
-        fe_values_ref(fe_cell, qf_cell, uf_cell),
-        fe_face_values_ref(fe_cell, qf_face, uf_face),
-        grad_Nx(qf_cell.size(),
-                std::vector<Tensor<2,dim,NumberType> >(fe_cell.dofs_per_cell)),
-        symm_grad_Nx(qf_cell.size(),
-                     std::vector<SymmetricTensor<2,dim,NumberType> >
-                     (fe_cell.dofs_per_cell))
-      {}
-
-      ScratchData_ASM(const ScratchData_ASM &rhs)
-        :
-        solution_total (rhs.solution_total),
-        solution_grads_u_total(rhs.solution_grads_u_total),
-        fe_values_ref(rhs.fe_values_ref.get_fe(),
-                      rhs.fe_values_ref.get_quadrature(),
-                      rhs.fe_values_ref.get_update_flags()),
-        fe_face_values_ref(rhs.fe_face_values_ref.get_fe(),
-                           rhs.fe_face_values_ref.get_quadrature(),
-                           rhs.fe_face_values_ref.get_update_flags()),
-        grad_Nx(rhs.grad_Nx),
-        symm_grad_Nx(rhs.symm_grad_Nx)
-      {}
-
-      void reset()
-      {
-        const unsigned int n_q_points = fe_values_ref.get_quadrature().size();
-        const unsigned int n_dofs_per_cell = fe_values_ref.dofs_per_cell;
-        for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-          {
-            Assert( grad_Nx[q_point].size() == n_dofs_per_cell,
-                    ExcInternalError());
-            Assert( symm_grad_Nx[q_point].size() == n_dofs_per_cell,
-                    ExcInternalError());
-
-            solution_grads_u_total[q_point] = Tensor<2,dim,NumberType>();
-            for (unsigned int k = 0; k < n_dofs_per_cell; ++k)
-              {
-                grad_Nx[q_point][k] = Tensor<2,dim,NumberType>();
-                symm_grad_Nx[q_point][k] = SymmetricTensor<2,dim,NumberType>();
-              }
-          }
-      }
-
-    };
-
-    // Of course, we still have to define how we assemble the tangent matrix
-    // contribution for a single cell.
-    void
-    assemble_system_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
-                             ScratchData_ASM &scratch,
-                             PerTaskData_ASM &data)
-    {
-      // Due to the C++ specialization rules, we need one more
-      // level of indirection in order to define the assembly
-      // routine for all different number. The next function call
-      // is specialized for each NumberType, but to prevent having
-      // to specialize the whole class along with it we have inlined
-      // the definition of the other functions that are common to
-      // all implementations.
-      assemble_system_tangent_residual_one_cell(cell, scratch, data);
-      assemble_neumann_contribution_one_cell(cell, scratch, data);
-    }
-
-    // This function adds the local contribution to the system matrix.
-    void
-    copy_local_to_global_ASM(const PerTaskData_ASM &data)
-    {
-      const ConstraintMatrix &constraints = data.solid->constraints;
-      BlockSparseMatrix<double> &tangent_matrix = const_cast<Solid<dim,NumberType> *>(data.solid)->tangent_matrix;
-      BlockVector<double> &system_rhs =  const_cast<Solid<dim,NumberType> *>(data.solid)->system_rhs;
-
-      constraints.distribute_local_to_global(
-          data.cell_matrix, data.cell_rhs,
-          data.local_dof_indices,
-          tangent_matrix, system_rhs);
-    }
-
-  protected:
-
-    // This function needs to exist in the base class for
-    // Workstream to work with a reference to the base class.
-    virtual void
-    assemble_system_tangent_residual_one_cell(const typename DoFHandler<dim>::active_cell_iterator &/*cell*/,
-                                              ScratchData_ASM &/*scratch*/,
-                                              PerTaskData_ASM &/*data*/)
-    {
-      AssertThrow(false, ExcPureFunctionCalled());
-    }
-
-    void
-    assemble_neumann_contribution_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
-                                           ScratchData_ASM &scratch,
-                                           PerTaskData_ASM &data)
-    {
-      // Aliases for data referenced from the Solid class
-      const unsigned int &n_q_points_f = data.solid->n_q_points_f;
-      const unsigned int &dofs_per_cell = data.solid->dofs_per_cell;
-      const Parameters::AllParameters &parameters = data.solid->parameters;
-      const Time &time = data.solid->time;
-      const FESystem<dim> &fe = data.solid->fe;
-
-      // Next we assemble the Neumann contribution. We first check to see it the
-      // cell face exists on a boundary on which a traction is applied and add
-      // the contribution if this is the case.
-      for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-           ++face)
-        if (cell->face(face)->at_boundary() == true
-            && cell->face(face)->boundary_id() == 11)
-          {
-            scratch.fe_face_values_ref.reinit(cell, face);
-
-            for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
-                 ++f_q_point)
-              {
-                // We specify the traction in reference configuration.
-                // For this problem, a defined total vertical force is applied
-                // in the reference configuration.
-                // The direction of the applied traction is assumed not to
-                // evolve with the deformation of the domain.
-
-                // Note that the contributions to the right hand side vector we
-                // compute here only exist in the displacement components of the
-                // vector.
-                const double time_ramp = (time.current() / time.end());
-                const double magnitude  = (1.0/(16.0*parameters.scale*1.0*parameters.scale))*time_ramp; // (Total force) / (RHS surface area)
-                Tensor<1,dim> dir;
-                dir[1] = 1.0;
-                const Tensor<1, dim> traction  = magnitude*dir;
-
-                for (unsigned int i = 0; i < dofs_per_cell; ++i)
-                  {
-                    const unsigned int component_i =
-                      fe.system_to_component_index(i).first;
-                    const double Ni =
-                      scratch.fe_face_values_ref.shape_value(i,
-                                                              f_q_point);
-                    const double JxW = scratch.fe_face_values_ref.JxW(
-                                          f_q_point);
-
-                    data.cell_rhs(i) += (Ni * traction[component_i])
-                                        * JxW;
-                  }
-              }
-          }
-    }
-
-  };
-
-
   /**
    * Action of the geometric part of the 4-th order tangent tensor
    * on the $Grad N(x)$
@@ -1652,112 +1434,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     return grad_Nx * tau_tot;
   }
 
-  template <int dim>
-  struct Assembler<dim,double> : Assembler_Base<dim,double>
-  {
-    typedef double NumberType;
-    using typename Assembler_Base<dim,NumberType>::ScratchData_ASM;
-    using typename Assembler_Base<dim,NumberType>::PerTaskData_ASM;
-
-    virtual ~Assembler() {}
-
-    virtual void
-    assemble_system_tangent_residual_one_cell(const typename DoFHandler<dim>::active_cell_iterator &cell,
-                                              ScratchData_ASM &scratch,
-                                              PerTaskData_ASM &data)
-    {
-      // Aliases for data referenced from the Solid class
-      const unsigned int &n_q_points = data.solid->n_q_points;
-      const unsigned int &dofs_per_cell = data.solid->dofs_per_cell;
-      const FESystem<dim> &fe = data.solid->fe;
-      const unsigned int &u_dof = data.solid->u_dof;
-      const FEValuesExtractors::Vector &u_fe = data.solid->u_fe;
-
-      data.reset();
-      scratch.reset();
-      scratch.fe_values_ref.reinit(cell);
-      cell->get_dof_indices(data.local_dof_indices);
-
-      const std::vector<std::shared_ptr<const PointHistory<dim,NumberType> > > lqph =
-          const_cast<const Solid<dim,NumberType> *>(data.solid)->quadrature_point_history.get_data(cell);
-      Assert(lqph.size() == n_q_points, ExcInternalError());
-
-      // We first need to find the solution gradients at quadrature points
-      // inside the current cell and then we update each local QP using the
-      // displacement gradient:
-      scratch.fe_values_ref[u_fe].get_function_gradients(scratch.solution_total,
-                                                         scratch.solution_grads_u_total);
-
-      // Now we build the local cell stiffness matrix. Since the global and
-      // local system matrices are symmetric, we can exploit this property by
-      // building only the lower half of the local matrix and copying the values
-      // to the upper half.
-      //
-      // In doing so, we first extract some configuration dependent variables
-      // from our QPH history objects for the current quadrature point.
-      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-        {
-          const Tensor<2,dim,NumberType> &grad_u = scratch.solution_grads_u_total[q_point];
-          const Tensor<2,dim,NumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
-          const NumberType               det_F = determinant(F);
-          const Tensor<2,dim,NumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
-          const SymmetricTensor<2,dim,NumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
-          const Tensor<2,dim,NumberType> F_inv = invert(F);
-          Assert(det_F > NumberType(0.0), ExcInternalError());
-
-          for (unsigned int k = 0; k < dofs_per_cell; ++k)
-            {
-              const unsigned int k_group = fe.system_to_base_index(k).first.first;
-
-              if (k_group == u_dof)
-                {
-                  scratch.grad_Nx[q_point][k] = scratch.fe_values_ref[u_fe].gradient(k, q_point) * F_inv;
-                  scratch.symm_grad_Nx[q_point][k] = symmetrize(scratch.grad_Nx[q_point][k]);
-                }
-              else
-                Assert(k_group <= u_dof, ExcInternalError());
-            }
-
-          const auto &mat = lqph[q_point];
-
-          const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
-          const Tensor<2,dim,NumberType> tau_ns (tau);
-
-          // Next we define some aliases to make the assembly process easier to
-          // follow
-          const std::vector<SymmetricTensor<2, dim> > &symm_grad_Nx = scratch.symm_grad_Nx[q_point];
-          const std::vector<Tensor<2, dim> > &grad_Nx = scratch.grad_Nx[q_point];
-          const double JxW = scratch.fe_values_ref.JxW(q_point);
-
-          for (unsigned int i = 0; i < dofs_per_cell; ++i)
-            {
-              data.cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
-
-              for (unsigned int j = 0; j <= i; ++j)
-                {
-                  // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
-                  // contribution. It comprises a material contribution, and a
-                  // geometrical stress contribution which is only added along
-                  // the local matrix diagonals:
-                  data.cell_matrix(i, j) += symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j]) // The material contribution:
-                                            * JxW;
-                  // geometrical stress contribution
-                  const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
-                  data.cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
-                }
-            }
-        }
-
-
-      // Finally, we need to copy the lower half of the local matrix into the
-      // upper half:
-      for (unsigned int i = 0; i < dofs_per_cell; ++i)
-        for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
-          data.cell_matrix(i, j) = data.cell_matrix(j, i);
-    }
-
-  };
-
 
 // Since we use TBB for assembly, we simply setup a copy of the
 // data structures required for the process and pass them, along
@@ -1767,31 +1443,135 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,typename NumberType>
   void Solid<dim,NumberType>::assemble_system(const BlockVector<double> &solution_delta)
   {
-    timer.enter_subsection("Assemble linear system");
+    TimerOutput::Scope t (timer, "Assemble linear system");
     std::cout << " ASM " << std::flush;
 
     tangent_matrix = 0.0;
     system_rhs = 0.0;
 
-    const UpdateFlags uf_cell(update_gradients |
-                              update_JxW_values);
-    const UpdateFlags uf_face(update_values |
-                              update_JxW_values);
+    FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
+    Vector<double> cell_rhs(dofs_per_cell);
+    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+
+    std::vector<Tensor<2,dim,NumberType> >  solution_grads_u_total(qf_cell.size());
+
+    // values at quadrature points:
+    std::vector<Tensor<2, dim,NumberType>>         grad_Nx(dofs_per_cell);
+    std::vector<SymmetricTensor<2,dim,NumberType>> symm_grad_Nx(dofs_per_cell);
+
+    FEValues<dim>      fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
+    FEFaceValues<dim>  fe_face_values_ref(fe, qf_face, update_values | update_JxW_values);
 
     const BlockVector<double> solution_total(get_total_solution(solution_delta));
-    typename Assembler_Base<dim,NumberType>::PerTaskData_ASM per_task_data(this);
-    typename Assembler_Base<dim,NumberType>::ScratchData_ASM scratch_data(fe, qf_cell, uf_cell, qf_face, uf_face, solution_total);
-    Assembler<dim,NumberType> assembler;
 
-    WorkStream::run(dof_handler_ref.begin_active(),
-                    dof_handler_ref.end(),
-                    static_cast<Assembler_Base<dim,NumberType>&>(assembler),
-                    &Assembler_Base<dim,NumberType>::assemble_system_one_cell,
-                    &Assembler_Base<dim,NumberType>::copy_local_to_global_ASM,
-                    scratch_data,
-                    per_task_data);
+    for (const auto &cell: dof_handler_ref.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          fe_values_ref.reinit(cell);
+          cell_rhs = 0.;
+          cell_matrix = 0.;
+          cell->get_dof_indices(local_dof_indices);
 
-    timer.leave_subsection();
+          const auto &quadrature_point_history_const = quadrature_point_history;
+          const std::vector<std::shared_ptr<const PointHistory<dim,NumberType> > > lqph = quadrature_point_history_const.get_data(cell);
+          Assert(lqph.size() == n_q_points, ExcInternalError());
+
+          // We first need to find the solution gradients at quadrature points
+          // inside the current cell and then we update each local QP using the
+          // displacement gradient:
+          fe_values_ref[u_fe].get_function_gradients(solution_total, solution_grads_u_total);
+
+          // Now we build the local cell stiffness matrix. Since the global and
+          // local system matrices are symmetric, we can exploit this property by
+          // building only the lower half of the local matrix and copying the values
+          // to the upper half.
+          //
+          // In doing so, we first extract some configuration dependent variables
+          // from our QPH history objects for the current quadrature point.
+          for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
+            {
+              const Tensor<2,dim,NumberType> &grad_u = solution_grads_u_total[q_point];
+              const Tensor<2,dim,NumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
+              const NumberType               det_F = determinant(F);
+              const Tensor<2,dim,NumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
+              const SymmetricTensor<2,dim,NumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
+              const Tensor<2,dim,NumberType> F_inv = invert(F);
+              Assert(det_F > NumberType(0.0), ExcInternalError());
+
+              for (unsigned int k = 0; k < dofs_per_cell; ++k)
+                {
+                  grad_Nx[k] = fe_values_ref[u_fe].gradient(k, q_point) * F_inv;
+                  symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
+                }
+
+              const auto &mat = lqph[q_point];
+              const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
+              const Tensor<2,dim,NumberType> tau_ns (tau);
+              const double JxW = fe_values_ref.JxW(q_point);
+
+              for (unsigned int i = 0; i < dofs_per_cell; ++i)
+                {
+                  cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
+
+                  for (unsigned int j = 0; j <= i; ++j)
+                    {
+                      // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
+                      // contribution. It comprises a material contribution, and a
+                      // geometrical stress contribution which is only added along
+                      // the local matrix diagonals:
+                      cell_matrix(i, j) += (symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
+                                            * JxW;
+                      // geometrical stress contribution
+                      const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
+                      cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
+                    }
+                }
+            }
+
+          // Finally, we need to copy the lower half of the local matrix into the
+          // upper half:
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
+            for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+              cell_matrix(i, j) = cell_matrix(j, i);
+
+          // Next we assemble the Neumann contribution. We first check to see it the
+          // cell face exists on a boundary on which a traction is applied and add
+          // the contribution if this is the case.
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell; ++face)
+            if (cell->face(face)->at_boundary() == true && cell->face(face)->boundary_id() == 11)
+              {
+                fe_face_values_ref.reinit(cell, face);
+                for (unsigned int f_q_point = 0; f_q_point < n_q_points_f; ++f_q_point)
+                  {
+                    // We specify the traction in reference configuration.
+                    // For this problem, a defined total vertical force is applied
+                    // in the reference configuration.
+                    // The direction of the applied traction is assumed not to
+                    // evolve with the deformation of the domain.
+
+                    // Note that the contributions to the right hand side vector we
+                    // compute here only exist in the displacement components of the
+                    // vector.
+                    const double time_ramp = (time.current() / time.end());
+                    const double magnitude  = (1.0/(16.0*parameters.scale*1.0*parameters.scale))*time_ramp; // (Total force) / (RHS surface area)
+                    Tensor<1,dim> dir;
+                    dir[1] = 1.0;
+                    const Tensor<1, dim> traction  = magnitude*dir;
+
+                    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+                      {
+                        const unsigned int component_i = fe.system_to_component_index(i).first;
+                        const double Ni = fe_face_values_ref.shape_value(i,f_q_point);
+                        const double JxW = fe_face_values_ref.JxW(f_q_point);
+                        cell_rhs(i) += (Ni * traction[component_i]) * JxW;
+                      }
+                  }
+              }
+
+          constraints.distribute_local_to_global(cell_matrix, cell_rhs,
+                                                 local_dof_indices,
+                                                 tangent_matrix, system_rhs);
+        }
   }
 
 
