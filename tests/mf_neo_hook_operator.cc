@@ -17,6 +17,9 @@
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 
+#include <deal.II/physics/elasticity/kinematics.h>
+#include <deal.II/physics/elasticity/standard_tensors.h>
+
 #include <iostream>
 
 
@@ -188,7 +191,7 @@ public:
 };
 
 
-template <int dim, int fe_degree, int quadrature>
+template <int dim, int fe_degree, int n_q_points_1d>
 void test_elasticity ()
 {
   typedef double number;
@@ -258,13 +261,46 @@ void test_elasticity ()
   std::shared_ptr<MatrixFree<dim,number> > mf_data_current  (new MatrixFree<dim,number> ());
   std::shared_ptr<MatrixFree<dim,number> > mf_data_reference(new MatrixFree<dim,number> ());
   {
-    const QGauss<1> quad (quadrature);
+    const QGauss<1> quad (n_q_points_1d);
     typename MatrixFree<dim,number>::AdditionalData data;
     data.tasks_parallel_scheme = MatrixFree<dim,number>::AdditionalData::none;
     data.tasks_block_size = 7;
 
     mf_data_reference->reinit (         dof, constraints, quad, data);
     mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
+  }
+
+  // do one cell:
+  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*mf_data_current);
+  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*mf_data_reference);
+
+  const unsigned int n_q_points = phi_current.n_q_points;
+  Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
+
+  const unsigned int cell=0;
+  {
+    // initialize on this cell
+    phi_current.reinit(cell);
+    phi_reference.reinit(cell);
+
+    // read-in solution vector and evaluate gradients
+    phi_reference.read_dof_values(displacement);
+    phi_current.  read_dof_values(displacement);
+    phi_reference.evaluate (false,true,false);
+    phi_current.  evaluate (false,true,false);
+    for (unsigned int q=0; q<n_q_points; ++q)
+      {
+        // reference configuration:
+        const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
+        const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+        const VectorizedArray<number>                        det_F  = determinant(F);
+        const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
+
+        // current configuration
+        const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_u      = phi_current.get_gradient(q);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_u = phi_current.get_symmetric_gradient(q);
+      }
   }
 
   // MatrixFreeOperators::MassOperator<dim,fe_degree, fe_degree+2, 1, LinearAlgebra::distributed::Vector<number> > mf;
