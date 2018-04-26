@@ -10,8 +10,12 @@
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/mapping_fe_field.h>
+#include <deal.II/fe/mapping_q_eulerian.h>
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/numerics/data_out.h>
 
 #include <iostream>
 
@@ -162,6 +166,129 @@ void test ()
 }
 
 
+template <int dim>
+class Displacement : public Function<dim>
+{
+public:
+  Displacement() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    // simple shear
+    static const double gamma = 0.1;
+    if (component==0)
+      return p[1]*gamma;
+    else
+      return 0.;
+  }
+};
+
+
+template <int dim, int fe_degree, int quadrature>
+void test_elasticity ()
+{
+  typedef double number;
+  parallel::distributed::Triangulation<dim> tria (MPI_COMM_WORLD);
+  GridGenerator::hyper_cube (tria);
+
+  FESystem<dim> fe(FE_Q<dim>(fe_degree),dim);
+  DoFHandler<dim> dof (tria);
+  dof.distribute_dofs(fe);
+
+  IndexSet owned_set = dof.locally_owned_dofs();
+  IndexSet relevant_set;
+  DoFTools::extract_locally_relevant_dofs (dof, relevant_set);
+
+  ConstraintMatrix constraints (relevant_set);
+  DoFTools::make_hanging_node_constraints(dof, constraints);
+  // VectorTools::interpolate_boundary_values (dof, 0, Functions::ZeroFunction<dim>(),
+  //                                           constraints);
+  constraints.close();
+
+  std::cout << "Testing " << dof.get_fe().get_name() << std::endl;
+  std::cout << "Number of cells: " << tria.n_global_active_cells() << std::endl;
+  std::cout << "Number of degrees of freedom: " << dof.n_dofs() << std::endl;
+
+  // setup some FE displacement
+  LinearAlgebra::distributed::Vector<number> displacement;
+  displacement.reinit(owned_set,
+                      relevant_set,
+                      MPI_COMM_WORLD);
+
+  {
+    Displacement<dim> displacement_function;
+    VectorTools::interpolate(dof,
+                             displacement_function,
+                             displacement);
+    displacement.compress(VectorOperation::insert);
+    displacement.update_ghost_values();
+  }
+
+  // setup current configuration mapping
+  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(/*degree*/1,dof,displacement);
+  //auto mapping = std::make_shared<MappingFEField<dim,dim,LinearAlgebra::distributed::Vector<number>>>(dof,displacement);
+
+  // output for debug purposes
+  {
+    DataOut<dim> data_out;
+    std::vector<DataComponentInterpretation::DataComponentInterpretation>
+    data_component_interpretation(dim,
+                                  DataComponentInterpretation::component_is_part_of_vector);
+
+    std::vector<std::string> solution_name(dim, "displacement");
+
+    data_out.attach_dof_handler(dof);
+    data_out.add_data_vector(displacement,
+                             solution_name,
+                             DataOut<dim>::type_dof_data,
+                             data_component_interpretation);
+
+    // write output
+    data_out.build_patches(*mapping);
+
+    const std::string filename = "solution.vtk";
+    std::ofstream output(filename.c_str());
+    data_out.write_vtk(output);
+  }
+
+  std::shared_ptr<MatrixFree<dim,number> > mf_data_current  (new MatrixFree<dim,number> ());
+  std::shared_ptr<MatrixFree<dim,number> > mf_data_reference(new MatrixFree<dim,number> ());
+  {
+    const QGauss<1> quad (quadrature);
+    typename MatrixFree<dim,number>::AdditionalData data;
+    data.tasks_parallel_scheme = MatrixFree<dim,number>::AdditionalData::none;
+    data.tasks_block_size = 7;
+
+    mf_data_reference->reinit (         dof, constraints, quad, data);
+    mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
+  }
+
+  // MatrixFreeOperators::MassOperator<dim,fe_degree, fe_degree+2, 1, LinearAlgebra::distributed::Vector<number> > mf;
+  // mf.initialize(mf_data);
+  // mf.compute_diagonal();
+  // LinearAlgebra::distributed::Vector<number> in, out, ref;
+  // mf_data->initialize_dof_vector (in);
+  // out.reinit (in);
+  // ref.reinit (in);
+
+  // for (unsigned int i=0; i<in.local_size(); ++i)
+  //   {
+  //     const unsigned int glob_index =
+  //       owned_set.nth_index_in_set (i);
+  //     if (constraints.is_constrained(glob_index))
+  //       continue;
+  //     in.local_element(i) = ((double)std::rand())/RAND_MAX;
+  //   }
+
+  // mf.vmult (out, in);
+
+}
+
+
 int main (int argc, char **argv)
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
@@ -181,6 +308,7 @@ int main (int argc, char **argv)
       deallog.push("2d");
       test<2,1>();
       test<2,2>();
+      test_elasticity<2,1,2>();
       deallog.pop();
 
       deallog.push("3d");
@@ -192,6 +320,7 @@ int main (int argc, char **argv)
     {
       test<2,1>();
       test<2,2>();
+      test_elasticity<2,1,2>();
       test<3,1>();
       test<3,2>();
     }
