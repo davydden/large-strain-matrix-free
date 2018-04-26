@@ -1,4 +1,4 @@
-#include <mf_elasticity_lib.h>
+#include <mf_elasticity.h>
 
 void Dummy::reset()
 {

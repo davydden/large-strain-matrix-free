@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES(
 
 # Declare all source files the target consists of:
 SET(TARGETLIB_SRC
-  src/mf_elasticity_lib.cc
+  src/mf_elasticity.cc
   # You can specify additional files here!
 )
 

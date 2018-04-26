@@ -22,6 +22,7 @@
 
 #include <iostream>
 
+#include <mf_elasticity.h>
 
 using namespace dealii;
 
@@ -300,6 +301,31 @@ void test_elasticity ()
         // current configuration
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_u      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_u = phi_current.get_symmetric_gradient(q);
+
+        /*
+        const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
+        const Tensor<2,dim,NumberType> tau_ns (tau);
+        const double JxW = fe_values_ref.JxW(q_point);
+
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          {
+            cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
+
+            for (unsigned int j = 0; j <= i; ++j)
+              {
+                // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
+                // contribution. It comprises a material contribution, and a
+                // geometrical stress contribution which is only added along
+                // the local matrix diagonals:
+                cell_matrix(i, j) += (symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
+                                      * JxW;
+                // geometrical stress contribution
+                const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
+                cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
+              }
+          }
+        */
+
       }
   }
 
