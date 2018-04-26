@@ -9,3 +9,5 @@
 /doc/*.pdf
 /doc/*.spl
 /doc/*.synctex.gz
+
+/.vscode
