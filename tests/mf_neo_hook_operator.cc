@@ -291,18 +291,41 @@ void test_elasticity ()
   Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
 
   const unsigned int cell=0;
+
+  // for debug purpose the matrix-based part
+  const auto dof_cell = dof.begin_active();
+  const unsigned int dofs_per_cell = fe.dofs_per_cell;
+  const QGauss<dim> qf_cell(n_q_points_1d);
+  std::vector<Tensor<2,dim,number>>  solution_grads_u_total(qf_cell.size());
+  std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+  const FEValuesExtractors::Vector u_fe(0);
+  FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
+
   {
+    fe_values_ref.reinit(dof_cell);
+    fe_values_ref[u_fe].get_function_gradients(displacement, solution_grads_u_total);
+    dof_cell->get_dof_indices(local_dof_indices);
+
     // initialize on this cell
     phi_current.reinit(cell);
     phi_reference.reinit(cell);
 
-    // read-in solution vector and evaluate gradients
+    // read-in total displacement and src vector and evaluate gradients
     phi_reference.read_dof_values(displacement);
-    phi_current.  read_dof_values(displacement);
+    phi_current.  read_dof_values(src);
     phi_reference.evaluate (false,true,false);
     phi_current.  evaluate (false,true,false);
     for (unsigned int q=0; q<n_q_points; ++q)
       {
+        const Tensor<2,dim,number> &grad_u_standard = solution_grads_u_total[q];
+        const Tensor<2,dim,number>  F_standard = Physics::Elasticity::Kinematics::F(grad_u_standard);
+        const number                det_F_standard = determinant(F_standard);
+        const Tensor<2,dim,number>  F_inv_standard = invert(F_standard);
+
+        Tensor<2,dim,number>  grad_Nx_u_standard;
+        for (unsigned int k = 0; k < dofs_per_cell; ++k)
+          grad_Nx_u_standard += (src(local_dof_indices[k]) * fe_values_ref[u_fe].gradient(k, q)) * F_inv_standard;
+
         // reference configuration:
         const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
         const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
