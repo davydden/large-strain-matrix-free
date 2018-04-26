@@ -218,7 +218,7 @@ void test_elasticity ()
   std::cout << "Number of degrees of freedom: " << dof.n_dofs() << std::endl;
 
   // setup some FE displacement
-  LinearAlgebra::distributed::Vector<number> displacement;
+  LinearAlgebra::distributed::Vector<number> displacement, src, dst;
   displacement.reinit(owned_set,
                       relevant_set,
                       MPI_COMM_WORLD);
@@ -271,12 +271,24 @@ void test_elasticity ()
     mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
   }
 
+  mf_data_current->initialize_dof_vector(dst);
+  mf_data_current->initialize_dof_vector(src);
+
+  for (unsigned int i=0; i<src.local_size(); ++i)
+    src.local_element(i) = ((double)std::rand())/RAND_MAX;
+
+  constraints.set_zero(src);
+
   // do one cell:
   FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*mf_data_current);
   FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*mf_data_reference);
 
   const unsigned int n_q_points = phi_current.n_q_points;
   Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
+
+  const double nu = 0.3; // poisson
+  const double mu = 0.4225e6; // shear
+  Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
 
   const unsigned int cell=0;
   {
@@ -302,51 +314,33 @@ void test_elasticity ()
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_u      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_u = phi_current.get_symmetric_gradient(q);
 
-        /*
-        const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
-        const Tensor<2,dim,NumberType> tau_ns (tau);
-        const double JxW = fe_values_ref.JxW(q_point);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
+        const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          {
-            cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
+         // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
+         // contribution. It comprises a material contribution, and a
+         // geometrical stress contribution which is only added along
+         // the local matrix diagonals:
+         phi_current.submit_symmetric_gradient(
+                material.act_Jc(det_F,b_bar,symm_grad_Nx_u) *
+                // Note: We need to integrate over the reference element
+                phi_reference.JxW(q) / phi_current.JxW(q),
+                q);
 
-            for (unsigned int j = 0; j <= i; ++j)
-              {
-                // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
-                // contribution. It comprises a material contribution, and a
-                // geometrical stress contribution which is only added along
-                // the local matrix diagonals:
-                cell_matrix(i, j) += (symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
-                                      * JxW;
-                // geometrical stress contribution
-                const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
-                cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
-              }
-          }
-        */
+          // geometrical stress contribution
+          const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_u,tau_ns);
+          phi_current.submit_gradient(
+                geo *
+                // Note: We need to integrate over the reference element
+                phi_reference.JxW(q) / phi_current.JxW(q),
+                q);
 
-      }
-  }
+          // actually do the contraction
+          phi_current.integrate (false,true);
+       } // end of the loop over quadrature
 
-  // MatrixFreeOperators::MassOperator<dim,fe_degree, fe_degree+2, 1, LinearAlgebra::distributed::Vector<number> > mf;
-  // mf.initialize(mf_data);
-  // mf.compute_diagonal();
-  // LinearAlgebra::distributed::Vector<number> in, out, ref;
-  // mf_data->initialize_dof_vector (in);
-  // out.reinit (in);
-  // ref.reinit (in);
-
-  // for (unsigned int i=0; i<in.local_size(); ++i)
-  //   {
-  //     const unsigned int glob_index =
-  //       owned_set.nth_index_in_set (i);
-  //     if (constraints.is_constrained(glob_index))
-  //       continue;
-  //     in.local_element(i) = ((double)std::rand())/RAND_MAX;
-  //   }
-
-  // mf.vmult (out, in);
+      phi_current.distribute_local_to_global(dst);
+  } // end of the loop over cells
 
 }
 

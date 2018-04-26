@@ -11,6 +11,40 @@ struct Dummy
   double something;
 };
 
+/**
+ * Action of the geometric part of the 4-th order tangent tensor
+ * on the $Grad N(x)$
+ *
+ * In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
+ *
+ */
+template <int dim, typename NumberType>
+inline
+Tensor<2, dim, NumberType>
+egeo_grad(const Tensor<2, dim, NumberType> &grad_Nx, const Tensor<2,dim,NumberType> &tau_tot)
+{
+  // the product is actually  GradN * tau^T but due to symmetry of tau we can do GradN * tau
+  return grad_Nx * tau_tot;
+}
+
+
+template <typename number>
+number divide_by_dim(const number &x, const int dim)
+{
+  return x/dim;
+}
+
+template <typename number>
+VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
+                                      const int dim)
+{
+  VectorizedArray<number> res(x);
+  for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; i++)
+    res[i]*= 1.0/dim;
+
+  return res;
+}
+
 
 // As discussed in the literature and step-44, Neo-Hookean materials are a type
 // of hyperelastic materials.  The entire domain is assumed to be composed of a
@@ -91,7 +125,7 @@ struct Dummy
 
       SymmetricTensor<2,dim,NumberType> dev_src(src);
       for (unsigned int i = 0; i < dim; ++i)
-        dev_src[i][i] -= tr/dim;
+        dev_src[i][i] -= divide_by_dim(tr,dim);
 
       // 1) The volumetric part of the tangent $J
       // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
@@ -122,9 +156,9 @@ struct Dummy
       // $\boldsymbol{\tau}_{\textrm{iso}} =
       // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
       SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
-      tau_iso *= 2.0 * c_1;
+      tau_iso = tau_iso * (2.0 * c_1);
       for (unsigned int i = 0; i < dim; ++i)
-        tau_iso[i][i] -= tr_tau_bar/dim;
+        tau_iso[i][i] -= divide_by_dim(tr_tau_bar,dim);
 
       // term with deviatoric part of the tensor
       res += ((2.0 / dim) * tr_tau_bar) * dev_src;

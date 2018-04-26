@@ -1225,23 +1225,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     return solution_total;
   }
 
-  /**
-   * Action of the geometric part of the 4-th order tangent tensor
-   * on the $Grad N(x)$
-   *
-   * In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
-   *
-   */
-  template <int dim, typename NumberType>
-  inline
-  Tensor<2, dim, NumberType>
-  egeo_grad(const Tensor<2, dim, NumberType> &grad_Nx, const Tensor<2,dim,NumberType> &tau_tot)
-  {
-    // the product is actually  GradN * tau^T but due to symmetry of tau we can do GradN * tau
-    return grad_Nx * tau_tot;
-  }
-
-
 // Since we use TBB for assembly, we simply setup a copy of the
 // data structures required for the process and pass them, along
 // with the memory addresses of the assembly functions to the
