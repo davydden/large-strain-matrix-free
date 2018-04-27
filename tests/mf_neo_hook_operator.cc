@@ -291,6 +291,7 @@ void test_elasticity ()
 
   // do one cell:
   FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*mf_data_current);
+  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*mf_data_current);
   FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*mf_data_reference);
 
   const unsigned int n_q_points = phi_current.n_q_points;
@@ -313,6 +314,7 @@ void test_elasticity ()
   FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
   Vector<double> src_local(dofs_per_cell);
   Vector<double> dst_local(dofs_per_cell);
+  Vector<double> dst_diff(dofs_per_cell);
   //
   //
 
@@ -326,13 +328,16 @@ void test_elasticity ()
 
     // initialize on this cell
     phi_current.reinit(cell);
+    phi_current_s.reinit(cell);
     phi_reference.reinit(cell);
 
     // read-in total displacement and src vector and evaluate gradients
     phi_reference.read_dof_values(displacement);
     phi_current.  read_dof_values(src);
+    phi_current_s.read_dof_values(src);
     phi_reference.evaluate (false,true,false);
     phi_current.  evaluate (false,true,false);
+    phi_current_s.evaluate (false,true,false);
     for (unsigned int q=0; q<n_q_points; ++q)
       {
         // reference configuration:
@@ -361,7 +366,7 @@ void test_elasticity ()
         // contribution. It comprises a material contribution, and a
         // geometrical stress contribution which is only added along
         // the local matrix diagonals:
-        phi_current.submit_symmetric_gradient(
+        phi_current_s.submit_symmetric_gradient(
           jc_part * JxW_scale
           // Note: We need to integrate over the reference element, so the weights have to be adjusted
           ,q);
@@ -376,6 +381,7 @@ void test_elasticity ()
 
         // actually do the contraction
         phi_current.integrate (false,true);
+        phi_current_s.integrate (false,true);
 
         //=================
         // DEBUG
@@ -499,6 +505,7 @@ void test_elasticity ()
       } // end of the loop over quadrature
 
     phi_current.distribute_local_to_global(dst);
+    phi_current_s.distribute_local_to_global(dst);
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
       for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
@@ -508,10 +515,19 @@ void test_elasticity ()
 
     std::cout << std::endl << "vmult matrix-based:" << std::endl;
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      std::cout << dst_local[i] << " " << std::endl;
-    std::cout << "vmult matrix-free:" << std::endl;
+      std::cout << dst_local[i] << " ";
+    std::cout << std::endl << "vmult matrix-free:" << std::endl;
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      std::cout << dst[local_dof_indices[i]] << " " << std::endl;
+      std::cout << dst[local_dof_indices[i]] << " ";
+
+    std::cout << std::endl << "diff:" << std::endl;
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      {
+        const double diff = dst_local[i] - dst[local_dof_indices[i]];
+        std::cout << diff << " " ;
+        AssertThrow(std::abs(diff) < 1e-10 * std::abs(dst_local[i]), ExcInternalError());
+      }
+    std::cout << std::endl;
 
   } // end of the loop over cells
 
