@@ -317,14 +317,16 @@ void test_elasticity ()
     phi_current.  evaluate (false,true,false);
     for (unsigned int q=0; q<n_q_points; ++q)
       {
+        // Grad u
         const Tensor<2,dim,number> &grad_u_standard = solution_grads_u_total[q];
         const Tensor<2,dim,number>  F_standard = Physics::Elasticity::Kinematics::F(grad_u_standard);
         const number                det_F_standard = determinant(F_standard);
         const Tensor<2,dim,number>  F_inv_standard = invert(F_standard);
 
-        Tensor<2,dim,number>  grad_Nx_u_standard;
+        // v_k Grad Nk * F^{-1} = v_k grad Nk = grad v  , v - source vector
+        Tensor<2,dim,number>  grad_Nx_v_standard;
         for (unsigned int k = 0; k < dofs_per_cell; ++k)
-          grad_Nx_u_standard += (src(local_dof_indices[k]) * fe_values_ref[u_fe].gradient(k, q)) * F_inv_standard;
+          grad_Nx_v_standard += (src(local_dof_indices[k]) * fe_values_ref[u_fe].gradient(k, q)) * F_inv_standard;
 
         // reference configuration:
         const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
@@ -334,8 +336,8 @@ void test_elasticity ()
         const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
         // current configuration
-        const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_u      = phi_current.get_gradient(q);
-        const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_u = phi_current.get_symmetric_gradient(q);
+        const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
@@ -345,13 +347,13 @@ void test_elasticity ()
          // geometrical stress contribution which is only added along
          // the local matrix diagonals:
          phi_current.submit_symmetric_gradient(
-                material.act_Jc(det_F,b_bar,symm_grad_Nx_u) *
+                material.act_Jc(det_F,b_bar,symm_grad_Nx_v) *
                 // Note: We need to integrate over the reference element
                 phi_reference.JxW(q) / phi_current.JxW(q),
                 q);
 
           // geometrical stress contribution
-          const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_u,tau_ns);
+          const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
           phi_current.submit_gradient(
                 geo *
                 // Note: We need to integrate over the reference element
@@ -364,6 +366,8 @@ void test_elasticity ()
 
       phi_current.distribute_local_to_global(dst);
   } // end of the loop over cells
+
+  deallog << "Ok" << std::endl;
 
 }
 
@@ -385,22 +389,22 @@ int main (int argc, char **argv)
       deallog << std::setprecision(4);
 
       deallog.push("2d");
-      test<2,1>();
-      test<2,2>();
+      //test<2,1>();
+      //test<2,2>();
       test_elasticity<2,1,2>();
       deallog.pop();
 
       deallog.push("3d");
-      test<3,1>();
-      test<3,2>();
+      //test<3,1>();
+      //test<3,2>();
       deallog.pop();
     }
   else
     {
-      test<2,1>();
-      test<2,2>();
+      //test<2,1>();
+      //test<2,2>();
       test_elasticity<2,1,2>();
-      test<3,1>();
-      test<3,2>();
+      //test<3,1>();
+      //test<3,2>();
     }
 }
