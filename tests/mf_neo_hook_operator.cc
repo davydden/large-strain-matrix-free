@@ -311,6 +311,8 @@ void test_elasticity ()
   std::vector<Tensor<2, dim,number>>         grad_Nx(dofs_per_cell);
   std::vector<SymmetricTensor<2,dim,number>> symm_grad_Nx(dofs_per_cell);
   FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
+  Vector<double> src_local(dofs_per_cell);
+  Vector<double> dst_local(dofs_per_cell);
   //
   //
 
@@ -318,6 +320,9 @@ void test_elasticity ()
     fe_values_ref.reinit(dof_cell);
     fe_values_ref[u_fe].get_function_gradients(displacement, solution_grads_u_total);
     dof_cell->get_dof_indices(local_dof_indices);
+    dof_cell->get_dof_values(src,
+                             src_local.begin(),
+                             src_local.end());
 
     // initialize on this cell
     phi_current.reinit(cell);
@@ -344,12 +349,13 @@ void test_elasticity ()
         const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
+        const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
         // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
         // contribution. It comprises a material contribution, and a
         // geometrical stress contribution which is only added along
         // the local matrix diagonals:
         phi_current.submit_symmetric_gradient(
-          material.act_Jc(det_F,b_bar,symm_grad_Nx_v) *
+          jc_part *
           // Note: We need to integrate over the reference element
           phi_reference.JxW(q) / phi_current.JxW(q),
           q);
@@ -378,17 +384,22 @@ void test_elasticity ()
 
         // v_k Grad Nk * F^{-1} = v_k grad Nk = grad v  , v - source vector
         Tensor<2,dim,number>  grad_Nx_v_standard;
+        SymmetricTensor<2,dim,number> symm_grad_Nx_v_standard;
         for (unsigned int k = 0; k < dofs_per_cell; ++k)
           {
             grad_Nx[k] = fe_values_ref[u_fe].gradient(k, q) * F_inv_standard;
             symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
 
-            grad_Nx_v_standard += src(local_dof_indices[k]) * grad_Nx[k];
+            grad_Nx_v_standard      += src(local_dof_indices[k]) * grad_Nx[k];
+            symm_grad_Nx_v_standard += src(local_dof_indices[k]) * symm_grad_Nx[k];
           }
 
         const SymmetricTensor<2,dim,number> tau_standard = material_standard.get_tau(det_F_standard,b_bar_standard);
         const Tensor<2,dim,number> tau_ns_standard (tau_standard);
         const double JxW = fe_values_ref.JxW(q);
+
+        const SymmetricTensor<2,dim,number> jc_part_standard = material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx_v_standard);
+        const Tensor<2, dim> geo_standard_v = egeo_grad(grad_Nx_v_standard,tau_ns_standard);
 
         for (unsigned int i = 0; i < dofs_per_cell; ++i)
           for (unsigned int j = 0; j <= i; ++j)
@@ -399,11 +410,6 @@ void test_elasticity ()
               cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;
             }
 
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
-            cell_matrix(i, j) = cell_matrix(j, i);
-
-
         std::cout << "=====================" << std::endl
                   << "quadrature point " << q << std::endl;
         std::cout << "Grad u:"<< std::endl;
@@ -413,6 +419,13 @@ void test_elasticity ()
               std::cout << grad_u_standard[i][j] << " ";
             std::cout << std::endl;
           }
+        for (unsigned int i = 0; i < dim; ++i)
+          {
+            for (unsigned int j = 0; j < dim; ++j)
+              std::cout << grad_u[i][j][0] << " ";
+            std::cout << std::endl;
+          }
+
         std::cout << "v_k grad N_k = grad v:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
           {
@@ -420,16 +433,6 @@ void test_elasticity ()
               std::cout << grad_Nx_v_standard[i][j] << " ";
             std::cout << std::endl;
           }
-
-        std::cout << "Matrix-free" << std::endl
-                  << "Grad u:"<< std::endl;
-        for (unsigned int i = 0; i < dim; ++i)
-          {
-            for (unsigned int j = 0; j < dim; ++j)
-              std::cout << grad_u[i][j][0] << " ";
-            std::cout << std::endl;
-          }
-        std::cout << "v_k grad N_k = grad v:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
           {
             for (unsigned int j = 0; j < dim; ++j)
@@ -437,20 +440,66 @@ void test_elasticity ()
             std::cout << std::endl;
           }
 
-        Tensor<2,dim,number> grad_u_diff, grad_Nx_v_diff;
+        std::cout << "Jc action:" << std::endl;
+        for (unsigned int i = 0; i < dim; ++i)
+          {
+            for (unsigned int j = 0; j < dim; ++j)
+              std::cout << jc_part_standard[i][j] << " ";
+            std::cout << std::endl;
+          }
+        for (unsigned int i = 0; i < dim; ++i)
+          {
+            for (unsigned int j = 0; j < dim; ++j)
+              std::cout << jc_part[i][j][0] << " ";
+            std::cout << std::endl;
+          }
+
+        std::cout << "geo action:" << std::endl;
+        for (unsigned int i = 0; i < dim; ++i)
+          {
+            for (unsigned int j = 0; j < dim; ++j)
+              std::cout << geo_standard_v[i][j] << " ";
+            std::cout << std::endl;
+          }
+        for (unsigned int i = 0; i < dim; ++i)
+          {
+            for (unsigned int j = 0; j < dim; ++j)
+              std::cout << geo[i][j][0] << " ";
+            std::cout << std::endl;
+          }
+
+        Tensor<2,dim,number> grad_u_diff, grad_Nx_v_diff, jc_diff, geo_diff;
         for (unsigned int i = 0; i < dim; ++i)
           for (unsigned int j = 0; j < dim; ++j)
             {
               grad_u_diff[i][j]    = grad_u_standard[i][j]    - grad_u[i][j][0];
               grad_Nx_v_diff[i][j] = grad_Nx_v_standard[i][j] - grad_Nx_v[i][j][0];
+              jc_diff[i][j]        = jc_part_standard[i][j]   - jc_part[i][j][0];
+              geo_diff[i][j]       = geo_standard_v[i][j]     - geo[i][j][0];
             }
 
         AssertThrow(grad_u_diff.norm() < 1e-12, ExcMessage("Grad u"));
         AssertThrow(grad_Nx_v_diff.norm() < 1e-12, ExcMessage("v_k grad N_k"));
+        AssertThrow(jc_diff.norm() < 1e-12 * jc_part_standard.norm() , ExcMessage("Jc"));
+        AssertThrow(geo_diff.norm() < 1e-12 * geo_standard_v.norm(), ExcMessage("geo"));
 
       } // end of the loop over quadrature
 
     phi_current.distribute_local_to_global(dst);
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+        cell_matrix(i, j) = cell_matrix(j, i);
+
+    cell_matrix.vmult(dst_local,src_local);
+
+    std::cout << std::endl << "vmult matrix-based:" << std::endl;
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      std::cout << dst_local[i] << " " << std::endl;
+    std::cout << "vmult matrix-free:" << std::endl;
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      std::cout << dst[local_dof_indices[i]] << " " << std::endl;
+
   } // end of the loop over cells
 
   deallog << "Ok" << std::endl;
