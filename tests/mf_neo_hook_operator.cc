@@ -268,6 +268,11 @@ void test_elasticity ()
     data.tasks_block_size = 7;
 
     mf_data_reference->reinit (         dof, constraints, quad, data);
+
+    // FIXME:
+    // for Eulerian part one should set initialize_indices=false
+    // as the mapping has to be recomputed but the topology of cells is the same
+    // data.initialize_indices = false;
     mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
   }
 
