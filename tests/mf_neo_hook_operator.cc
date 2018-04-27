@@ -288,6 +288,7 @@ void test_elasticity ()
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
   Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
+  Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu);
 
   // before going into the cell loop, for Eulerian part one should reinitialize MatrixFree with
   // initialize_indices=false
@@ -297,7 +298,9 @@ void test_elasticity ()
 
   const unsigned int cell=0;
 
+  //
   // for debug purpose the matrix-based part
+  //
   const auto dof_cell = dof.begin_active();
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
   const QGauss<dim> qf_cell(n_q_points_1d);
@@ -305,6 +308,11 @@ void test_elasticity ()
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
   const FEValuesExtractors::Vector u_fe(0);
   FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
+  std::vector<Tensor<2, dim,number>>         grad_Nx(dofs_per_cell);
+  std::vector<SymmetricTensor<2,dim,number>> symm_grad_Nx(dofs_per_cell);
+  FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
+  //
+  //
 
   {
     fe_values_ref.reinit(dof_cell);
@@ -364,12 +372,37 @@ void test_elasticity ()
         const Tensor<2,dim,number> &grad_u_standard = solution_grads_u_total[q];
         const Tensor<2,dim,number>  F_standard = Physics::Elasticity::Kinematics::F(grad_u_standard);
         const number                det_F_standard = determinant(F_standard);
+        const Tensor<2,dim,number> F_bar_standard = Physics::Elasticity::Kinematics::F_iso(F_standard);
+        const SymmetricTensor<2,dim,number> b_bar_standard = Physics::Elasticity::Kinematics::b(F_bar_standard);
         const Tensor<2,dim,number>  F_inv_standard = invert(F_standard);
 
         // v_k Grad Nk * F^{-1} = v_k grad Nk = grad v  , v - source vector
         Tensor<2,dim,number>  grad_Nx_v_standard;
         for (unsigned int k = 0; k < dofs_per_cell; ++k)
-          grad_Nx_v_standard += (src(local_dof_indices[k]) * fe_values_ref[u_fe].gradient(k, q)) * F_inv_standard;
+          {
+            grad_Nx[k] = fe_values_ref[u_fe].gradient(k, q) * F_inv_standard;
+            symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
+
+            grad_Nx_v_standard += src(local_dof_indices[k]) * grad_Nx[k];
+          }
+
+        const SymmetricTensor<2,dim,number> tau_standard = material_standard.get_tau(det_F_standard,b_bar_standard);
+        const Tensor<2,dim,number> tau_ns_standard (tau_standard);
+        const double JxW = fe_values_ref.JxW(q);
+
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          for (unsigned int j = 0; j <= i; ++j)
+            {
+              cell_matrix(i, j) += (symm_grad_Nx[i] * material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx[j]))
+                                   * JxW;
+              const Tensor<2, dim> geo_standard = egeo_grad(grad_Nx[j],tau_ns_standard);
+              cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;
+            }
+
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+            cell_matrix(i, j) = cell_matrix(j, i);
+
 
         std::cout << "=====================" << std::endl
                   << "quadrature point " << q << std::endl;
