@@ -1,6 +1,4 @@
 #include <mf_elasticity.h>
 
-void Dummy::reset()
-{
-  something = 0.;
-}
+// explicit instantiations
+template class Cook_Membrane::Solid<2,double>;
