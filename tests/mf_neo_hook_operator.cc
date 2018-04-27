@@ -261,20 +261,14 @@ void test_elasticity ()
 
   std::shared_ptr<MatrixFree<dim,number> > mf_data_current  (new MatrixFree<dim,number> ());
   std::shared_ptr<MatrixFree<dim,number> > mf_data_reference(new MatrixFree<dim,number> ());
-  {
-    const QGauss<1> quad (n_q_points_1d);
-    typename MatrixFree<dim,number>::AdditionalData data;
-    data.tasks_parallel_scheme = MatrixFree<dim,number>::AdditionalData::none;
-    data.tasks_block_size = 7;
 
-    mf_data_reference->reinit (         dof, constraints, quad, data);
+  const QGauss<1> quad (n_q_points_1d);
+  typename MatrixFree<dim,number>::AdditionalData data;
+  data.tasks_parallel_scheme = MatrixFree<dim,number>::AdditionalData::none;
+  data.tasks_block_size = 7;
 
-    // FIXME:
-    // for Eulerian part one should set initialize_indices=false
-    // as the mapping has to be recomputed but the topology of cells is the same
-    // data.initialize_indices = false;
-    mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
-  }
+  mf_data_reference->reinit (         dof, constraints, quad, data);
+  mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
 
   mf_data_current->initialize_dof_vector(dst);
   mf_data_current->initialize_dof_vector(src);
@@ -294,6 +288,12 @@ void test_elasticity ()
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
   Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
+
+  // before going into the cell loop, for Eulerian part one should reinitialize MatrixFree with
+  // initialize_indices=false
+  // as the mapping has to be recomputed but the topology of cells is the same
+  data.initialize_indices = false;
+  mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
 
   const unsigned int cell=0;
 
