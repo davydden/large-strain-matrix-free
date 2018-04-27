@@ -278,13 +278,6 @@ void test_elasticity ()
 
   constraints.set_zero(src);
 
-  // do one cell:
-  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*mf_data_current);
-  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*mf_data_reference);
-
-  const unsigned int n_q_points = phi_current.n_q_points;
-  Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
-
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
   Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
@@ -295,6 +288,13 @@ void test_elasticity ()
   // as the mapping has to be recomputed but the topology of cells is the same
   data.initialize_indices = false;
   mf_data_current->reinit   (*mapping,dof, constraints, quad, data);
+
+  // do one cell:
+  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*mf_data_current);
+  FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*mf_data_reference);
+
+  const unsigned int n_q_points = phi_current.n_q_points;
+  Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
 
   const unsigned int cell=0;
 
@@ -350,23 +350,29 @@ void test_elasticity ()
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
+
+        const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
+        VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
+        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          if (std::abs(JxW_current[i])>1e-10)
+            JxW_scale[i] *= 1./JxW_current[i];
+
         // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
         // contribution. It comprises a material contribution, and a
         // geometrical stress contribution which is only added along
         // the local matrix diagonals:
         phi_current.submit_symmetric_gradient(
-          jc_part *
-          // Note: We need to integrate over the reference element
-          phi_reference.JxW(q) / phi_current.JxW(q),
-          q);
+          jc_part * JxW_scale
+          // Note: We need to integrate over the reference element, so the weights have to be adjusted
+          ,q);
 
         // geometrical stress contribution
         const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
         phi_current.submit_gradient(
-          geo *
-          // Note: We need to integrate over the reference element
-          phi_reference.JxW(q) / phi_current.JxW(q),
-          q);
+          geo * JxW_scale
+          // Note: We need to integrate over the reference element, so the weights have to be adjusted
+          // phi_reference.JxW(q) / phi_current.JxW(q)
+          ,q);
 
         // actually do the contraction
         phi_current.integrate (false,true);
@@ -412,6 +418,13 @@ void test_elasticity ()
 
         std::cout << "=====================" << std::endl
                   << "quadrature point " << q << std::endl;
+
+        std::cout << "JxW ref:" << std::endl
+                  << JxW << std::endl
+                  << phi_reference.JxW(q)[0] << std::endl
+                  << "JxW current:" << std::endl
+                  << phi_current.JxW(q)[0] << std::endl;
+
         std::cout << "Grad u:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
           {
