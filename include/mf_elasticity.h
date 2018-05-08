@@ -475,13 +475,9 @@ namespace Cook_Membrane
     void
     system_setup();
 
-    // Several functions to assemble the system and right hand side matrices
-    // using multithreading. Each of them comes as a wrapper function, one
-    // that is executed to do the work in the WorkStream model on one cell,
-    // and one that copies the work done on this one cell into the global
-    // object that represents it:
+    // Function to assemble the system matrix and right hand side vecotr.
     void
-    assemble_system(const Vector<double> &solution_delta);
+    assemble_system();
 
     // Apply Dirichlet boundary conditions on the displacement field
     void
@@ -491,14 +487,13 @@ namespace Cook_Membrane
     // function into the nonlinear loop and the function that solves the
     // linearized Newton-Raphson step:
     void
-    solve_nonlinear_timestep(Vector<double> &solution_delta);
+    solve_nonlinear_timestep();
 
     std::pair<unsigned int, double>
     solve_linear_system(Vector<double> &newton_update);
 
-    // Solution retrieval as well as post-processing and writing data to file:
-    Vector<double>
-    get_total_solution(const Vector<double> &solution_delta) const;
+    // Set total solution based on the current values of solution_n and solution_delta:
+    void set_total_solution();
 
     void
     output_results() const;
@@ -556,7 +551,15 @@ namespace Cook_Membrane
     SparsityPattern                  sparsity_pattern;
     SparseMatrix<double>             tangent_matrix;
     Vector<double>                   system_rhs;
+
+    // solution at the previous time-step
     Vector<double>                   solution_n;
+
+    // current value of increment solution
+    Vector<double>                   solution_delta;
+
+    // current total solution:  solution_tota = solution_n + solution_delta
+    Vector<double>                   solution_total;
 
     // Then define a number of variables to store norms and update norms and
     // normalisation factors.
@@ -683,7 +686,6 @@ namespace Cook_Membrane
     // time domain.
     //
     // At the beginning, we reset the solution update for this time step...
-    Vector<double> solution_delta(dof_handler_ref.n_dofs());
     while (time.current() <= time.end())
       {
         solution_delta = 0.0;
@@ -691,7 +693,7 @@ namespace Cook_Membrane
         // ...solve the current time step and update total solution vector
         // $\mathbf{\Xi}_{\textrm{n}} = \mathbf{\Xi}_{\textrm{n-1}} +
         // \varDelta \mathbf{\Xi}$...
-        solve_nonlinear_timestep(solution_delta);
+        solve_nonlinear_timestep();
         solution_n += solution_delta;
 
         // ...and plot the results before moving on happily to the next time
@@ -824,9 +826,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // We then set up storage vectors
     system_rhs.reinit(dof_handler_ref.n_dofs());
     solution_n.reinit(dof_handler_ref.n_dofs());
+    solution_delta.reinit(dof_handler_ref.n_dofs());
+    solution_total.reinit(dof_handler_ref.n_dofs());
 
     // matrix-free part:
-    eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*degree*/1,dof_handler_ref,solution_n);
+    eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*degree*/1,dof_handler_ref,solution_total);
 
     mf_data_current = std::make_shared<MatrixFree<dim,double>>();
     mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
@@ -848,7 +852,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // reset the error storage objects and print solver header.
   template <int dim,typename NumberType>
   void
-  Solid<dim,NumberType>::solve_nonlinear_timestep(Vector<double> &solution_delta)
+  Solid<dim,NumberType>::solve_nonlinear_timestep()
   {
     std::cout << std::endl << "Timestep " << time.get_timestep() << " @ "
               << time.current() << "s" << std::endl;
@@ -885,7 +889,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // assemble the tangent, make and impose the Dirichlet constraints,
         // and do the solve of the linearized system:
         make_constraints(newton_iteration);
-        assemble_system(solution_delta);
+
+        // update total solution prior to assembly
+        set_total_solution();
+
+        // now ready to go-on and assmble linearized problem around solution_n + solution_delta for this iteration.
+        assemble_system();
 
         get_error_residual(error_residual);
 
@@ -1080,27 +1089,23 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 
 
-// @sect4{Solid::get_total_solution}
+// @sect4{Solid::set_total_solution}
 
-// This function provides the total solution, which is valid at any Newton step.
+// This function sets the total solution, which is valid at any Newton step.
 // This is required as, to reduce computational error, the total solution is
 // only updated at the end of the timestep.
   template <int dim,typename NumberType>
-  Vector<double>
-  Solid<dim,NumberType>::get_total_solution(const Vector<double> &solution_delta) const
+  void
+  Solid<dim,NumberType>::set_total_solution()
   {
-    Vector<double> solution_total(solution_n);
+    solution_total = solution_n;
     solution_total += solution_delta;
-    return solution_total;
   }
 
-// Since we use TBB for assembly, we simply setup a copy of the
-// data structures required for the process and pass them, along
-// with the memory addresses of the assembly functions to the
-// WorkStream object for processing. Note that we must ensure that
+// Note that we must ensure that
 // the matrix is reset before any assembly operations can occur.
   template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::assemble_system(const Vector<double> &solution_delta)
+  void Solid<dim,NumberType>::assemble_system()
   {
     TimerOutput::Scope t (timer, "Assemble linear system");
     std::cout << " ASM " << std::flush;
@@ -1120,8 +1125,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     FEValues<dim>      fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
     FEFaceValues<dim>  fe_face_values_ref(fe, qf_face, update_values | update_JxW_values);
-
-    const Vector<double> solution_total(get_total_solution(solution_delta));
 
     for (const auto &cell: dof_handler_ref.active_cell_iterators())
       if (cell->is_locally_owned())
