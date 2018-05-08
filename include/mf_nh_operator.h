@@ -32,7 +32,7 @@ using namespace dealii;
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference,
                     Vector<number> &displacement);
 
-    void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material);
+    void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
     unsigned int m () const;
     unsigned int n () const;
@@ -65,7 +65,7 @@ using namespace dealii;
 
     Vector<number> *displacement;
 
-    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material;
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material;
 
     Vector<number>  diagonal_values;
     bool            diagonal_is_available;
@@ -103,8 +103,8 @@ using namespace dealii;
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::clear ()
   {
-    data_current.clear();
-    data_reference.clear();
+    data_current.reset();
+    data_reference.reset();
     diagonal_is_available = false;
     diagonal_values.reinit(0);
   }
@@ -127,7 +127,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material_)
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material_)
   {
     material = material_;
   }

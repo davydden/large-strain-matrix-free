@@ -530,7 +530,8 @@ namespace Cook_Membrane
     const FEValuesExtractors::Vector u_fe;
 
     // homogeneous material
-    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType> > material;
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>> material;
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>> material_vec;
 
     static const unsigned int        n_components = dim;
     static const unsigned int        first_u_component = 0;
@@ -604,6 +605,10 @@ namespace Cook_Membrane
     void
     print_vertical_tip_displacement();
 
+    std::shared_ptr<MappingQEulerian<dim,Vector<double>>> eulerian_mapping;
+    std::shared_ptr<MatrixFree<dim,double>> mf_data_current;
+    std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
+
     NeoHookOperator<dim,2,3,double> mf_nh_operator;
   };
 
@@ -632,18 +637,26 @@ namespace Cook_Membrane
     u_fe(first_u_component),
     material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
       parameters.mu,parameters.nu)),
+    material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
+      parameters.mu,parameters.nu)),
     qf_cell(parameters.quad_order),
     qf_face(parameters.quad_order),
     n_q_points (qf_cell.size()),
     n_q_points_f (qf_face.size())
   {
-    mf_nh_operator.set_material(material);
+    mf_nh_operator.set_material(material_vec);
   }
 
 // The class destructor simply clears the data held by the DOFHandler
   template <int dim,typename NumberType>
   Solid<dim,NumberType>::~Solid()
   {
+    mf_nh_operator.clear();
+
+    mf_data_current.reset();
+    mf_data_reference.reset();
+    eulerian_mapping.reset();
+
     dof_handler_ref.clear();
   }
 
@@ -811,6 +824,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // We then set up storage vectors
     system_rhs.reinit(dof_handler_ref.n_dofs());
     solution_n.reinit(dof_handler_ref.n_dofs());
+
+    // matrix-free part:
+    eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*degree*/1,dof_handler_ref,solution_n);
+
+    mf_data_current = std::make_shared<MatrixFree<dim,double>>();
+    mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
+
+    const QGauss<1> quad (3);
+    typename MatrixFree<dim,double>::AdditionalData data;
+    data.tasks_parallel_scheme = MatrixFree<dim,double>::AdditionalData::none;
+
+    mf_data_reference->reinit (                  dof_handler_ref, constraints, quad, data);
+    mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
 
     timer.leave_subsection();
   }
