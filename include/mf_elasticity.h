@@ -52,6 +52,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "mf_nh_operator.h"
+
 using namespace dealii;
 
 /**
@@ -830,6 +832,8 @@ namespace Cook_Membrane
 
     void
     print_vertical_tip_displacement();
+
+    NeoHookOperator<dim,2,3,double> mf_nh_operator;
   };
 
 // @sect3{Implementation of the <code>Solid</code> class}
