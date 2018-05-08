@@ -673,71 +673,6 @@ namespace Cook_Membrane
 
 // @sect3{Compressible neo-Hookean material within a one-field formulation}
 
-// @sect3{Quadrature point history}
-
-// As seen in step-18, the <code> PointHistory </code> class offers a method
-// for storing data at the quadrature points.  Here each quadrature point
-// holds a pointer to a material description.  Thus, different material models
-// can be used in different regions of the domain.  Among other data, we
-// choose to store the Kirchhoff stress $\boldsymbol{\tau}$ and the tangent
-// $J\mathfrak{c}$ for the quadrature points.
-  template <int dim,typename NumberType>
-  class PointHistory
-  {
-  public:
-    PointHistory()
-    {}
-
-    virtual ~PointHistory()
-    {}
-
-    // The first function is used to create a material object and to
-    // initialize all tensors correctly: The second one updates the stored
-    // values and stresses based on the current deformation measure
-    // $\textrm{Grad}\mathbf{u}_{\textrm{n}}$.
-    void setup_lqp (const Parameters::AllParameters &parameters)
-    {
-      material.reset(new Material_Compressible_Neo_Hook_One_Field<dim,NumberType>(parameters.mu,
-          parameters.nu));
-    }
-
-    // We offer an interface to retrieve certain data.
-    // This is the strain energy:
-    NumberType
-    get_Psi(const NumberType                        &det_F,
-            const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      return material->get_Psi(det_F,b_bar);
-    }
-
-    // Here are the kinetic variables. These are used in the material and
-    // global tangent matrix and residual assembly operations:
-    // First is the Kirchhoff stress:
-    SymmetricTensor<2,dim,NumberType>
-    get_tau(const NumberType                        &det_F,
-            const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      return material->get_tau(det_F,b_bar);
-    }
-
-    // And the tangent:
-    SymmetricTensor<2,dim,NumberType>
-    act_Jc(const NumberType                        &det_F,
-           const SymmetricTensor<2,dim,NumberType> &b_bar,
-           const SymmetricTensor<2,dim,NumberType> &src) const
-    {
-      return material->act_Jc(det_F,b_bar,src);
-    }
-
-    // In terms of member functions, this class stores for the quadrature
-    // point it represents a copy of a material type in case different
-    // materials are used in different regions of the domain, as well as the
-    // inverse of the deformation gradient...
-  private:
-    std::shared_ptr< Material_Compressible_Neo_Hook_One_Field<dim,NumberType> > material;
-  };
-
-
 // @sect3{Quasi-static compressible finite-strain solid}
 
 // The Solid class is the central class in that it represents the problem at
@@ -779,12 +714,6 @@ namespace Cook_Membrane
     void
     make_constraints(const int &it_nr);
 
-    // Create and update the quadrature points. Here, no data needs to be
-    // copied into a global object, so the copy_local_to_global function is
-    // empty:
-    void
-    setup_qph();
-
     // Solve for the displacement using a Newton-Raphson method. We break this
     // function into the nonlinear loop and the function that solves the
     // linearized Newton-Raphson step:
@@ -817,11 +746,6 @@ namespace Cook_Membrane
     Time                             time;
     TimerOutput                      timer;
 
-    // A storage object for quadrature point information. As opposed to
-    // step-18, deal.II's native quadrature point data manager is employed here.
-    CellDataStorage<typename Triangulation<dim>::cell_iterator,
-                    PointHistory<dim,NumberType> > quadrature_point_history;
-
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
     // cell and the extractor objects used to retrieve information from the
@@ -831,6 +755,9 @@ namespace Cook_Membrane
     DoFHandler<dim>                  dof_handler_ref;
     const unsigned int               dofs_per_cell;
     const FEValuesExtractors::Vector u_fe;
+
+    // homogeneous material
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType> > material;
 
     // Description of how the block-system is arranged. There is just 1 block,
     // that contains a vector DOF $\mathbf{u}$.
@@ -938,6 +865,8 @@ namespace Cook_Membrane
     dof_handler_ref(triangulation),
     dofs_per_cell (fe.dofs_per_cell),
     u_fe(first_u_component),
+    material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
+      parameters.mu,parameters.nu)),
     dofs_per_block(n_blocks),
     qf_cell(parameters.quad_order),
     qf_face(parameters.quad_order),
@@ -1140,44 +1069,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     solution_n.reinit(dofs_per_block);
     solution_n.collect_sizes();
 
-    // ...and finally set up the quadrature
-    // point history:
-    setup_qph();
-
     timer.leave_subsection();
   }
-
-
-// @sect4{Solid::setup_qph}
-// The method used to store quadrature information is already described in
-// step-18 and step-44. Here we implement a similar setup for a SMP machine.
-//
-// Firstly the actual QPH data objects are created. This must be done only
-// once the grid is refined to its finest level.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::setup_qph()
-  {
-    std::cout << "    Setting up quadrature point data..." << std::endl;
-
-    quadrature_point_history.initialize(triangulation.begin_active(),
-                                        triangulation.end(),
-                                        n_q_points);
-
-    // Next we setup the initial quadrature point data. Note that when
-    // the quadrature point data is retrieved, it is returned as a vector
-    // of smart pointers.
-    for (typename Triangulation<dim>::active_cell_iterator cell =
-           triangulation.begin_active(); cell != triangulation.end(); ++cell)
-      {
-      const std::vector<std::shared_ptr<PointHistory<dim,NumberType> > > lqph =
-        quadrature_point_history.get_data(cell);
-      Assert(lqph.size() == n_q_points, ExcInternalError());
-
-      for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-        lqph[q_point]->setup_lqp(parameters);
-      }
-  }
-
 
 // @sect4{Solid::solve_nonlinear_timestep}
 
@@ -1471,10 +1364,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           cell_matrix = 0.;
           cell->get_dof_indices(local_dof_indices);
 
-          const auto &quadrature_point_history_const = quadrature_point_history;
-          const std::vector<std::shared_ptr<const PointHistory<dim,NumberType> > > lqph = quadrature_point_history_const.get_data(cell);
-          Assert(lqph.size() == n_q_points, ExcInternalError());
-
           // We first need to find the solution gradients at quadrature points
           // inside the current cell and then we update each local QP using the
           // displacement gradient:
@@ -1503,8 +1392,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                   symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
                 }
 
-              const auto &mat = lqph[q_point];
-              const SymmetricTensor<2,dim,NumberType> tau = mat->get_tau(det_F,b_bar);
+              const SymmetricTensor<2,dim,NumberType> tau = material->get_tau(det_F,b_bar);
               const Tensor<2,dim,NumberType> tau_ns (tau);
               const double JxW = fe_values_ref.JxW(q_point);
 
@@ -1518,7 +1406,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                       // contribution. It comprises a material contribution, and a
                       // geometrical stress contribution which is only added along
                       // the local matrix diagonals:
-                      cell_matrix(i, j) += (symm_grad_Nx[i] * mat->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
+                      cell_matrix(i, j) += (symm_grad_Nx[i] * material->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
                                             * JxW;
                       // geometrical stress contribution
                       const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);

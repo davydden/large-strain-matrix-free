@@ -4,7 +4,6 @@ Grid:
 Triangulation:
 	 Number of active cells: 1024
 	 Number of degrees of freedom: 2178
-    Setting up quadrature point data...
 
 Timestep 1 @ 0.1s
 _______________________________________________________________________________________
