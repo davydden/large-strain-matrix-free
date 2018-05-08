@@ -1253,10 +1253,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   void Solid<dim,NumberType>::get_error_residual(Errors &error_residual)
   {
     Vector<double> error_res(dof_handler_ref.n_dofs());
-
-    for (unsigned int i = 0; i < dof_handler_ref.n_dofs(); ++i)
-      if (!constraints.is_constrained(i))
-        error_res(i) = system_rhs(i);
+    error_res = system_rhs;
+    constraints.set_zero(error_res);
 
     error_residual.norm = error_res.l2_norm();
     error_residual.u = error_res.l2_norm();
