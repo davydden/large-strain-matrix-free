@@ -456,6 +456,12 @@ namespace Cook_Membrane
   class Solid
   {
   public:
+    // matrix free polynomial degree
+    static constexpr int degree = 1;
+
+    // matrix free quadrature order
+    static constexpr int n_q_points_1d = 2;
+
     Solid(const Parameters::AllParameters &parameters);
 
     virtual
@@ -474,6 +480,10 @@ namespace Cook_Membrane
     // Set up the finite element system to be solved:
     void
     system_setup();
+
+    // Set up matrix-free
+    void
+    setup_matrix_free(const int &it_nr);
 
     // Function to assemble the system matrix and right hand side vecotr.
     void
@@ -518,7 +528,6 @@ namespace Cook_Membrane
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
     // cell and the extractor objects used to retrieve information from the
     // solution vectors:
-    const unsigned int               degree;
     const FESystem<dim>              fe;
     DoFHandler<dim>                  dof_handler_ref;
     const unsigned int               dofs_per_cell;
@@ -612,7 +621,7 @@ namespace Cook_Membrane
     std::shared_ptr<MatrixFree<dim,double>> mf_data_current;
     std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
 
-    NeoHookOperator<dim,2,3,double> mf_nh_operator;
+    NeoHookOperator<dim,degree,n_q_points_1d,double> mf_nh_operator;
   };
 
 // @sect3{Implementation of the <code>Solid</code> class}
@@ -631,10 +640,9 @@ namespace Cook_Membrane
     timer(std::cout,
           TimerOutput::never/*TimerOutput::summary*/,
           TimerOutput::wall_times),
-    degree(parameters.poly_degree),
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
-    fe(FE_Q<dim>(parameters.poly_degree), dim), // displacement
+    fe(FE_Q<dim>(degree), dim), // displacement
     dof_handler_ref(triangulation),
     dofs_per_cell (fe.dofs_per_cell),
     u_fe(first_u_component),
@@ -642,8 +650,8 @@ namespace Cook_Membrane
       parameters.mu,parameters.nu)),
     material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
       parameters.mu,parameters.nu)),
-    qf_cell(parameters.quad_order),
-    qf_face(parameters.quad_order),
+    qf_cell(n_q_points_1d),
+    qf_face(n_q_points_1d),
     n_q_points (qf_cell.size()),
     n_q_points_f (qf_face.size())
   {
@@ -829,18 +837,42 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     solution_delta.reinit(dof_handler_ref.n_dofs());
     solution_total.reinit(dof_handler_ref.n_dofs());
 
-    // matrix-free part:
-    eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*degree*/1,dof_handler_ref,solution_total);
+    timer.leave_subsection();
+  }
 
-    mf_data_current = std::make_shared<MatrixFree<dim,double>>();
-    mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
 
-    const QGauss<1> quad (3);
+  template <int dim,typename NumberType>
+  void Solid<dim,NumberType>::setup_matrix_free(const int &it_nr)
+  {
+    timer.enter_subsection("Setup matrix-free");
+
+    // The constraints in Newton-Raphson are different for it_nr=0 and 1,
+    // and then they are the same so we only need to re-init the data
+    // according to the updated displacement/mapping
+    const QGauss<1> quad (n_q_points_1d);
     typename MatrixFree<dim,double>::AdditionalData data;
     data.tasks_parallel_scheme = MatrixFree<dim,double>::AdditionalData::none;
 
-    mf_data_reference->reinit (                  dof_handler_ref, constraints, quad, data);
-    mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+    if (it_nr <= 1)
+      {
+        // solution_total is the point around which we linearize
+        eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*mapping degree*/1,dof_handler_ref,solution_total);
+
+        mf_data_current = std::make_shared<MatrixFree<dim,double>>();
+        mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
+
+        mf_data_reference->reinit (                  dof_handler_ref, constraints, quad, data);
+        mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+
+        mf_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
+      }
+    else
+      {
+        // here reinitialize MatrixFree with initialize_indices=false
+        // as the mapping has to be recomputed but the topology of cells is the same
+        data.initialize_indices = false;
+        mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+      }
 
     timer.leave_subsection();
   }
@@ -893,8 +925,21 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // update total solution prior to assembly
         set_total_solution();
 
+        // setup matrix-free part:
+        setup_matrix_free(newton_iteration);
+
         // now ready to go-on and assmble linearized problem around solution_n + solution_delta for this iteration.
         assemble_system();
+
+        // DEBUG: check vmult of matrix-based and matrix-free
+        {
+          Vector<double> src(dof_handler_ref.n_dofs()), dst_mb(dof_handler_ref.n_dofs()), dst_mf(dof_handler_ref.n_dofs());
+          for (unsigned int i=0; i<dof_handler_ref.n_dofs(); ++i)
+            src(i) = ((double)std::rand())/RAND_MAX;
+
+          tangent_matrix.vmult(dst_mb, src);
+          mf_nh_operator.vmult(dst_mf, src);
+        }
 
         get_error_residual(error_residual);
 
@@ -1029,7 +1074,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // Sanity check using alternate method to extract the solution
         // at the given point. To do this, we must create an FEValues instance
         // to help us extract the solution value at the desired point
-        const MappingQ<dim> mapping (parameters.poly_degree);
+        const MappingQ<dim> mapping (degree);
         const Point<dim> qp_unit = mapping.transform_real_to_unit_cell(cell,soln_pt);
         const Quadrature<dim> soln_qrule (qp_unit);
         AssertThrow(soln_qrule.size() == 1, ExcInternalError());

@@ -286,10 +286,10 @@ using namespace dealii;
             const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
             const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
-            const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
+            const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material->get_tau(det_F,b_bar);
             const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
-            const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
+            const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material->act_Jc(det_F,b_bar,symm_grad_Nx_v);
 
             const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
             VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
@@ -330,7 +330,7 @@ using namespace dealii;
 
     // 4. constraints
     const std::vector<unsigned int> &
-    constrained_dofs = data_current.get_constrained_dofs(); // FIXME: is it current or reference?
+    constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
     for (unsigned int i=0; i<constrained_dofs.size(); ++i)
       dst(constrained_dofs[i]) += src(constrained_dofs[i]);
   }
