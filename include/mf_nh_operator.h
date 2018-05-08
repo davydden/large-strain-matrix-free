@@ -1,3 +1,5 @@
+#pragma once
+
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/vectorization.h>
 #include <deal.II/base/subscriptor.h>
@@ -8,6 +10,8 @@
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
+
+#include <material.h>
 
 using namespace dealii;
 
@@ -27,7 +31,7 @@ using namespace dealii;
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference);
 
-    void set_coefficients(const double mu, const double nu);
+    void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material);
 
     unsigned int m () const;
     unsigned int n () const;
@@ -57,6 +61,8 @@ using namespace dealii;
 
     std::shared_ptr<const MatrixFree<dim,number>> data_current;
     std::shared_ptr<const MatrixFree<dim,number>> data_reference;
+
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material;
 
     Vector<number>  diagonal_values;
     bool            diagonal_is_available;
@@ -100,6 +106,13 @@ using namespace dealii;
     diagonal_values.reinit(0);
   }
 
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material_)
+  {
+    material = material_;
+  }
 
   /*
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
