@@ -29,7 +29,8 @@ using namespace dealii;
     void clear();
 
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
-                    std::shared_ptr<const MatrixFree<dim,number>> data_reference);
+                    std::shared_ptr<const MatrixFree<dim,number>> data_reference,
+                    Vector<number> &displacement);
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material);
 
@@ -61,6 +62,8 @@ using namespace dealii;
 
     std::shared_ptr<const MatrixFree<dim,number>> data_current;
     std::shared_ptr<const MatrixFree<dim,number>> data_reference;
+
+    Vector<number> *displacement;
 
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,number>> material;
 
@@ -105,6 +108,21 @@ using namespace dealii;
     diagonal_is_available = false;
     diagonal_values.reinit(0);
   }
+
+
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::initialize(
+                    std::shared_ptr<const MatrixFree<dim,number>> data_current_,
+                    std::shared_ptr<const MatrixFree<dim,number>> data_reference_,
+                    Vector<number> &displacement_)
+  {
+    data_current = data_current_;
+    data_reference = data_reference_;
+    displacement = &displacement_;
+  }
+
 
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
@@ -216,17 +234,105 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<double>       &/*dst*/,
-                                                    const Vector<double> &/*src*/) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<double>       &dst,
+                                                    const Vector<double> &src) const
   {
-    /*
-    data.cell_loop (&LaplaceOperator::local_apply, this, dst, src);
+    // FIXME: can't use cell_loop as we need both matrix-free data objects.
+    // for now do it by hand.
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
 
+    const unsigned int n_q_points = phi_current.n_q_points;
+    const unsigned int n_cells = data_current->n_macro_cells();
+
+    Assert (n_cells == data_reference->n_macro_cells(), ExcInternalError());
+    Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
+
+    // MatrixFree::cell_loop() is more complicated than a simple update_ghost_values() / compress(),
+    // it loops on different cells (inner without ghosts and outer) in different order
+    // and do update_ghost_values() and compress_start()/compress_finish() in between.
+    // https://www.dealii.org/developer/doxygen/deal.II/matrix__free_8h_source.html#l00109
+
+    // 1. make sure ghosts are updated
+    // src.update_ghost_values();
+
+    // 2. loop over all locally owned cell blocks
+    for (unsigned int cell=0; cell<n_cells; ++cell)
+      {
+        // initialize on this cell
+        phi_current.reinit(cell);
+        phi_current_s.reinit(cell);
+        phi_reference.reinit(cell);
+
+        // read-in total displacement and src vector and evaluate gradients
+        phi_reference.read_dof_values(*displacement);
+        phi_current.  read_dof_values(src);
+        phi_current_s.read_dof_values(src);
+        phi_reference.evaluate (false,true,false);
+        phi_current.  evaluate (false,true,false);
+        phi_current_s.evaluate (false,true,false);
+
+        for (unsigned int q=0; q<n_q_points; ++q)
+          {
+            // reference configuration:
+            const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
+            const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+            const VectorizedArray<number>                        det_F  = determinant(F);
+            const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
+            const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
+
+            // current configuration
+            const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
+            const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
+
+            const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
+            const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
+
+            const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
+
+            const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
+            VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
+            for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+              if (std::abs(JxW_current[i])>1e-10)
+                JxW_scale[i] *= 1./JxW_current[i];
+
+            // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
+            // contribution. It comprises a material contribution, and a
+            // geometrical stress contribution which is only added along
+            // the local matrix diagonals:
+            phi_current_s.submit_symmetric_gradient(
+              jc_part * JxW_scale
+              // Note: We need to integrate over the reference element, so the weights have to be adjusted
+              ,q);
+
+            // geometrical stress contribution
+            const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
+            phi_current.submit_gradient(
+              geo * JxW_scale
+              // Note: We need to integrate over the reference element, so the weights have to be adjusted
+              // phi_reference.JxW(q) / phi_current.JxW(q)
+              ,q);
+
+            // actually do the contraction
+            phi_current.integrate (false,true);
+            phi_current_s.integrate (false,true);
+
+          } // end of the loop over quadrature points
+
+        phi_current.distribute_local_to_global(dst);
+        phi_current_s.distribute_local_to_global(dst);
+
+      }  // end of the loop over cells
+
+    // 3. communicate results with MPI
+    // dst.compress(VectorOperation::add);
+
+    // 4. constraints
     const std::vector<unsigned int> &
-    constrained_dofs = data.get_constrained_dofs();
+    constrained_dofs = data_current.get_constrained_dofs(); // FIXME: is it current or reference?
     for (unsigned int i=0; i<constrained_dofs.size(); ++i)
       dst(constrained_dofs[i]) += src(constrained_dofs[i]);
-    */
   }
 
 
