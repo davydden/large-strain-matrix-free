@@ -708,7 +708,7 @@ namespace Cook_Membrane
     // and one that copies the work done on this one cell into the global
     // object that represents it:
     void
-    assemble_system(const BlockVector<double> &solution_delta);
+    assemble_system(const Vector<double> &solution_delta);
 
     // Apply Dirichlet boundary conditions on the displacement field
     void
@@ -718,14 +718,14 @@ namespace Cook_Membrane
     // function into the nonlinear loop and the function that solves the
     // linearized Newton-Raphson step:
     void
-    solve_nonlinear_timestep(BlockVector<double> &solution_delta);
+    solve_nonlinear_timestep(Vector<double> &solution_delta);
 
     std::pair<unsigned int, double>
-    solve_linear_system(BlockVector<double> &newton_update);
+    solve_linear_system(Vector<double> &newton_update);
 
     // Solution retrieval as well as post-processing and writing data to file:
-    BlockVector<double>
-    get_total_solution(const BlockVector<double> &solution_delta) const;
+    Vector<double>
+    get_total_solution(const Vector<double> &solution_delta) const;
 
     void
     output_results() const;
@@ -759,14 +759,6 @@ namespace Cook_Membrane
     // homogeneous material
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType> > material;
 
-    // Description of how the block-system is arranged. There is just 1 block,
-    // that contains a vector DOF $\mathbf{u}$.
-    // There are two reasons that we retain the block system in this problem.
-    // The first is pure laziness to perform further modifications to the
-    // code from which this work originated. The second is that a block system
-    // would typically necessary when extending this code to multiphysics
-    // problems.
-    static const unsigned int        n_blocks = 1;
     static const unsigned int        n_components = dim;
     static const unsigned int        first_u_component = 0;
 
@@ -774,8 +766,6 @@ namespace Cook_Membrane
     {
       u_dof = 0
     };
-
-    std::vector<types::global_dof_index>  dofs_per_block;
 
     // Rules for Gauss-quadrature on both the cell and faces. The number of
     // quadrature points on both cells and faces is recorded.
@@ -789,10 +779,10 @@ namespace Cook_Membrane
     // to keep track of constraints.  We make use of a sparsity pattern
     // designed for a block system.
     ConstraintMatrix                 constraints;
-    BlockSparsityPattern             sparsity_pattern;
-    BlockSparseMatrix<double>        tangent_matrix;
-    BlockVector<double>              system_rhs;
-    BlockVector<double>              solution_n;
+    SparsityPattern                  sparsity_pattern;
+    SparseMatrix<double>             tangent_matrix;
+    Vector<double>                   system_rhs;
+    Vector<double>                   solution_n;
 
     // Then define a number of variables to store norms and update norms and
     // normalisation factors.
@@ -827,7 +817,7 @@ namespace Cook_Membrane
     get_error_residual(Errors &error_residual);
 
     void
-    get_error_update(const BlockVector<double> &newton_update,
+    get_error_update(const Vector<double> &newton_update,
                      Errors &error_update);
 
     // Print information to screen in a pleasing way...
@@ -867,7 +857,6 @@ namespace Cook_Membrane
     u_fe(first_u_component),
     material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
       parameters.mu,parameters.nu)),
-    dofs_per_block(n_blocks),
     qf_cell(parameters.quad_order),
     qf_face(parameters.quad_order),
     n_q_points (qf_cell.size()),
@@ -906,7 +895,7 @@ namespace Cook_Membrane
     // time domain.
     //
     // At the beginning, we reset the solution update for this time step...
-    BlockVector<double> solution_delta(dofs_per_block);
+    Vector<double> solution_delta(dof_handler_ref.n_dofs());
     while (time.current() <= time.end())
       {
         solution_delta = 0.0;
@@ -1021,15 +1010,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   {
     timer.enter_subsection("Setup system");
 
-    std::vector<unsigned int> block_component(n_components, u_dof); // Displacement
-
     // The DOF handler is then initialised and we renumber the grid in an
     // efficient manner. We also record the number of DOFs per block.
     dof_handler_ref.distribute_dofs(fe);
     DoFRenumbering::Cuthill_McKee(dof_handler_ref);
-    DoFRenumbering::component_wise(dof_handler_ref, block_component);
-    DoFTools::count_dofs_per_block(dof_handler_ref, dofs_per_block,
-                                   block_component);
 
     std::cout << "Triangulation:"
               << "\n\t Number of active cells: " << triangulation.n_active_cells()
@@ -1039,35 +1023,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // Setup the sparsity pattern and tangent matrix
     tangent_matrix.clear();
     {
-      const types::global_dof_index n_dofs_u = dofs_per_block[u_dof];
-
-      BlockDynamicSparsityPattern csp(n_blocks, n_blocks);
-
-      csp.block(u_dof, u_dof).reinit(n_dofs_u, n_dofs_u);
-      csp.collect_sizes();
-
-      // Naturally, for a one-field vector-valued problem, all of the
-      // components of the system are coupled.
-      Table<2, DoFTools::Coupling> coupling(n_components, n_components);
-      for (unsigned int ii = 0; ii < n_components; ++ii)
-        for (unsigned int jj = 0; jj < n_components; ++jj)
-            coupling[ii][jj] = DoFTools::always;
+      DynamicSparsityPattern dsp(dof_handler_ref.n_dofs(), dof_handler_ref.n_dofs());
       DoFTools::make_sparsity_pattern(dof_handler_ref,
-                                      coupling,
-                                      csp,
+                                      dsp,
                                       constraints,
-                                      false);
-      sparsity_pattern.copy_from(csp);
+                                      /* keep_constrained_dofs */ false);
+      sparsity_pattern.copy_from(dsp);
     }
 
     tangent_matrix.reinit(sparsity_pattern);
 
     // We then set up storage vectors
-    system_rhs.reinit(dofs_per_block);
-    system_rhs.collect_sizes();
-
-    solution_n.reinit(dofs_per_block);
-    solution_n.collect_sizes();
+    system_rhs.reinit(dof_handler_ref.n_dofs());
+    solution_n.reinit(dof_handler_ref.n_dofs());
 
     timer.leave_subsection();
   }
@@ -1079,12 +1047,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // reset the error storage objects and print solver header.
   template <int dim,typename NumberType>
   void
-  Solid<dim,NumberType>::solve_nonlinear_timestep(BlockVector<double> &solution_delta)
+  Solid<dim,NumberType>::solve_nonlinear_timestep(Vector<double> &solution_delta)
   {
     std::cout << std::endl << "Timestep " << time.get_timestep() << " @ "
               << time.current() << "s" << std::endl;
 
-    BlockVector<double> newton_update(dofs_per_block);
+    Vector<double> newton_update(dof_handler_ref.n_dofs());
 
     error_residual.reset();
     error_residual_0.reset();
@@ -1284,14 +1252,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,typename NumberType>
   void Solid<dim,NumberType>::get_error_residual(Errors &error_residual)
   {
-    BlockVector<double> error_res(dofs_per_block);
+    Vector<double> error_res(dof_handler_ref.n_dofs());
 
     for (unsigned int i = 0; i < dof_handler_ref.n_dofs(); ++i)
       if (!constraints.is_constrained(i))
         error_res(i) = system_rhs(i);
 
     error_residual.norm = error_res.l2_norm();
-    error_residual.u = error_res.block(u_dof).l2_norm();
+    error_residual.u = error_res.l2_norm();
   }
 
 
@@ -1299,16 +1267,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 // Determine the true Newton update error for the problem
   template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::get_error_update(const BlockVector<double> &newton_update,
+  void Solid<dim,NumberType>::get_error_update(const Vector<double> &newton_update,
                                     Errors &error_update)
   {
-    BlockVector<double> error_ud(dofs_per_block);
+    Vector<double> error_ud(dof_handler_ref.n_dofs());
     for (unsigned int i = 0; i < dof_handler_ref.n_dofs(); ++i)
       if (!constraints.is_constrained(i))
         error_ud(i) = newton_update(i);
 
     error_update.norm = error_ud.l2_norm();
-    error_update.u = error_ud.block(u_dof).l2_norm();
+    error_update.u = error_ud.l2_norm();
   }
 
 
@@ -1319,10 +1287,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // This is required as, to reduce computational error, the total solution is
 // only updated at the end of the timestep.
   template <int dim,typename NumberType>
-  BlockVector<double>
-  Solid<dim,NumberType>::get_total_solution(const BlockVector<double> &solution_delta) const
+  Vector<double>
+  Solid<dim,NumberType>::get_total_solution(const Vector<double> &solution_delta) const
   {
-    BlockVector<double> solution_total(solution_n);
+    Vector<double> solution_total(solution_n);
     solution_total += solution_delta;
     return solution_total;
   }
@@ -1333,7 +1301,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // WorkStream object for processing. Note that we must ensure that
 // the matrix is reset before any assembly operations can occur.
   template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::assemble_system(const BlockVector<double> &solution_delta)
+  void Solid<dim,NumberType>::assemble_system(const Vector<double> &solution_delta)
   {
     TimerOutput::Scope t (timer, "Assemble linear system");
     std::cout << " ASM " << std::flush;
@@ -1354,7 +1322,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     FEValues<dim>      fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
     FEFaceValues<dim>  fe_face_values_ref(fe, qf_face, update_values | update_JxW_values);
 
-    const BlockVector<double> solution_total(get_total_solution(solution_delta));
+    const Vector<double> solution_total(get_total_solution(solution_delta));
 
     for (const auto &cell: dof_handler_ref.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -1547,10 +1515,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // for the linear problem is straight-forward.
   template <int dim,typename NumberType>
   std::pair<unsigned int, double>
-  Solid<dim,NumberType>::solve_linear_system(BlockVector<double> &newton_update)
+  Solid<dim,NumberType>::solve_linear_system(Vector<double> &newton_update)
   {
-    BlockVector<double> A(dofs_per_block);
-    BlockVector<double> B(dofs_per_block);
+    Vector<double> A(dof_handler_ref.n_dofs());
+    Vector<double> B(dof_handler_ref.n_dofs());
 
     unsigned int lin_it = 0;
     double lin_res = 0.0;
@@ -1561,10 +1529,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       std::cout << " SLV " << std::flush;
       if (parameters.type_lin == "CG")
         {
-          const int solver_its = tangent_matrix.block(u_dof, u_dof).m()
+          const int solver_its = tangent_matrix.m()
                                  * parameters.max_iterations_lin;
           const double tol_sol = parameters.tol_lin
-                                 * system_rhs.block(u_dof).l2_norm();
+                                 * system_rhs.l2_norm();
 
           SolverControl solver_control(solver_its, tol_sol);
 
@@ -1579,11 +1547,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           PreconditionSelector<SparseMatrix<double>, Vector<double> >
           preconditioner (parameters.preconditioner_type,
                           parameters.preconditioner_relaxation);
-          preconditioner.use_matrix(tangent_matrix.block(u_dof, u_dof));
+          preconditioner.use_matrix(tangent_matrix);
 
-          solver_CG.solve(tangent_matrix.block(u_dof, u_dof),
-                          newton_update.block(u_dof),
-                          system_rhs.block(u_dof),
+          solver_CG.solve(tangent_matrix,
+                          newton_update,
+                          system_rhs,
                           preconditioner);
 
           lin_it = solver_control.last_step();
@@ -1595,8 +1563,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           // enough, a direct solver can be
           // utilised.
           SparseDirectUMFPACK A_direct;
-          A_direct.initialize(tangent_matrix.block(u_dof, u_dof));
-          A_direct.vmult(newton_update.block(u_dof), system_rhs.block(u_dof));
+          A_direct.initialize(tangent_matrix);
+          A_direct.vmult(newton_update, system_rhs);
 
           lin_it = 1;
           lin_res = 0.0;
