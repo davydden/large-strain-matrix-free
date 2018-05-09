@@ -52,6 +52,10 @@
 
 \begin{document}
 
+\section{Introduction}
+
+TODO: elasticity and no matrix-free. fluids used a lot.
+
 \section{Theoretical background}
 
 A brief summary of balance equations in large strain hyperelastic continuum.
@@ -79,6 +83,11 @@ that must be stationary in order for the system to be in equilibrium:
 \label{eq:stationary}
 \end{align}
 
+\subsection{Linearization}
+
+TODO: linearize and show how tangent look like.
+Also show what it boils down in the case of small strain.
+
 \section{Finite Element discretization}
 
 We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
@@ -91,6 +100,28 @@ a vector space spanned by standard vector--valued FE basis functions $\gz N^i(\g
 \end{alignat}
 where superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the sets of unknown degrees of freedom for the
 macroscopic fields. For the sake of this study $\gz N^i_\varphi (\gz X)$ are such that only one component of the vector shape function is non-zero for each $i$.
+
+\section{Matrix-free operator evaluation}
+
+TODO[DD]: summary of what's happening, how operator is evaluated, what we do, what operations (determinant, etc), count number of FLOPS
+
+\section{Numerical examples}
+
+\subsection{Small strain linear elasticity}
+
+TODO: summarize Mathias results (head and Cook's membrane)
+
+TODO: switch head to quasi-static load instead of dynamics?
+
+\subsection{Large strain Neo-Hook elasticity}
+
+TODO: add new results from Cook's and some matrix-inclusion (matrix-pore).
+Eliptical holes are easier as we don't need heterogeneous operator.
+
+\section{Summary and Conclusions}
+
+TODO: summarize results, good/bad, where can be applied,...
+Bio-med fluid-structure ?
 
 \bibliographystyle{elsarticle-num}
 \bibliography{bibliography}
