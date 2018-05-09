@@ -34,6 +34,8 @@ using namespace dealii;
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
+    void compute_diagonal();
+
     unsigned int m () const;
     unsigned int n () const;
 
@@ -46,11 +48,9 @@ using namespace dealii;
                     const Vector<double> &src) const;
     void Tvmult_add (Vector<double> &dst,
                      const Vector<double> &src) const;
-    /*
+
     number el (const unsigned int row,
                const unsigned int col) const;
-    void set_diagonal (const Vector<number> &diagonal);
-    */
 
   private:
 
@@ -61,6 +61,15 @@ using namespace dealii;
                            Vector<double>                      &dst,
                            const Vector<double>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const;
+
+    /**
+     * Apply diagonal part of the operator on a cell range.
+     */
+    void local_diagonal_cell (const MatrixFree<dim,number> &data,
+                              Vector<double>                                   &dst,
+                              const unsigned int &,
+                              const std::pair<unsigned int,unsigned int>       &cell_range) const;
+
 
    /**
     * Perform operation on a cell. @p phi_current and @phi_current_s correspond to the deformed configuration
@@ -78,7 +87,9 @@ using namespace dealii;
 
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material;
 
-    Vector<number>  diagonal_values;
+    std::shared_ptr<DiagonalMatrix<Vector<number>>>  inverse_diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<Vector<number>>>  diagonal_entries;
+
     bool            diagonal_is_available;
   };
 
@@ -87,7 +98,8 @@ using namespace dealii;
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::NeoHookOperator ()
     :
-    Subscriptor()
+    Subscriptor(),
+    diagonal_is_available(false)
   {}
 
 
@@ -117,7 +129,8 @@ using namespace dealii;
     data_current.reset();
     data_reference.reset();
     diagonal_is_available = false;
-    diagonal_values.reinit(0);
+    diagonal_entries.reset();
+    inverse_diagonal_entries.reset();
   }
 
 
@@ -317,6 +330,71 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
+                              Vector<double>                                   &dst,
+                              const unsigned int &,
+                              const std::pair<unsigned int,unsigned int>       &cell_range) const
+  {
+    // FIXME: I don't use data input, can this be bad?
+
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
+
+    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
+      {
+        // initialize on this cell
+        phi_current.reinit(cell);
+        phi_current_s.reinit(cell);
+        phi_reference.reinit(cell);
+
+        // read-in total displacement.
+        // we don't read src as we will set dof value manually.
+        phi_reference.read_dof_values_plain(*displacement);
+
+        VectorizedArray<number> local_diagonal_vector[phi_current.static_dofs_per_cell];
+
+        // Loop over all DoFs and set dof values to zero everywhere but i-th DoF.
+        // With this input (instead of read_dof_values()) we do the action and store the
+        // result in a diagonal vector
+        for (unsigned int i=0; i<phi_current.dofs_per_component; ++i)
+          {
+            for (unsigned int j=0; j<phi_current.dofs_per_component; ++j)
+              {
+                phi_current.begin_dof_values()[j] = VectorizedArray<number>();
+                phi_current_s.begin_dof_values()[j] = VectorizedArray<number>();
+              }
+
+            phi_current.begin_dof_values()[i] = 1.;
+            phi_current_s.begin_dof_values()[i] = 1.;
+
+            do_operation_on_cell(phi_current,phi_current_s,phi_reference,cell);
+
+            local_diagonal_vector[i] = phi_current.begin_dof_values()[i] +
+                                       phi_current_s.begin_dof_values()[i];
+          }
+
+        // Finally, in order to distribute diagonal, write it again into one of
+        // FEEvaluations and do the standard distribute_local_to_global.
+        // Note that here non-diagonal matrix elements are ignored and so the result is
+        // not equivalent to matrix-based case when hanging nodes are present.
+        // see Section 5.3 in Korman 2016, A time-space adaptive method for the Schrodinger equation, doi: 10.4208/cicp.101214.021015a
+        // for a discussion.
+        for (unsigned int i=0; i<phi_current.dofs_per_component; ++i)
+          for (unsigned int c=0; c<phi_current.n_components; ++c)
+            phi_current.begin_dof_values()[i+c*phi_current.dofs_per_component] = local_diagonal_vector[i];
+
+        phi_current.distribute_local_to_global (dst);
+      }
+
+
+  }
+
+
+
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::do_operation_on_cell(
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_current,
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_current_s,
@@ -376,32 +454,57 @@ using namespace dealii;
   }
 
 
-  /*
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::
+  compute_diagonal()
+  {
+    typedef Vector<number> VectorType;
+
+    inverse_diagonal_entries.reset(new DiagonalMatrix<VectorType>());
+    diagonal_entries.reset(new DiagonalMatrix<VectorType>());
+    VectorType &inverse_diagonal_vector = inverse_diagonal_entries->get_vector();
+    VectorType &diagonal_vector         = diagonal_entries->get_vector();
+
+    data_current->initialize_dof_vector(inverse_diagonal_vector);
+    data_current->initialize_dof_vector(diagonal_vector);
+
+    unsigned int dummy = 0;
+    data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
+                             this, diagonal_vector, dummy);
+
+    // set_constrained_entries_to_one
+    {
+      const std::vector<unsigned int> &
+      constrained_dofs = data_current->get_constrained_dofs();
+      for (unsigned int i=0; i<constrained_dofs.size(); ++i)
+        diagonal_vector(constrained_dofs[i]) = 1.;
+    }
+
+    // calculate inverse:
+    inverse_diagonal_vector = diagonal_vector;
+
+    for (unsigned int i=0; i</*inverse_diagonal_vector.local_size()*/inverse_diagonal_vector.size(); ++i)
+      if (std::abs(inverse_diagonal_vector/*.local_element*/(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
+        inverse_diagonal_vector/*.local_element*/(i) = 1./inverse_diagonal_vector/*.local_element*/(i);
+      else
+        inverse_diagonal_vector/*.local_element*/(i) = 1.;
+
+    // inverse_diagonal_vector.update_ghost_values();
+    // diagonal_vector.update_ghost_values();
+
+    diagonal_is_available = true;
+  }
+
+
+
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   number
-  LaplaceOperator<dim,fe_degree,n_q_points_1d,number>::el (const unsigned int row,
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::el (const unsigned int row,
                                              const unsigned int col) const
   {
     Assert (row == col, ExcNotImplemented());
     Assert (diagonal_is_available == true, ExcNotInitialized());
-    return diagonal_values(row);
+    return diagonal_entries->get_vector()(row);
   }
-
-
-
-  template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  void
-  LaplaceOperator<dim,fe_degree,n_q_points_1d,number>::set_diagonal(const Vector<number> &diagonal)
-  {
-    AssertDimension (m(), diagonal.size());
-
-    diagonal_values = diagonal;
-
-    const std::vector<unsigned int> &
-    constrained_dofs = data.get_constrained_dofs();
-    for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      diagonal_values(constrained_dofs[i]) = 1.0;
-
-    diagonal_is_available = true;
-  }
-  */
