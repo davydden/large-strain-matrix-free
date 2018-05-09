@@ -301,8 +301,12 @@ using namespace dealii;
         phi_reference.reinit(cell);
 
         // read-in total displacement.
-        // we don't read src as we will set dof value manually.
         phi_reference.read_dof_values_plain(*displacement);
+
+        // FIXME: although we override DoFs manually later, somehow
+        // we still need to read some dummy here
+        phi_current.read_dof_values(*displacement);
+        phi_current_s.read_dof_values(*displacement);
 
         VectorizedArray<number> local_diagonal_vector[phi_current.static_dofs_per_cell];
 
@@ -420,8 +424,11 @@ using namespace dealii;
     data_current->initialize_dof_vector(diagonal_vector);
 
     unsigned int dummy = 0;
-    data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
-                             this, diagonal_vector, dummy);
+    local_diagonal_cell(*data_current, diagonal_vector, dummy,
+                     std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
+
+    // data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
+    //                          this, diagonal_vector, dummy);
 
     // set_constrained_entries_to_one
     {
