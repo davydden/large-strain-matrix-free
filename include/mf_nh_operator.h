@@ -351,13 +351,11 @@ using namespace dealii;
           // phi_reference.JxW(q) / phi_current.JxW(q)
           ,q);
 
-        // actually do the contraction
-        // FIXME: that should be outside of the loop!
-        phi_current.integrate (false,true);
-        phi_current_s.integrate (false,true);
-
       } // end of the loop over quadrature points
 
+    // actually do the contraction
+    phi_current.integrate (false,true);
+    phi_current_s.integrate (false,true);
   }
 
 
