@@ -52,6 +52,10 @@ using namespace dealii;
     number el (const unsigned int row,
                const unsigned int col) const;
 
+    void precondition_Jacobi(Vector<number> &dst,
+                             const Vector<number> &src,
+                             const number omega) const;
+
   private:
 
     /**
@@ -101,6 +105,20 @@ using namespace dealii;
     Subscriptor(),
     diagonal_is_available(false)
   {}
+
+
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(Vector<number> &dst,
+                                            const Vector<number> &src,
+                                            const number omega) const
+  {
+    Assert(inverse_diagonal_entries.get() &&
+           inverse_diagonal_entries->m() > 0, ExcNotInitialized());
+    inverse_diagonal_entries->vmult(dst,src);
+    dst *= omega;
+  }
 
 
 

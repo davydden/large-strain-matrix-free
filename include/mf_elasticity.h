@@ -953,6 +953,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                              " at Newton iteration " +
                              std::to_string(newton_iteration)
                             ));
+
+          // now check Jacobi preconditioner
+          tangent_matrix.precondition_Jacobi(dst_mb,src,0.8);
+          mf_nh_operator.precondition_Jacobi(dst_mf,src,0.8);
+
+          diff = dst_mb;
+          diff.add(-1, dst_mf);
+          Assert (true /*diff.l2_norm() < 1e-10 * dst_mb.l2_norm()*/,
+                  ExcMessage("MF and MB Jacobi are different " +
+                             std::to_string(diff.l2_norm()) +
+                             " at Newton iteration " +
+                             std::to_string(newton_iteration)
+                            ));
         }
 #endif
 
