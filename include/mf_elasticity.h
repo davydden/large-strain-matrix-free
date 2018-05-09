@@ -36,6 +36,7 @@
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/precondition_selector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/constraint_matrix.h>
@@ -221,7 +222,7 @@ namespace Cook_Membrane
       prm.enter_subsection("Linear solver");
       {
         prm.declare_entry("Solver type", "CG",
-                          Patterns::Selection("CG|Direct"),
+                          Patterns::Selection("CG|Direct|MF_CG"),
                           "Type of solver used to solve the linear system");
 
         prm.declare_entry("Residual", "1e-6",
@@ -1404,7 +1405,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     {
       timer.enter_subsection("Linear solver");
       std::cout << " SLV " << std::flush;
-      if (parameters.type_lin == "CG")
+      if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG")
         {
           const int solver_its = tangent_matrix.m()
                                  * parameters.max_iterations_lin;
@@ -1416,20 +1417,35 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           GrowingVectorMemory<Vector<double> > GVM;
           SolverCG<Vector<double> > solver_CG(solver_control, GVM);
 
-          // We've chosen by default a SSOR preconditioner as it appears to
-          // provide the fastest solver convergence characteristics for this
-          // problem on a single-thread machine.  However, for multicore
-          // computing, the Jacobi preconditioner which is multithreaded may
-          // converge quicker for larger linear systems.
-          PreconditionSelector<SparseMatrix<double>, Vector<double> >
-          preconditioner (parameters.preconditioner_type,
-                          parameters.preconditioner_relaxation);
-          preconditioner.use_matrix(tangent_matrix);
+          if (parameters.type_lin == "CG")
+            {
+              // We've chosen by default a SSOR preconditioner as it appears to
+              // provide the fastest solver convergence characteristics for this
+              // problem on a single-thread machine.  However, for multicore
+              // computing, the Jacobi preconditioner which is multithreaded may
+              // converge quicker for larger linear systems.
+              PreconditionSelector<SparseMatrix<double>, Vector<double> >
+              preconditioner (parameters.preconditioner_type,
+                              parameters.preconditioner_relaxation);
+              preconditioner.use_matrix(tangent_matrix);
 
-          solver_CG.solve(tangent_matrix,
-                          newton_update,
-                          system_rhs,
-                          preconditioner);
+              solver_CG.solve(tangent_matrix,
+                              newton_update,
+                              system_rhs,
+                              preconditioner);
+            }
+          else
+            {
+              AssertThrow(parameters.preconditioner_type == "jacobi",
+                          ExcNotImplemented());
+              PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
+              preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
+
+              solver_CG.solve(mf_nh_operator,
+                newton_update,
+                system_rhs,
+                preconditioner);
+            }
 
           lin_it = solver_control.last_step();
           lin_res = solver_control.last_value();

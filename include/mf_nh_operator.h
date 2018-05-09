@@ -26,6 +26,8 @@ using namespace dealii;
   public:
     NeoHookOperator ();
 
+    typedef typename Vector<number>::size_type size_type;
+
     void clear();
 
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
