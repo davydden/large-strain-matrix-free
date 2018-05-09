@@ -156,72 +156,6 @@ using namespace dealii;
     material = material_;
   }
 
-  /*
-  template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  void
-  LaplaceOperator<dim,fe_degree,n_q_points_1d,number>::reinit (const DoFHandler<dim>  &dof_handler,
-                                                 const ConstraintMatrix &constraints,
-                                                 const unsigned int      level)
-  {
-    typename MatrixFree<dim,number>::AdditionalData additional_data;
-    additional_data.tasks_parallel_scheme =
-      MatrixFree<dim,number>::AdditionalData::partition_color;
-    additional_data.level_mg_handler = level;
-    additional_data.mapping_update_flags = (update_gradients | update_JxW_values |
-                                            update_quadrature_points);
-    data.reinit (dof_handler, constraints, QGauss<1>(fe_degree+1),
-                 additional_data);
-    evaluate_coefficient(Coefficient<dim>());
-  }
-
-
-
-  template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  void
-  LaplaceOperator<dim,fe_degree,number>::
-  evaluate_coefficient (const Coefficient<dim> &coefficient_function)
-  {
-    const unsigned int n_cells = data.n_macro_cells();
-    FEEvaluation<dim,fe_degree,fe_degree+1,1,number> phi (data);
-    coefficient.resize (n_cells * phi.n_q_points);
-    for (unsigned int cell=0; cell<n_cells; ++cell)
-      {
-        phi.reinit (cell);
-        for (unsigned int q=0; q<phi.n_q_points; ++q)
-          coefficient[cell*phi.n_q_points+q] =
-            coefficient_function.value(phi.quadrature_point(q));
-      }
-  }
-
-
-
-
-  template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  void
-  LaplaceOperator<dim,fe_degree,number>::
-  local_apply (const MatrixFree<dim,number>         &data,
-               Vector<double>                       &dst,
-               const Vector<double>                 &src,
-               const std::pair<unsigned int,unsigned int> &cell_range) const
-  {
-    FEEvaluation<dim,fe_degree,fe_degree+1,1,number> phi (data);
-    AssertDimension (coefficient.size(),
-                     data.n_macro_cells() * phi.n_q_points);
-
-    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
-      {
-        phi.reinit (cell);
-        phi.read_dof_values(src);
-        phi.evaluate (false,true,false);
-        for (unsigned int q=0; q<phi.n_q_points; ++q)
-          phi.submit_gradient (coefficient[cell*phi.n_q_points+q] *
-                               phi.get_gradient(q), q);
-        phi.integrate (false,true);
-        phi.distribute_local_to_global (dst);
-      }
-  }
-  */
-
 
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
@@ -385,11 +319,8 @@ using namespace dealii;
             phi_current.begin_dof_values()[i+c*phi_current.dofs_per_component] = local_diagonal_vector[i];
 
         phi_current.distribute_local_to_global (dst);
-      }
-
-
+      } // end of cell loop
   }
-
 
 
 
