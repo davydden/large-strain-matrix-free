@@ -308,27 +308,32 @@ using namespace dealii;
         phi_current.read_dof_values(*displacement);
         phi_current_s.read_dof_values(*displacement);
 
-        VectorizedArray<number> local_diagonal_vector[phi_current.static_dofs_per_cell];
+        AlignedVector<VectorizedArray<number>> local_diagonal_vector(phi_current.dofs_per_component*phi_current.n_components);
 
         // Loop over all DoFs and set dof values to zero everywhere but i-th DoF.
         // With this input (instead of read_dof_values()) we do the action and store the
         // result in a diagonal vector
         for (unsigned int i=0; i<phi_current.dofs_per_component; ++i)
-          {
-            for (unsigned int j=0; j<phi_current.dofs_per_component; ++j)
-              {
-                phi_current.begin_dof_values()[j] = VectorizedArray<number>();
-                phi_current_s.begin_dof_values()[j] = VectorizedArray<number>();
-              }
+          for (unsigned int ic=0; ic<phi_current.n_components; ++ic)
+            {
+              for (unsigned int j=0; j<phi_current.dofs_per_component; ++j)
+                for (unsigned int jc=0; jc<phi_current.n_components; ++jc)
+                  {
+                    const auto ind_j = j+jc*phi_current.dofs_per_component;
+                    phi_current.begin_dof_values()  [ind_j] = VectorizedArray<number>();
+                    phi_current_s.begin_dof_values()[ind_j] = VectorizedArray<number>();
+                  }
 
-            phi_current.begin_dof_values()[i] = 1.;
-            phi_current_s.begin_dof_values()[i] = 1.;
+              const auto ind_i = i+ic*phi_current.dofs_per_component;
 
-            do_operation_on_cell(phi_current,phi_current_s,phi_reference,cell);
+              phi_current.begin_dof_values()  [ind_i] = 1.;
+              phi_current_s.begin_dof_values()[ind_i] = 1.;
 
-            local_diagonal_vector[i] = phi_current.begin_dof_values()[i] +
-                                       phi_current_s.begin_dof_values()[i];
-          }
+              do_operation_on_cell(phi_current,phi_current_s,phi_reference,cell);
+
+              local_diagonal_vector[ind_i] = phi_current.begin_dof_values()[ind_i] +
+                                             phi_current_s.begin_dof_values()[ind_i];
+            }
 
         // Finally, in order to distribute diagonal, write it again into one of
         // FEEvaluations and do the standard distribute_local_to_global.
@@ -337,8 +342,11 @@ using namespace dealii;
         // see Section 5.3 in Korman 2016, A time-space adaptive method for the Schrodinger equation, doi: 10.4208/cicp.101214.021015a
         // for a discussion.
         for (unsigned int i=0; i<phi_current.dofs_per_component; ++i)
-          for (unsigned int c=0; c<phi_current.n_components; ++c)
-            phi_current.begin_dof_values()[i+c*phi_current.dofs_per_component] = local_diagonal_vector[i];
+          for (unsigned int ic=0; ic<phi_current.n_components; ++ic)
+            {
+              const auto ind_i = i+ic*phi_current.dofs_per_component;
+              phi_current.begin_dof_values()[ind_i] = local_diagonal_vector[ind_i];
+            }
 
         phi_current.distribute_local_to_global (dst);
       } // end of cell loop

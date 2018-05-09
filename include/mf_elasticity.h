@@ -960,8 +960,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
           diff = dst_mb;
           diff.add(-1, dst_mf);
-          // FIXME: mb vs mf Jacobi improved from 0.000007!=18.714739 to 0.000007!=0.000008
-          Assert (diff.l2_norm() < 1e-4 /*diff.l2_norm() < 1e-10 * dst_mb.l2_norm()*/,
+          Assert (diff.l2_norm() < 1e-10 * dst_mb.l2_norm(),
                   ExcMessage("MF and MB Jacobi are different " +
                              std::to_string(diff.l2_norm()) +
                              " (" +  std::to_string(dst_mb.l2_norm()) +
