@@ -239,6 +239,7 @@ using namespace dealii;
   {
     // FIXME: can't use cell_loop as we need both matrix-free data objects.
     // for now do it by hand.
+    // BUT I might try cell_loop(), and simply use another MF object inside...
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
@@ -266,7 +267,7 @@ using namespace dealii;
         phi_reference.reinit(cell);
 
         // read-in total displacement and src vector and evaluate gradients
-        phi_reference.read_dof_values(*displacement);
+        phi_reference.read_dof_values_plain(*displacement);
         phi_current.  read_dof_values(src);
         phi_current_s.read_dof_values(src);
         phi_reference.evaluate (false,true,false);

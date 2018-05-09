@@ -931,15 +931,28 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // now ready to go-on and assmble linearized problem around solution_n + solution_delta for this iteration.
         assemble_system();
 
-        // DEBUG: check vmult of matrix-based and matrix-free
+#ifdef DEBUG
+        // check vmult of matrix-based and matrix-free for a random vector:
         {
-          Vector<double> src(dof_handler_ref.n_dofs()), dst_mb(dof_handler_ref.n_dofs()), dst_mf(dof_handler_ref.n_dofs());
+          Vector<double> src(dof_handler_ref.n_dofs()), dst_mb(dof_handler_ref.n_dofs()), dst_mf(dof_handler_ref.n_dofs()), diff(dof_handler_ref.n_dofs());
           for (unsigned int i=0; i<dof_handler_ref.n_dofs(); ++i)
             src(i) = ((double)std::rand())/RAND_MAX;
 
+          constraints.set_zero(src);
+
           tangent_matrix.vmult(dst_mb, src);
           mf_nh_operator.vmult(dst_mf, src);
+
+          diff = dst_mb;
+          diff.add(-1, dst_mf);
+          Assert (diff.l2_norm() < 1e-10 * dst_mb.l2_norm(),
+                  ExcMessage("MF and MB are different " +
+                             std::to_string(diff.l2_norm()) +
+                             " at Newton iteration " +
+                             std::to_string(newton_iteration)
+                            ));
         }
+#endif
 
         get_error_residual(error_residual);
 
