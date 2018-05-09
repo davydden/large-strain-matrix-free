@@ -53,12 +53,14 @@ using namespace dealii;
     */
 
   private:
-    /*
-    void local_apply (const MatrixFree<dim,number>    &data,
-                      Vector<double>                      &dst,
-                      const Vector<double>                &src,
-                      const std::pair<unsigned int,unsigned int> &cell_range) const;
-    */
+
+    /**
+     * Apply operator on a range of cells.
+     */
+    void local_apply_cell (const MatrixFree<dim,number>    &data,
+                           Vector<double>                      &dst,
+                           const Vector<double>                &src,
+                           const std::pair<unsigned int,unsigned int> &cell_range) const;
 
    /**
     * Perform operation on a cell. @p phi_current and @phi_current_s correspond to the deformed configuration
@@ -249,14 +251,8 @@ using namespace dealii;
     // FIXME: can't use cell_loop as we need both matrix-free data objects.
     // for now do it by hand.
     // BUT I might try cell_loop(), and simply use another MF object inside...
-    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
-    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
-    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
 
-    const unsigned int n_cells = data_current->n_macro_cells();
-
-    Assert (n_cells == data_reference->n_macro_cells(), ExcInternalError());
-    Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
+    Assert (data_current->n_macro_cells() == data_reference->n_macro_cells(), ExcInternalError());
 
     // MatrixFree::cell_loop() is more complicated than a simple update_ghost_values() / compress(),
     // it loops on different cells (inner without ghosts and outer) in different order
@@ -267,7 +263,38 @@ using namespace dealii;
     // src.update_ghost_values();
 
     // 2. loop over all locally owned cell blocks
-    for (unsigned int cell=0; cell<n_cells; ++cell)
+    local_apply_cell(*data_current, dst, src,
+                     std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
+
+    // 3. communicate results with MPI
+    // dst.compress(VectorOperation::add);
+
+    // 4. constraints
+    const std::vector<unsigned int> &
+    constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
+    for (unsigned int i=0; i<constrained_dofs.size(); ++i)
+      dst(constrained_dofs[i]) += src(constrained_dofs[i]);
+  }
+
+
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
+                           const MatrixFree<dim,number>    &/*data*/,
+                           Vector<double>                      &dst,
+                           const Vector<double>                &src,
+                           const std::pair<unsigned int,unsigned int> &cell_range) const
+  {
+    // FIXME: I don't use data input, can this be bad?
+
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
+
+    Assert (phi_current.n_q_points == phi_reference.n_q_points, ExcInternalError());
+
+    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
       {
         // initialize on this cell
         phi_current.reinit(cell);
@@ -283,17 +310,7 @@ using namespace dealii;
 
         phi_current.distribute_local_to_global(dst);
         phi_current_s.distribute_local_to_global(dst);
-
-      }  // end of the loop over cells
-
-    // 3. communicate results with MPI
-    // dst.compress(VectorOperation::add);
-
-    // 4. constraints
-    const std::vector<unsigned int> &
-    constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
-    for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      dst(constrained_dofs[i]) += src(constrained_dofs[i]);
+      }
   }
 
 
