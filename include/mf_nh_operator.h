@@ -471,6 +471,7 @@ using namespace dealii;
                                              const unsigned int col) const
   {
     Assert (row == col, ExcNotImplemented());
+    (void)col;
     Assert (diagonal_is_available == true, ExcNotInitialized());
     return diagonal_entries->get_vector()(row);
   }
