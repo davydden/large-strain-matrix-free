@@ -403,6 +403,7 @@ using namespace dealii;
   {
     typedef VectorizedArray<number> NumberType;
     static constexpr number dim_f = dim;
+    static constexpr number two_over_dim = 2.0/dim;
     const number kappa = material->kappa;
     const number c_1   = material->c_1;
 
@@ -460,8 +461,6 @@ using namespace dealii;
           tau += tau_bar;
         }
 
-        const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
-
         // material part of the action of tangent:
         // The action of the fourth-order material elasticity tensor in the spatial setting
         // on symmetric tensor.
@@ -500,19 +499,18 @@ using namespace dealii;
           // The isochoric Kirchhoff stress
           // $\boldsymbol{\tau}_{\textrm{iso}} =
           // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
-          SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
-          tau_iso = tau_iso * (2.0 * c_1);
+          SymmetricTensor<2,dim,NumberType> tau_iso(tau_bar);
           for (unsigned int i = 0; i < dim; ++i)
             tau_iso[i][i] -= tr_tau_bar_dim;
 
           // term with deviatoric part of the tensor
-          jc_part += ((2.0 / dim) * tr_tau_bar) * dev_src;
+          jc_part += (two_over_dim * tr_tau_bar) * dev_src;
 
           // term with tau_iso_x_I + I_x_tau_iso
-          jc_part -= ((2.0 / dim) * tr) * tau_iso;
+          jc_part -= (two_over_dim * tr) * tau_iso;
           const NumberType tau_iso_src = tau_iso * symm_grad_Nx_v;
           for (unsigned int i = 0; i < dim; ++i)
-            jc_part[i][i] -= (2.0 / dim) * tau_iso_src;
+            jc_part[i][i] -= two_over_dim * tau_iso_src;
 
           // c_bar==0 so we don't have a term with it.
         }
@@ -535,6 +533,7 @@ using namespace dealii;
         // geometrical stress contribution
         // In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
         // the product is actually  GradN * tau^T but due to symmetry of tau we can do GradN * tau
+        const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
         const Tensor<2,dim,VectorizedArray<number>> geo = grad_Nx_v * tau_ns;
         phi_current.submit_gradient(
           geo * JxW_scale
