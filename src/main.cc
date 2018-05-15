@@ -22,6 +22,38 @@
 // own headers
 #include <mf_elasticity.h>
 
+#include <boost/preprocessor/facilities/empty.hpp>
+#include <boost/preprocessor/list/at.hpp>
+#include <boost/preprocessor/list/for_each_product.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
+#include <boost/preprocessor/tuple/to_list.hpp>
+
+#define GET_D(L)   BOOST_PP_TUPLE_ELEM(3,0,BOOST_PP_TUPLE_ELEM(1,0,L))
+#define GET_Q(L)   BOOST_PP_TUPLE_ELEM(3,1,BOOST_PP_TUPLE_ELEM(1,0,L))
+
+#define MF_DQ  BOOST_PP_TUPLE_TO_LIST(4,(\
+                                          (1,2),\
+                                          (2,3),\
+                                          (3,4),\
+                                          (4,5)\
+                                         ))
+
+#define DOIF2(R, L) \
+  else if ( (degree == GET_D(L)) && (n_q_points == GET_Q(L)) ) \
+    { \
+      Solid<2,GET_D(L),GET_Q(L),double> solid_2d(parameters); \
+      solid_2d.run(); \
+    } \
+
+
+#define DOIF3(R, L) \
+  else if ( (degree == GET_D(L)) && (n_q_points == GET_Q(L)) ) \
+    { \
+      Solid<3,GET_D(L),GET_Q(L),double> solid_3d(parameters); \
+      solid_3d.run(); \
+    } \
+
+
 // @sect3{Main function}
 // Lastly we provide the main driver function which appears
 // no different to the other tutorials.
@@ -30,7 +62,6 @@ int main (int argc, char *argv[])
   using namespace dealii;
   using namespace Cook_Membrane;
 
-  const unsigned int dim = 2;
   try
     {
       deallog.depth_console(0);
@@ -46,8 +77,42 @@ int main (int argc, char *argv[])
                                                             dealii::numbers::invalid_unsigned_int);
 
         typedef double NumberType;
-        Solid<dim,NumberType> solid_3d(parameters);
-        solid_3d.run();
+        const unsigned int degree = parameters.poly_degree;
+        const unsigned int n_q_points = parameters.quad_order;
+        if (parameters.dim == 2)
+          {
+            if (degree==0)
+              {
+                AssertThrow(false, ExcInternalError());
+              }
+            BOOST_PP_LIST_FOR_EACH_PRODUCT(DOIF2, 1, (MF_DQ))
+            else
+              {
+                AssertThrow(false,
+                            ExcMessage("Matrix-free calculations with degree="+
+                                        std::to_string(degree)+
+                                        " and n_q_points_1d="+
+                                        std::to_string(n_q_points)+
+                                        " are not supported."));
+              }
+          }
+        else if (parameters.dim == 3)
+          {
+            if (degree==0)
+              {
+                AssertThrow(false, ExcInternalError());
+              }
+            BOOST_PP_LIST_FOR_EACH_PRODUCT(DOIF3, 1, (MF_DQ))
+            else
+              {
+                AssertThrow(false,
+                            ExcMessage("Matrix-free calculations with degree="+
+                                        std::to_string(degree)+
+                                        " and n_q_points_1d="+
+                                        std::to_string(n_q_points)+
+                                        " are not supported."));
+              }
+          }
       }
     }
   catch (std::exception &exc)

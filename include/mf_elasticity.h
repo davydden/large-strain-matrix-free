@@ -123,6 +123,7 @@ namespace Cook_Membrane
     {
       unsigned int elements_per_edge;
       double       scale;
+      unsigned int dim;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -142,6 +143,9 @@ namespace Cook_Membrane
         prm.declare_entry("Grid scale", "1e-3",
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
+        prm.declare_entry("Dimension", "2",
+                  Patterns::Integer(2,3),
+                  "Dimension of the problem");
       }
       prm.leave_subsection();
     }
@@ -152,6 +156,7 @@ namespace Cook_Membrane
       {
         elements_per_edge = prm.get_integer("Elements per edge");
         scale = prm.get_double("Grid scale");
+        dim = prm.get_integer("Dimension");
       }
       prm.leave_subsection();
     }
@@ -453,16 +458,10 @@ namespace Cook_Membrane
 // hand. It follows the usual scheme in that all it really has is a
 // constructor, destructor and a <code>run()</code> function that dispatches
 // all the work to private functions of this class:
-  template <int dim,typename NumberType>
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
   class Solid
   {
   public:
-    // matrix free polynomial degree
-    static constexpr int degree = 1;
-
-    // matrix free quadrature order
-    static constexpr int n_q_points_1d = 2;
-
     Solid(const Parameters::AllParameters &parameters);
 
     virtual
@@ -630,8 +629,8 @@ namespace Cook_Membrane
 // @sect4{Public interface}
 
 // We initialise the Solid class using data extracted from the parameter file.
-  template <int dim,typename NumberType>
-  Solid<dim,NumberType>::Solid(const Parameters::AllParameters &parameters)
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  Solid<dim,degree,n_q_points_1d,NumberType>::Solid(const Parameters::AllParameters &parameters)
     :
     parameters(parameters),
     vol_reference (0.0),
@@ -660,8 +659,8 @@ namespace Cook_Membrane
   }
 
 // The class destructor simply clears the data held by the DOFHandler
-  template <int dim,typename NumberType>
-  Solid<dim,NumberType>::~Solid()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  Solid<dim,degree,n_q_points_1d,NumberType>::~Solid()
   {
     mf_nh_operator.clear();
 
@@ -682,8 +681,8 @@ namespace Cook_Membrane
 // before starting the simulation proper with the first time (and loading)
 // increment.
 //
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::run()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::run()
   {
     make_grid();
     system_setup();
@@ -747,8 +746,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   return pt_out;
 }
 
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::make_grid()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::make_grid()
   {
     // Divide the beam, but only along the x- and y-coordinate directions
     std::vector< unsigned int > repetitions(dim, parameters.elements_per_edge);
@@ -804,8 +803,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // Next we describe how the FE system is setup.  We first determine the number
 // of components per block. Since the displacement is a vector component, the
 // first dim components belong to it.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::system_setup()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::system_setup()
   {
     timer.enter_subsection("Setup system");
 
@@ -842,8 +841,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::setup_matrix_free(const int &it_nr)
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::setup_matrix_free(const int &it_nr)
   {
     timer.enter_subsection("Setup matrix-free");
 
@@ -885,9 +884,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // The next function is the driver method for the Newton-Raphson scheme. At
 // its top we create a new vector to store the current Newton update step,
 // reset the error storage objects and print solver header.
-  template <int dim,typename NumberType>
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void
-  Solid<dim,NumberType>::solve_nonlinear_timestep()
+  Solid<dim,degree,n_q_points_1d,NumberType>::solve_nonlinear_timestep()
   {
     std::cout << std::endl << "Timestep " << time.get_timestep() << " @ "
               << time.current() << "s" << std::endl;
@@ -1033,8 +1032,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // This program prints out data in a nice table that is updated
 // on a per-iteration basis. The next two functions set up the table
 // header and footer:
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::print_conv_header()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_header()
   {
     static const unsigned int l_width = 87;
 
@@ -1054,8 +1053,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 
 
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::print_conv_footer()
+  template <int dim,int degree,int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_footer()
   {
     static const unsigned int l_width = 87;
 
@@ -1073,8 +1072,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // At the end we also output the result that can be compared to that found in
 // the literature, namely the displacement at the upper right corner of the
 // beam.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::print_vertical_tip_displacement()
+  template <int dim,int degree,int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::print_vertical_tip_displacement()
   {
     static const unsigned int l_width = 87;
 
@@ -1135,8 +1134,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // error in the residual for the unconstrained degrees of freedom.  Note that to
 // do so, we need to ignore constrained DOFs by setting the residual in these
 // vector components to zero.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::get_error_residual(Errors &error_residual)
+  template <int dim,int degree,int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::get_error_residual(Errors &error_residual)
   {
     Vector<double> error_res(dof_handler_ref.n_dofs());
     error_res = system_rhs;
@@ -1150,8 +1149,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // @sect4{Solid::get_error_udpate}
 
 // Determine the true Newton update error for the problem
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::get_error_update(const Vector<double> &newton_update,
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::get_error_update(const Vector<double> &newton_update,
                                     Errors &error_update)
   {
     Vector<double> error_ud(dof_handler_ref.n_dofs());
@@ -1170,9 +1169,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // This function sets the total solution, which is valid at any Newton step.
 // This is required as, to reduce computational error, the total solution is
 // only updated at the end of the timestep.
-  template <int dim,typename NumberType>
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void
-  Solid<dim,NumberType>::set_total_solution()
+  Solid<dim,degree,n_q_points_1d,NumberType>::set_total_solution()
   {
     solution_total = solution_n;
     solution_total += solution_delta;
@@ -1180,8 +1179,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 // Note that we must ensure that
 // the matrix is reset before any assembly operations can occur.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::assemble_system()
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::assemble_system()
   {
     TimerOutput::Scope t (timer, "Assemble linear system");
     std::cout << " ASM " << std::flush;
@@ -1316,8 +1315,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // be specified at the zeroth iteration and subsequently no
 // additional contributions are to be made since the constraints
 // are already exactly satisfied.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::make_constraints(const int &it_nr)
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::make_constraints(const int &it_nr)
   {
     std::cout << " CST " << std::flush;
 
@@ -1392,9 +1391,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // @sect4{Solid::solve_linear_system}
 // As the system is composed of a single block, defining a solution scheme
 // for the linear problem is straight-forward.
-  template <int dim,typename NumberType>
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
   std::pair<unsigned int, double>
-  Solid<dim,NumberType>::solve_linear_system(Vector<double> &newton_update)
+  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(Vector<double> &newton_update)
   {
     Vector<double> A(dof_handler_ref.n_dofs());
     Vector<double> B(dof_handler_ref.n_dofs());
@@ -1480,8 +1479,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // Here we present how the results are written to file to be viewed
 // using ParaView or Visit. The method is similar to that shown in the
 // tutorials so will not be discussed in detail.
-  template <int dim,typename NumberType>
-  void Solid<dim,NumberType>::output_results() const
+  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  void Solid<dim,degree,n_q_points_1d,NumberType>::output_results() const
   {
     DataOut<dim> data_out;
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
