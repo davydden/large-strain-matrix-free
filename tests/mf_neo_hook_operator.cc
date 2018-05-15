@@ -207,7 +207,8 @@ void test_elasticity ()
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
-        const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material.get_tau(det_F,b_bar);
+        SymmetricTensor<2,dim,VectorizedArray<number>> tau;
+        material.get_tau(tau,det_F,b_bar);
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
@@ -262,7 +263,8 @@ void test_elasticity ()
             symm_grad_Nx_v_standard += src(local_dof_indices[k]) * symm_grad_Nx[k];
           }
 
-        const SymmetricTensor<2,dim,number> tau_standard = material_standard.get_tau(det_F_standard,b_bar_standard);
+        SymmetricTensor<2,dim,number> tau_standard;
+        material_standard.get_tau(tau_standard,det_F_standard,b_bar_standard);
         const Tensor<2,dim,number> tau_ns_standard (tau_standard);
         const double JxW = fe_values_ref.JxW(q);
 

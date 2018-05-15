@@ -381,7 +381,8 @@ using namespace dealii;
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
-        const SymmetricTensor<2,dim,VectorizedArray<number>> tau = material->get_tau(det_F,b_bar);
+        SymmetricTensor<2,dim,VectorizedArray<number>> tau;
+        material->get_tau(tau,det_F,b_bar);
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material->act_Jc(det_F,b_bar,symm_grad_Nx_v);

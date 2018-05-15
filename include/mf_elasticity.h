@@ -1238,7 +1238,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                   symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
                 }
 
-              const SymmetricTensor<2,dim,NumberType> tau = material->get_tau(det_F,b_bar);
+              SymmetricTensor<2,dim,NumberType> tau;
+              material->get_tau(tau,det_F,b_bar);
               const Tensor<2,dim,NumberType> tau_ns (tau);
               const double JxW = fe_values_ref.JxW(q_point);
 

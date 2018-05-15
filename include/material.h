@@ -94,12 +94,32 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
 
     // The second function determines the Kirchhoff stress $\boldsymbol{\tau}
     // = \boldsymbol{\tau}_{\textrm{iso}} + \boldsymbol{\tau}_{\textrm{vol}}$
-    SymmetricTensor<2,dim,NumberType>
-    get_tau(const NumberType                        &det_F,
+    void
+    get_tau(SymmetricTensor<2,dim,NumberType>       &res,
+            const NumberType                        &det_F,
             const SymmetricTensor<2,dim,NumberType> &b_bar)
     {
+      // FIXME: combine with the act_Jc where we need tau_bar etc:
+
       // See Holzapfel p231 eq6.98 onwards
-      return get_tau_vol(det_F) + get_tau_iso(b_bar);
+      res = NumberType();
+
+      // The following functions are used internally in determining the result
+      // of some of the public functions above. The first one determines the
+      // volumetric Kirchhoff stress $\boldsymbol{\tau}_{\textrm{vol}}$.
+      // Note the difference in its definition when compared to step-44.
+      const NumberType tmp = NumberType(get_dPsi_vol_dJ(det_F) * det_F);
+
+      // Next, determine the isochoric Kirchhoff stress
+      // $\boldsymbol{\tau}_{\textrm{iso}} =
+      // \mathcal{P}:\overline{\boldsymbol{\tau}}$
+
+      SymmetricTensor<2,dim,NumberType> tau_bar = b_bar * (2.0 * c_1);
+      NumberType tr = trace(tau_bar);
+      for (unsigned int d = 0; d < dim; ++d)
+        res[d][d] = tmp - divide_by_dim(tr,dim);
+
+      res += tau_bar;
     }
 
     // The action of the fourth-order material elasticity tensor in the spatial setting
@@ -193,33 +213,6 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     get_dPsi_vol_dJ(const NumberType &det_F) const
     {
         return (kappa / 2.0) * (det_F - 1.0 / det_F);
-    }
-
-    // The following functions are used internally in determining the result
-    // of some of the public functions above. The first one determines the
-    // volumetric Kirchhoff stress $\boldsymbol{\tau}_{\textrm{vol}}$.
-    // Note the difference in its definition when compared to step-44.
-    SymmetricTensor<2,dim,NumberType>
-    get_tau_vol(const NumberType &det_F) const
-    {
-        return NumberType(get_dPsi_vol_dJ(det_F) * det_F) * Physics::Elasticity::StandardTensors<dim>::I;
-    }
-
-    // Next, determine the isochoric Kirchhoff stress
-    // $\boldsymbol{\tau}_{\textrm{iso}} =
-    // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
-    SymmetricTensor<2,dim,NumberType>
-    get_tau_iso(const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      return Physics::Elasticity::StandardTensors<dim>::dev_P * get_tau_bar(b_bar);
-    }
-
-    // Then, determine the fictitious Kirchhoff stress
-    // $\overline{\boldsymbol{\tau}}$:
-    SymmetricTensor<2,dim,NumberType>
-    get_tau_bar(const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      return 2.0 * c_1 * b_bar;
     }
 
     // Second derivative of the volumetric free energy wrt $J$. We
