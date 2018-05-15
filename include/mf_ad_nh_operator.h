@@ -24,10 +24,10 @@ using namespace dealii;
    * Follow https://github.com/dealii/dealii/blob/master/tests/matrix_free/step-37.cc
    */
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  class NeoHookOperator : public Subscriptor
+  class NeoHookOperatorAD : public Subscriptor
   {
   public:
-    NeoHookOperator ();
+    NeoHookOperatorAD ();
 
     typedef typename Vector<number>::size_type size_type;
 
@@ -106,7 +106,7 @@ using namespace dealii;
 
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::NeoHookOperator ()
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::NeoHookOperatorAD ()
     :
     Subscriptor(),
     diagonal_is_available(false)
@@ -116,7 +116,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(Vector<number> &dst,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(Vector<number> &dst,
                                             const Vector<number> &src,
                                             const number omega) const
   {
@@ -130,7 +130,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   unsigned int
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::m () const
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::m () const
   {
     return data_reference.get_vector_partitioner()->size();
   }
@@ -139,7 +139,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   unsigned int
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::n () const
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::n () const
   {
     return data_reference.get_vector_partitioner()->size();
   }
@@ -148,7 +148,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::clear ()
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::clear ()
   {
     data_reference.reset();
     diagonal_is_available = false;
@@ -160,7 +160,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::initialize(
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::initialize(
                     std::shared_ptr<const MatrixFree<dim,number>> /*data_current_*/,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference_,
                     Vector<number> &displacement_)
@@ -173,7 +173,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material_)
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material_)
   {
     material = material_;
   }
@@ -182,7 +182,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<double>       &dst,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<double>       &dst,
                                                 const Vector<double> &src) const
   {
     dst = 0;
@@ -193,7 +193,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<double>       &dst,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<double>       &dst,
                                                  const Vector<double> &src) const
   {
     dst = 0;
@@ -204,7 +204,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<double>       &dst,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<double>       &dst,
                                                      const Vector<double> &src) const
   {
     vmult_add (dst,src);
@@ -214,7 +214,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<double>       &dst,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<double>       &dst,
                                                     const Vector<double> &src) const
   {
     // FIXME: can't use cell_loop as we need both matrix-free data objects.
@@ -247,7 +247,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
                            const MatrixFree<dim,number>    &/*data*/,
                            Vector<double>                      &dst,
                            const Vector<double>                &src,
@@ -280,7 +280,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
                               Vector<double>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const
@@ -348,7 +348,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::do_operation_on_cell(
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::do_operation_on_cell(
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_reference,
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_solution,
                              const unsigned int /*cell*/) const
@@ -410,7 +410,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::
   compute_diagonal()
   {
     typedef Vector<number> VectorType;
@@ -427,7 +427,7 @@ using namespace dealii;
     local_diagonal_cell(*data_reference, diagonal_vector, dummy,
                      std::make_pair<unsigned int,unsigned int>(0,data_reference->n_macro_cells()));
 
-    // data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
+    // data_current->cell_loop (&NeoHookOperatorAD::local_diagonal_cell,
     //                          this, diagonal_vector, dummy);
 
     // set_constrained_entries_to_one
@@ -457,7 +457,7 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   number
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::el (const unsigned int row,
+  NeoHookOperatorAD<dim,fe_degree,n_q_points_1d,number>::el (const unsigned int row,
                                              const unsigned int col) const
   {
     Assert (row == col, ExcNotImplemented());

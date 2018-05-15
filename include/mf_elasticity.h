@@ -55,6 +55,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
 #include <material.h>
 
@@ -227,7 +228,7 @@ namespace Cook_Membrane
       prm.enter_subsection("Linear solver");
       {
         prm.declare_entry("Solver type", "CG",
-                          Patterns::Selection("CG|Direct|MF_CG"),
+                          Patterns::Selection("CG|Direct|MF_CG|MF_AD_CG"),
                           "Type of solver used to solve the linear system");
 
         prm.declare_entry("Residual", "1e-6",
@@ -622,6 +623,7 @@ namespace Cook_Membrane
     std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
 
     NeoHookOperator<dim,degree,n_q_points_1d,double> mf_nh_operator;
+    NeoHookOperatorAD<dim,degree,n_q_points_1d,double> mf_ad_nh_operator;
   };
 
 // @sect3{Implementation of the <code>Solid</code> class}
@@ -656,6 +658,7 @@ namespace Cook_Membrane
     n_q_points_f (qf_face.size())
   {
     mf_nh_operator.set_material(material_vec);
+    mf_ad_nh_operator.set_material(material_vec);
   }
 
 // The class destructor simply clears the data held by the DOFHandler
@@ -663,6 +666,7 @@ namespace Cook_Membrane
   Solid<dim,degree,n_q_points_1d,NumberType>::~Solid()
   {
     mf_nh_operator.clear();
+    mf_ad_nh_operator.clear();
 
     mf_data_current.reset();
     mf_data_reference.reset();
@@ -865,6 +869,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
 
         mf_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
+        mf_ad_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
       }
     else
       {
@@ -877,6 +882,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
+    mf_ad_nh_operator.cache();
+    mf_ad_nh_operator.compute_diagonal();
 
     timer.leave_subsection();
   }
@@ -1409,7 +1416,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     {
       timer.enter_subsection("Linear solver");
       std::cout << " SLV " << std::flush;
-      if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG")
+      if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
         {
           const int solver_its = tangent_matrix.m()
                                  * parameters.max_iterations_lin;
@@ -1442,13 +1449,26 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             {
               AssertThrow(parameters.preconditioner_type == "jacobi",
                           ExcNotImplemented());
-              PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
-              preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
+              if (parameters.type_lin == "MF_AD_CG")
+                {
+                   PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
+                   preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
+ 
+                   solver_CG.solve(mf_ad_nh_operator,
+                     newton_update,
+                   system_rhs,
+                   preconditioner);
+                }
+              else
+                {
+                  PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
+                  preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
 
-              solver_CG.solve(mf_nh_operator,
-                newton_update,
-                system_rhs,
-                preconditioner);
+                  solver_CG.solve(mf_nh_operator,
+                    newton_update,
+                  system_rhs,
+                  preconditioner);
+              }
             }
 
           lin_it = solver_control.last_step();
