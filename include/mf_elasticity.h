@@ -123,6 +123,7 @@ namespace Cook_Membrane
     {
       unsigned int elements_per_edge;
       double       scale;
+      unsigned int dim;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -142,6 +143,9 @@ namespace Cook_Membrane
         prm.declare_entry("Grid scale", "1e-3",
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
+        prm.declare_entry("Dimension", "2",
+                  Patterns::Integer(2,3),
+                  "Dimension of the problem");
       }
       prm.leave_subsection();
     }
@@ -152,6 +156,7 @@ namespace Cook_Membrane
       {
         elements_per_edge = prm.get_integer("Elements per edge");
         scale = prm.get_double("Grid scale");
+        dim = prm.get_integer("Dimension");
       }
       prm.leave_subsection();
     }
@@ -164,7 +169,6 @@ namespace Cook_Membrane
     {
       double nu;
       double mu;
-      int dim;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -184,9 +188,6 @@ namespace Cook_Membrane
         prm.declare_entry("Shear modulus", "0.4225e6",
                           Patterns::Double(),
                           "Shear modulus");
-        prm.declare_entry("Dimension", "2",
-                          Patterns::Integer(2,3),
-                          "Dimension of the problem");
       }
       prm.leave_subsection();
     }
@@ -197,7 +198,6 @@ namespace Cook_Membrane
       {
         nu = prm.get_double("Poisson's ratio");
         mu = prm.get_double("Shear modulus");
-        dim = prm.get_integer("Dimension");
       }
       prm.leave_subsection();
     }
