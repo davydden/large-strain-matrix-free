@@ -856,7 +856,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     if (it_nr <= 1)
       {
         // solution_total is the point around which we linearize
-        eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(/*mapping degree*/1,dof_handler_ref,solution_total);
+        eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(degree,dof_handler_ref,solution_total);
 
         mf_data_current = std::make_shared<MatrixFree<dim,double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
@@ -1083,7 +1083,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       std::cout << "_";
     std::cout << std::endl;
 
-    Point<dim> soln_pt (48.0*parameters.scale,60.0*parameters.scale);
+    Point<dim> soln_pt;
+    soln_pt[0] = 48.0*parameters.scale;
+    soln_pt[1] = 60.0*parameters.scale;
     if (dim == 3)
       soln_pt[2] = 0.5*parameters.scale;
     double vertical_tip_displacement = 0.0;
