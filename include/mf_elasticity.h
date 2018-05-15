@@ -874,6 +874,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
       }
 
+    // need to cache prior to diagonal computations:
+    mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
 
     timer.leave_subsection();
