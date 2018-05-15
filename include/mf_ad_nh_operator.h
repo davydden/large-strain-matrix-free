@@ -39,6 +39,9 @@ using namespace dealii;
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
+    void cache()
+    {}
+
     void compute_diagonal();
 
     unsigned int m () const;
