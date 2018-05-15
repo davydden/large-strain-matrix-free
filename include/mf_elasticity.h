@@ -55,7 +55,7 @@
 #include <iostream>
 #include <fstream>
 
-#include <mf_nh_operator.h>
+#include <mf_ad_nh_operator.h>
 #include <material.h>
 
 using namespace dealii;
