@@ -30,7 +30,6 @@ int main (int argc, char *argv[])
   using namespace dealii;
   using namespace Cook_Membrane;
 
-  const unsigned int dim = 2;
   try
     {
       deallog.depth_console(0);
@@ -46,8 +45,16 @@ int main (int argc, char *argv[])
                                                             dealii::numbers::invalid_unsigned_int);
 
         typedef double NumberType;
-        Solid<dim,NumberType> solid_3d(parameters);
-        solid_3d.run();
+        if (parameters.dim == 3)
+          {
+            Solid<3,1,2,NumberType> solid_3d(parameters);
+            solid_3d.run();
+          }
+        else if (parameters.dim == 2)
+          {
+            Solid<2,1,2,NumberType> solid_2d(parameters);
+            solid_2d.run();
+          }
       }
     }
   catch (std::exception &exc)
