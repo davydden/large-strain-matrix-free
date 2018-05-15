@@ -186,11 +186,12 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
       return res;
     }
 
-  private:
     // Define constitutive model parameters $\kappa$ (bulk modulus) and the
     // neo-Hookean model parameter $c_1$:
     const double kappa;
     const double c_1;
+
+  private:
 
     // Value of the volumetric free energy
     NumberType
