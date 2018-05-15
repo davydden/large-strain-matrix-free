@@ -55,7 +55,7 @@ void test_elasticity ()
   parallel::distributed::Triangulation<dim> tria (MPI_COMM_WORLD);
   GridGenerator::hyper_cube (tria);
 
-  FESystem<dim> fe(FE_Q<dim>(fe_degree),dim);
+  FESystem<dim> fe(FE_Q<dim>{fe_degree},dim);
   DoFHandler<dim> dof (tria);
   dof.distribute_dofs(fe);
 
