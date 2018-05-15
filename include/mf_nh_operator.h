@@ -58,6 +58,11 @@ using namespace dealii;
                              const Vector<number> &src,
                              const number omega) const;
 
+    /**
+     * Cache a few things for the current displacement.
+     */
+    void cache();
+
   private:
 
     /**
@@ -95,6 +100,8 @@ using namespace dealii;
 
     std::shared_ptr<DiagonalMatrix<Vector<number>>>  inverse_diagonal_entries;
     std::shared_ptr<DiagonalMatrix<Vector<number>>>  diagonal_entries;
+
+    Table<2,VectorizedArray<number>> cached_jacobian;
 
     bool            diagonal_is_available;
   };
@@ -165,6 +172,36 @@ using namespace dealii;
     data_current = data_current_;
     data_reference = data_reference_;
     displacement = &displacement_;
+
+
+    const unsigned int n_cells = data_reference_->n_macro_cells();
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi (*data_reference_);
+    cached_jacobian.reinit(n_cells,phi.n_q_points);
+  }
+
+
+
+  template <int dim, int fe_degree, int n_q_points_1d, typename number>
+  void
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::cache()
+  {
+    const unsigned int n_cells = data_reference->n_macro_cells();
+
+    FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_reference(*data_reference);
+
+    for (unsigned int cell = 0; cell < n_cells; ++cell)
+      {
+        phi_reference.reinit(cell);
+        phi_reference.read_dof_values_plain(*displacement);
+        phi_reference.evaluate (false,true,false);
+        for (unsigned int q=0; q<phi_reference.n_q_points; ++q)
+          {
+            const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
+            const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+            const VectorizedArray<number>                        det_F  = determinant(F);
+            cached_jacobian(cell,q) = std::pow(det_F,-1.0/dim);
+          }
+      }
   }
 
 
@@ -362,7 +399,7 @@ using namespace dealii;
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_current,
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_current_s,
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_reference,
-                             const unsigned int /*cell*/) const
+                             const unsigned int cell) const
   {
     phi_reference.evaluate (false,true,false);
     phi_current.  evaluate (false,true,false);
@@ -374,7 +411,7 @@ using namespace dealii;
         const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
         const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
         const VectorizedArray<number>                        det_F  = determinant(F);
-        const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
+        const Tensor<2,dim,VectorizedArray<number>>          F_bar  = F * cached_jacobian(cell,q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
         // current configuration
