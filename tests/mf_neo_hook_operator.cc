@@ -316,6 +316,7 @@ void test_elasticity (const Function<dim> &displacement_function)
         // Grad u
         const Tensor<2,dim,number> &grad_u_standard = solution_grads_u_total[q];
         const Tensor<2,dim,number>  F_standard = Physics::Elasticity::Kinematics::F(grad_u_standard);
+        const SymmetricTensor<2,dim,number>  b_standard = Physics::Elasticity::Kinematics::b(F_standard);
         const number                det_F_standard = determinant(F_standard);
         const Tensor<2,dim,number> F_bar_standard = Physics::Elasticity::Kinematics::F_iso(F_standard);
         const SymmetricTensor<2,dim,number> b_bar_standard = Physics::Elasticity::Kinematics::b(F_bar_standard);
@@ -334,17 +335,17 @@ void test_elasticity (const Function<dim> &displacement_function)
           }
 
         SymmetricTensor<2,dim,number> tau_standard;
-        material_standard.get_tau(tau_standard,det_F_standard,b_bar_standard);
+        material_standard.get_tau(tau_standard,det_F_standard,b_bar_standard,b_standard);
         const Tensor<2,dim,number> tau_ns_standard (tau_standard);
         const double JxW = fe_values_ref.JxW(q);
 
-        const SymmetricTensor<2,dim,number> jc_part_standard = material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx_v_standard);
+        const SymmetricTensor<2,dim,number> jc_part_standard = material_standard.act_Jc(det_F_standard,b_bar_standard,b_standard,symm_grad_Nx_v_standard);
         const Tensor<2, dim> geo_standard_v = egeo_grad(grad_Nx_v_standard,tau_ns_standard);
 
         for (unsigned int i = 0; i < dofs_per_cell; ++i)
           for (unsigned int j = 0; j <= i; ++j)
             {
-              cell_matrix(i, j) += (symm_grad_Nx[i] * material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx[j]))
+              cell_matrix(i, j) += (symm_grad_Nx[i] * material_standard.act_Jc(det_F_standard,b_bar_standard,b_standard,symm_grad_Nx[j]))
                                    * JxW;
               const Tensor<2, dim> geo_standard = egeo_grad(grad_Nx[j],tau_ns_standard);
               cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;
