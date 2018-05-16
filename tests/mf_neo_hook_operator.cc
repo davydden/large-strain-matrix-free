@@ -19,6 +19,8 @@
 
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
+#include <deal.II/physics/transformations.h>
+
 
 #include <iostream>
 
@@ -27,10 +29,10 @@
 using namespace dealii;
 
 template <int dim>
-class Displacement : public Function<dim>
+class Shear : public Function<dim>
 {
 public:
-  Displacement() :
+  Shear() :
     Function<dim>(dim)
   {}
 
@@ -48,8 +50,76 @@ public:
 };
 
 
+
+template <int dim>
+class UniaxialTension : public Function<dim>
+{
+public:
+  UniaxialTension() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    // simple shear
+    static const double dx = 0.1;
+    if (component==0)
+      return p[0]*dx;
+    else
+      return 0.;
+  }
+};
+
+
+template <int dim> class Rotation;
+
+template <>
+class Rotation<2> : public Function<2>
+{
+public:
+  Rotation() :
+    Function<2>(2),
+    matrix(Physics::Transformations::Rotations::rotation_matrix_2d(0.5))
+  {}
+
+  double value (const Point<2> &p,
+                const unsigned int component) const
+  {
+    Tensor<1,2> t = p;
+    Tensor<1,2> res = matrix * t;
+    return res[component];
+  }
+
+  const Tensor<2,2> matrix;
+};
+
+
+
+template <>
+class Rotation<3> : public Function<3>
+{
+public:
+  Rotation() :
+    Function<3>(3)
+  {}
+
+  double value (const Point<3> &p,
+                const unsigned int component) const
+  {
+    const Tensor<2,3> matrix= Physics::Transformations::Rotations::rotation_matrix_3d(Point<3>(0,0,1.),0.6 * p[2]);
+    Tensor<1,3> t = p;
+    Tensor<1,3> res = matrix * t;
+    return res[component];
+  }
+};
+
+
+
+
 template <int dim, int fe_degree, int n_q_points_1d>
-void test_elasticity ()
+void test_elasticity (const Function<dim> &displacement_function)
 {
   typedef double number;
   parallel::distributed::Triangulation<dim> tria (MPI_COMM_WORLD);
@@ -80,7 +150,6 @@ void test_elasticity ()
                       MPI_COMM_WORLD);
 
   {
-    Displacement<dim> displacement_function;
     VectorTools::interpolate(dof,
                              displacement_function,
                              displacement);
@@ -411,11 +480,21 @@ int main (int argc, char **argv)
       deallog << std::setprecision(4);
 
       deallog.push("2d");
-      test_elasticity<2,1,2>();
+      test_elasticity<2,1,2>(Shear<2>());
+      test_elasticity<2,1,2>(UniaxialTension<2>());
+      deallog.pop();
+      deallog.push("3d");
+      test_elasticity<3,1,2>(Shear<3>());
+      test_elasticity<3,1,2>(UniaxialTension<3>());
+      test_elasticity<3,1,2>(Rotation<3>());
       deallog.pop();
     }
   else
     {
-      test_elasticity<2,1,2>();
+      test_elasticity<2,1,2>(Shear<2>());
+      test_elasticity<2,1,2>(UniaxialTension<2>());
+
+      test_elasticity<3,1,2>(Shear<3>());
+      test_elasticity<3,1,2>(UniaxialTension<3>());
     }
 }
