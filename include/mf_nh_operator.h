@@ -194,13 +194,29 @@ using namespace dealii;
         phi_reference.reinit(cell);
         phi_reference.read_dof_values_plain(*displacement);
         phi_reference.evaluate (false,true,false);
-        for (unsigned int q=0; q<phi_reference.n_q_points; ++q)
-          {
-            const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
-            const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
-            const VectorizedArray<number>                        det_F  = determinant(F);
-            cached_scalar(cell,q) = std::pow(det_F,-1.0/dim);
-          }
+
+        if (material->formulation == 0)
+        {
+          for (unsigned int q=0; q<phi_reference.n_q_points; ++q)
+            {
+              const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
+              const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+              const VectorizedArray<number>                        det_F  = determinant(F);
+              cached_scalar(cell,q) = std::pow(det_F,-1.0/dim);
+            }
+        }
+        else if (material->formulation == 1)
+        { 
+          for (unsigned int q=0; q<phi_reference.n_q_points; ++q)
+            {
+              const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
+              const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+              const VectorizedArray<number>                        det_F  = determinant(F);
+              cached_scalar(cell,q) = std::log(det_F);
+            }
+        }
+        else
+          AssertThrow(false, ExcMessage("Unknown material formulation"));
       }
   }
 
@@ -563,14 +579,14 @@ using namespace dealii;
           SymmetricTensor<2,dim,NumberType> tau;
           {
             tau = mu*b;
-            const NumberType tmp = mu - 2.0*lambda*std::log(det_F);
+            const NumberType tmp = mu - 2.0*lambda*cached_scalar;
             for (unsigned int d = 0; d < dim; ++d)
               tau[d][d] -= tmp;
           }
 
           SymmetricTensor<2,dim,VectorizedArray<number>> jc_part;
           {
-            jc_part = 2.0*(mu - 2.0*lambda*std::log(det_F))*symm_grad_Nx_v;
+            jc_part = 2.0*(mu - 2.0*lambda*cached_scalar)*symm_grad_Nx_v;
             const NumberType tmp = 2.0*lambda*trace(symm_grad_Nx_v);
             for (unsigned int i = 0; i < dim; ++i)
               jc_part[i][i] += tmp;
