@@ -144,6 +144,7 @@ namespace Cook_Membrane
         prm.declare_entry("Grid scale", "1e-3",
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
+
         prm.declare_entry("Dimension", "2",
                   Patterns::Integer(2,3),
                   "Dimension of the problem");
@@ -170,6 +171,7 @@ namespace Cook_Membrane
     {
       double nu;
       double mu;
+      unsigned int material_formulation;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -189,6 +191,10 @@ namespace Cook_Membrane
         prm.declare_entry("Shear modulus", "0.4225e6",
                           Patterns::Double(),
                           "Shear modulus");
+
+        prm.declare_entry("Formulation", "0",
+                          Patterns::Integer(0,1),
+                          "Formulation of the energy function");
       }
       prm.leave_subsection();
     }
@@ -199,6 +205,7 @@ namespace Cook_Membrane
       {
         nu = prm.get_double("Poisson's ratio");
         mu = prm.get_double("Shear modulus");
+        material_formulation = prm.get_integer("Formulation");
       }
       prm.leave_subsection();
     }
@@ -649,9 +656,9 @@ namespace Cook_Membrane
     dofs_per_cell (fe.dofs_per_cell),
     u_fe(first_u_component),
     material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
-      parameters.mu,parameters.nu)),
+      parameters.mu,parameters.nu,parameters.material_formulation)),
     material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
-      parameters.mu,parameters.nu)),
+      parameters.mu,parameters.nu,parameters.material_formulation)),
     qf_cell(n_q_points_1d),
     qf_face(n_q_points_1d),
     n_q_points (qf_cell.size()),

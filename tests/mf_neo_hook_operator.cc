@@ -204,8 +204,9 @@ void test_elasticity (const Function<dim> &displacement_function)
 
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
-  Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
-  Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu);
+  const unsigned int material_formulation = 0;
+  Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu,material_formulation);
+  Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu,material_formulation);
 
   // before going into the cell loop, for Eulerian part one should reinitialize MatrixFree with
   // initialize_indices=false

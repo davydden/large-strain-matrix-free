@@ -44,6 +44,9 @@ subsection Material properties
 
   # Shear modulus
   set Shear modulus   = 0.4225e6
+
+  # Formulation of the energy function
+  set Formulation = 0
 end
 
 

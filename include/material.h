@@ -72,10 +72,12 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
   {
   public:
     Material_Compressible_Neo_Hook_One_Field(const double mu,
-                                             const double nu)
+                                             const double nu,
+                                             const unsigned int formulation)
       :
       kappa((2.0 * mu * (1.0 + nu)) / (3.0 * (1.0 - 2.0 * nu))),
-      c_1(mu / 2.0)
+      c_1(mu / 2.0),
+      formulation (formulation)
     {
       Assert(kappa > 0, ExcInternalError());
     }
@@ -89,7 +91,14 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     get_Psi(const NumberType                        &det_F,
             const SymmetricTensor<2,dim,NumberType> &b_bar) const
     {
-      return get_Psi_vol(det_F) + get_Psi_iso(b_bar);
+      if (formulation == 0)
+        return get_Psi_vol(det_F) + get_Psi_iso(b_bar);
+      else if (formulation == 1)
+      {
+        AssertThrow(formulation != 1, ExcNotImplemented());
+      }
+      else
+        AssertThrow(false, ExcMessage("Unknown material formulation"));
     }
 
     // The second function determines the Kirchhoff stress $\boldsymbol{\tau}
@@ -100,27 +109,36 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
             const OutputType                        &det_F,
             const SymmetricTensor<2,dim,OutputType> &b_bar)
     {
-      // FIXME: combine with the act_Jc where we need tau_bar etc:
+      if (formulation == 0)
+      {
+        // FIXME: combine with the act_Jc where we need tau_bar etc:
 
-      // See Holzapfel p231 eq6.98 onwards
-      res = OutputType();
+        // See Holzapfel p231 eq6.98 onwards
+        res = OutputType();
 
-      // The following functions are used internally in determining the result
-      // of some of the public functions above. The first one determines the
-      // volumetric Kirchhoff stress $\boldsymbol{\tau}_{\textrm{vol}}$.
-      // Note the difference in its definition when compared to step-44.
-      const OutputType tmp = OutputType(get_dPsi_vol_dJ(det_F) * det_F);
+        // The following functions are used internally in determining the result
+        // of some of the public functions above. The first one determines the
+        // volumetric Kirchhoff stress $\boldsymbol{\tau}_{\textrm{vol}}$.
+        // Note the difference in its definition when compared to step-44.
+        const OutputType tmp = OutputType(get_dPsi_vol_dJ(det_F) * det_F);
 
-      // Next, determine the isochoric Kirchhoff stress
-      // $\boldsymbol{\tau}_{\textrm{iso}} =
-      // \mathcal{P}:\overline{\boldsymbol{\tau}}$
+        // Next, determine the isochoric Kirchhoff stress
+        // $\boldsymbol{\tau}_{\textrm{iso}} =
+        // \mathcal{P}:\overline{\boldsymbol{\tau}}$
 
-      SymmetricTensor<2,dim,OutputType> tau_bar = b_bar * (2.0 * c_1);
-      OutputType tr = trace(tau_bar);
-      for (unsigned int d = 0; d < dim; ++d)
-        res[d][d] = tmp - divide_by_dim(tr,dim);
+        SymmetricTensor<2,dim,OutputType> tau_bar = b_bar * (2.0 * c_1);
+        OutputType tr = trace(tau_bar);
+        for (unsigned int d = 0; d < dim; ++d)
+          res[d][d] = tmp - divide_by_dim(tr,dim);
 
-      res += tau_bar;
+        res += tau_bar;
+      }
+      else if (formulation == 1)
+      {
+        AssertThrow(formulation != 1, ExcNotImplemented());
+      }
+      else
+        AssertThrow(false, ExcMessage("Unknown material formulation"));
     }
 
     // The action of the fourth-order material elasticity tensor in the spatial setting
@@ -135,55 +153,66 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
            const SymmetricTensor<2,dim,NumberType> &src) const
     {
       SymmetricTensor<2,dim,NumberType> res;
-      const NumberType tr = trace(src);
 
-      SymmetricTensor<2,dim,NumberType> dev_src(src);
-      for (unsigned int i = 0; i < dim; ++i)
-        dev_src[i][i] -= divide_by_dim(tr,dim);
+      if (formulation == 0)
+      {
+        const NumberType tr = trace(src);
 
-      // 1) The volumetric part of the tangent $J
-      // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
-      // definition when compared to step-44. The extra terms result from two
-      // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on
-      // $\boldsymbol{F}$.
-      // See Holzapfel p265
+        SymmetricTensor<2,dim,NumberType> dev_src(src);
+        for (unsigned int i = 0; i < dim; ++i)
+          dev_src[i][i] -= divide_by_dim(tr,dim);
 
-      // the term with the 4-th order symmetric tensor which gives symmetric
-      // part of the tensor it acts on
-      res = src;
-      res*= - det_F*(2.0 * get_dPsi_vol_dJ(det_F));
+        // 1) The volumetric part of the tangent $J
+        // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
+        // definition when compared to step-44. The extra terms result from two
+        // quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being dependent on
+        // $\boldsymbol{F}$.
+        // See Holzapfel p265
 
-      // term with IxI results in trace of the tensor times I
-      const NumberType tmp = det_F * (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F)) * tr;
-      for (unsigned int i = 0; i < dim; ++i)
-        res[i][i] += tmp;
+        // the term with the 4-th order symmetric tensor which gives symmetric
+        // part of the tensor it acts on
+        res = src;
+        res*= - det_F*(2.0 * get_dPsi_vol_dJ(det_F));
 
-      // 2) the isochoric part of the tangent $J
-      // \mathfrak{c}_\textrm{iso}$:
+        // term with IxI results in trace of the tensor times I
+        const NumberType tmp = det_F * (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F)) * tr;
+        for (unsigned int i = 0; i < dim; ++i)
+          res[i][i] += tmp;
 
-      // trace of fictitious Kirchhoff stress
-      // $\overline{\boldsymbol{\tau}}$:
-      // 2.0 * c_1 * b_bar
-      const NumberType tr_tau_bar = trace(b_bar) * 2.0 * c_1;
+        // 2) the isochoric part of the tangent $J
+        // \mathfrak{c}_\textrm{iso}$:
 
-      // The isochoric Kirchhoff stress
-      // $\boldsymbol{\tau}_{\textrm{iso}} =
-      // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
-      SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
-      tau_iso = tau_iso * (2.0 * c_1);
-      for (unsigned int i = 0; i < dim; ++i)
-        tau_iso[i][i] -= divide_by_dim(tr_tau_bar,dim);
+        // trace of fictitious Kirchhoff stress
+        // $\overline{\boldsymbol{\tau}}$:
+        // 2.0 * c_1 * b_bar
+        const NumberType tr_tau_bar = trace(b_bar) * 2.0 * c_1;
 
-      // term with deviatoric part of the tensor
-      res += ((2.0 / dim) * tr_tau_bar) * dev_src;
+        // The isochoric Kirchhoff stress
+        // $\boldsymbol{\tau}_{\textrm{iso}} =
+        // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
+        SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
+        tau_iso = tau_iso * (2.0 * c_1);
+        for (unsigned int i = 0; i < dim; ++i)
+          tau_iso[i][i] -= divide_by_dim(tr_tau_bar,dim);
 
-      // term with tau_iso_x_I + I_x_tau_iso
-      res -= ((2.0 / dim) * tr) * tau_iso;
-      const NumberType tau_iso_src = tau_iso * src;
-      for (unsigned int i = 0; i < dim; ++i)
-        res[i][i] -= (2.0 / dim) * tau_iso_src;
+        // term with deviatoric part of the tensor
+        res += ((2.0 / dim) * tr_tau_bar) * dev_src;
 
-      // c_bar==0 so we don't have a term with it.
+        // term with tau_iso_x_I + I_x_tau_iso
+        res -= ((2.0 / dim) * tr) * tau_iso;
+        const NumberType tau_iso_src = tau_iso * src;
+        for (unsigned int i = 0; i < dim; ++i)
+          res[i][i] -= (2.0 / dim) * tau_iso_src;
+
+        // c_bar==0 so we don't have a term with it.
+      }
+      else if (formulation == 1)
+      {
+        AssertThrow(formulation != 1, ExcNotImplemented()); 
+      }
+      else
+        AssertThrow(false, ExcMessage("Unknown material formulation"));
+
       return res;
     }
 
@@ -191,6 +220,7 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     // neo-Hookean model parameter $c_1$:
     const double kappa;
     const double c_1;
+    const unsigned int formulation;
 
   private:
 
