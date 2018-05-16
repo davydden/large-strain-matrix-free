@@ -571,7 +571,6 @@ using namespace dealii;
           const Tensor<2,dim,NumberType>         &grad_u = phi_reference.get_gradient(q);
           const Tensor<2,dim,NumberType>          F      = Physics::Elasticity::Kinematics::F(grad_u);
           const SymmetricTensor<2,dim,NumberType> b      = Physics::Elasticity::Kinematics::b(F);
-          const NumberType                        det_F  = determinant(F);
 
           const Tensor<2,dim,NumberType>          &grad_Nx_v      = phi_current.get_gradient(q);
           const SymmetricTensor<2,dim,NumberType> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
@@ -579,14 +578,14 @@ using namespace dealii;
           SymmetricTensor<2,dim,NumberType> tau;
           {
             tau = mu*b;
-            const NumberType tmp = mu - 2.0*lambda*cached_scalar;
+            const NumberType tmp = mu - 2.0*lambda*cached_scalar(cell,q);
             for (unsigned int d = 0; d < dim; ++d)
               tau[d][d] -= tmp;
           }
 
           SymmetricTensor<2,dim,VectorizedArray<number>> jc_part;
           {
-            jc_part = 2.0*(mu - 2.0*lambda*cached_scalar)*symm_grad_Nx_v;
+            jc_part = 2.0*(mu - 2.0*lambda*cached_scalar(cell,q))*symm_grad_Nx_v;
             const NumberType tmp = 2.0*lambda*trace(symm_grad_Nx_v);
             for (unsigned int i = 0; i < dim; ++i)
               jc_part[i][i] += tmp;
