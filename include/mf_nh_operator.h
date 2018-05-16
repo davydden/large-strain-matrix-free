@@ -101,7 +101,7 @@ using namespace dealii;
     std::shared_ptr<DiagonalMatrix<Vector<number>>>  inverse_diagonal_entries;
     std::shared_ptr<DiagonalMatrix<Vector<number>>>  diagonal_entries;
 
-    Table<2,VectorizedArray<number>> cached_jacobian;
+    Table<2,VectorizedArray<number>> cached_scalar;
 
     bool            diagonal_is_available;
   };
@@ -176,7 +176,7 @@ using namespace dealii;
 
     const unsigned int n_cells = data_reference_->n_macro_cells();
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi (*data_reference_);
-    cached_jacobian.reinit(n_cells,phi.n_q_points);
+    cached_scalar.reinit(n_cells,phi.n_q_points);
   }
 
 
@@ -199,7 +199,7 @@ using namespace dealii;
             const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
             const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
             const VectorizedArray<number>                        det_F  = determinant(F);
-            cached_jacobian(cell,q) = std::pow(det_F,-1.0/dim);
+            cached_scalar(cell,q) = std::pow(det_F,-1.0/dim);
           }
       }
   }
@@ -421,7 +421,7 @@ using namespace dealii;
           const Tensor<2,dim,NumberType>         &grad_u = phi_reference.get_gradient(q);
           const Tensor<2,dim,NumberType>          F      = Physics::Elasticity::Kinematics::F(grad_u);
           const NumberType                        det_F  = determinant(F);
-          const Tensor<2,dim,NumberType>          F_bar  = F * cached_jacobian(cell,q);
+          const Tensor<2,dim,NumberType>          F_bar  = F * cached_scalar(cell,q);
           const SymmetricTensor<2,dim,NumberType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
           // current configuration
