@@ -375,12 +375,13 @@ using namespace dealii;
 
           // reference configuration:
           const Tensor<2,dim,ADType>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+          const SymmetricTensor<2,dim,ADType> b      = Physics::Elasticity::Kinematics::b(F);
           const ADType                        det_F  = determinant(F);
           const Tensor<2,dim,ADType>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
           const SymmetricTensor<2,dim,ADType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
           SymmetricTensor<2,dim,ADType> tau;
-          material->get_tau(tau,det_F,b_bar);
+          material->get_tau(tau,det_F,b_bar,b);
 
           Tensor<2, dim, ADType> P = tau * transpose(invert(F));
           for (unsigned int idx_i =0; idx_i < P.n_independent_components; ++idx_i)

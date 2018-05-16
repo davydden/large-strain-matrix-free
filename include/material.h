@@ -77,9 +77,12 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
       :
       kappa((2.0 * mu * (1.0 + nu)) / (3.0 * (1.0 - 2.0 * nu))),
       c_1(mu / 2.0),
+      mu (mu),
+      lambda ((2.0*mu*nu)/(1.0-2.0*nu)),
       formulation (formulation)
     {
       Assert(kappa > 0, ExcInternalError());
+      Assert(std::abs((lambda + 2.0*mu/3.0) - kappa)< 1e-6, ExcInternalError());
     }
 
     ~Material_Compressible_Neo_Hook_One_Field()
@@ -89,13 +92,15 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     // $\Psi = \Psi_{\textrm{iso}} + \Psi_{\textrm{vol}}$.
     NumberType
     get_Psi(const NumberType                        &det_F,
-            const SymmetricTensor<2,dim,NumberType> &b_bar) const
+            const SymmetricTensor<2,dim,NumberType> &b_bar,
+            const SymmetricTensor<2,dim,NumberType> &b) const
     {
       if (formulation == 0)
         return get_Psi_vol(det_F) + get_Psi_iso(b_bar);
       else if (formulation == 1)
       {
-        AssertThrow(formulation != 1, ExcNotImplemented());
+        const NumberType ln_J = std::log(det_F);
+        return mu/2.0*(trace(b) - dim - 2.0*ln_J) - lambda*ln_J*ln_J;
       }
       else
         AssertThrow(false, ExcMessage("Unknown material formulation"));
@@ -105,16 +110,18 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     // = \boldsymbol{\tau}_{\textrm{iso}} + \boldsymbol{\tau}_{\textrm{vol}}$
     template <typename OutputType>
     void
-    get_tau(SymmetricTensor<2,dim,OutputType>       &res,
+    get_tau(SymmetricTensor<2,dim,OutputType>       &tau,
             const OutputType                        &det_F,
-            const SymmetricTensor<2,dim,OutputType> &b_bar)
+            const SymmetricTensor<2,dim,OutputType> &b_bar,
+            const SymmetricTensor<2,dim,OutputType> &b)
     {
+      tau = OutputType();
+
       if (formulation == 0)
       {
         // FIXME: combine with the act_Jc where we need tau_bar etc:
 
         // See Holzapfel p231 eq6.98 onwards
-        res = OutputType();
 
         // The following functions are used internally in determining the result
         // of some of the public functions above. The first one determines the
@@ -129,13 +136,20 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
         SymmetricTensor<2,dim,OutputType> tau_bar = b_bar * (2.0 * c_1);
         OutputType tr = trace(tau_bar);
         for (unsigned int d = 0; d < dim; ++d)
-          res[d][d] = tmp - divide_by_dim(tr,dim);
+          tau[d][d] = tmp - divide_by_dim(tr,dim);
 
-        res += tau_bar;
+        tau += tau_bar;
       }
       else if (formulation == 1)
       {
-        AssertThrow(formulation != 1, ExcNotImplemented());
+        // const NumberType tmp_1 = mu - 2.0*lambda*std::log(det_F);
+        // tau  = mu*b;
+        // tau -= tmp_1*Physics::Elasticity::StandardTensors<dim>::I;
+
+        tau = mu*b;
+        const OutputType tmp = mu - 2.0*lambda*std::log(det_F);
+        for (unsigned int d = 0; d < dim; ++d)
+          tau[d][d] -= tmp;
       }
       else
         AssertThrow(false, ExcMessage("Unknown material formulation"));
@@ -150,6 +164,7 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     SymmetricTensor<2,dim,NumberType>
     act_Jc(const NumberType                        &det_F,
            const SymmetricTensor<2,dim,NumberType> &b_bar,
+           const SymmetricTensor<2,dim,NumberType> &/*b*/,
            const SymmetricTensor<2,dim,NumberType> &src) const
     {
       SymmetricTensor<2,dim,NumberType> res;
@@ -208,7 +223,16 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
       }
       else if (formulation == 1)
       {
-        AssertThrow(formulation != 1, ExcNotImplemented()); 
+        // SymmetricTensor<4,dim,NumberType> Jc;
+        // const NumberType tmp_1 = mu - 2.0*lambda*std::log(det_F);
+        // Jc += 2.0*tmp_1*Physics::Elasticity::StandardTensors<dim>::S;
+        // Jc += 2.0*lambda*Physics::Elasticity::StandardTensors<dim>::IxI;
+        // res = Jc*src;
+
+        res = 2.0*(mu - 2.0*lambda*std::log(det_F))*src;
+        const NumberType tmp = 2.0*lambda*trace(src);
+        for (unsigned int i = 0; i < dim; ++i)
+          res[i][i] += tmp;
       }
       else
         AssertThrow(false, ExcMessage("Unknown material formulation"));
@@ -220,6 +244,8 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
     // neo-Hookean model parameter $c_1$:
     const double kappa;
     const double c_1;
+    const double mu;
+    const double lambda;
     const unsigned int formulation;
 
   private:
