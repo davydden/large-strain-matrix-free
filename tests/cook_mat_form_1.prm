@@ -2,27 +2,25 @@
 # ---------------------
 subsection Finite element system
   # Displacement system polynomial order
-  set Polynomial degree = 2
+  set Polynomial degree = 1
 
   # Gauss quadrature order
-  set Quadrature order  = 3
+  set Quadrature order  = 2
 end
 
 
 subsection Geometry
   # Number of elements per long edge of the beam
-  set Elements per edge  = 12 # at 13 fails
+  set Elements per edge  = 32
 
   # Global grid scaling factor
   set Grid scale         = 1e-3
-
-  set Dimension = 3
 end
 
 
 subsection Linear solver
   # Linear solver iterations (multiples of the system matrix size)
-  set Max iteration multiplier  = 10
+  set Max iteration multiplier  = 1
 
   # Linear solver residual (scaled by residual norm)
   set Residual                  = 1e-6
@@ -34,7 +32,7 @@ subsection Linear solver
   set Preconditioner relaxation  = 0.65
 
   # Type of solver used to solve the linear system
-  set Solver type               = MF_CG
+  set Solver type               = CG
 end
 
 
@@ -46,7 +44,7 @@ subsection Material properties
   set Shear modulus   = 0.4225e6
 
   # Formulation of the energy function
-  set Formulation = 0
+  set Formulation = 1
 end
 
 
@@ -64,7 +62,7 @@ end
 
 subsection Time
   # End time
-  set End time       = 0.2
+  set End time       = 1
 
   # Time step size
   set Time step size = 0.1

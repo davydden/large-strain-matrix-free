@@ -204,8 +204,9 @@ void test_elasticity (const Function<dim> &displacement_function)
 
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
-  Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu);
-  Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu);
+  const unsigned int material_formulation = 0;
+  Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu,material_formulation);
+  Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu,material_formulation );
 
   // before going into the cell loop, for Eulerian part one should reinitialize MatrixFree with
   // initialize_indices=false
@@ -267,6 +268,7 @@ void test_elasticity (const Function<dim> &displacement_function)
         // reference configuration:
         const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
         const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> b      = Physics::Elasticity::Kinematics::b(F);
         const VectorizedArray<number>                        det_F  = determinant(F);
         const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
         const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
@@ -276,10 +278,10 @@ void test_elasticity (const Function<dim> &displacement_function)
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
         SymmetricTensor<2,dim,VectorizedArray<number>> tau;
-        material.get_tau(tau,det_F,b_bar);
+        material.get_tau(tau,det_F,b_bar,b);
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
 
-        const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,symm_grad_Nx_v);
+        const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,b,symm_grad_Nx_v);
 
         const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
         VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
@@ -314,6 +316,7 @@ void test_elasticity (const Function<dim> &displacement_function)
         // Grad u
         const Tensor<2,dim,number> &grad_u_standard = solution_grads_u_total[q];
         const Tensor<2,dim,number>  F_standard = Physics::Elasticity::Kinematics::F(grad_u_standard);
+        const SymmetricTensor<2,dim,number>  b_standard = Physics::Elasticity::Kinematics::b(F_standard);
         const number                det_F_standard = determinant(F_standard);
         const Tensor<2,dim,number> F_bar_standard = Physics::Elasticity::Kinematics::F_iso(F_standard);
         const SymmetricTensor<2,dim,number> b_bar_standard = Physics::Elasticity::Kinematics::b(F_bar_standard);
@@ -332,17 +335,17 @@ void test_elasticity (const Function<dim> &displacement_function)
           }
 
         SymmetricTensor<2,dim,number> tau_standard;
-        material_standard.get_tau(tau_standard,det_F_standard,b_bar_standard);
+        material_standard.get_tau(tau_standard,det_F_standard,b_bar_standard,b_standard);
         const Tensor<2,dim,number> tau_ns_standard (tau_standard);
         const double JxW = fe_values_ref.JxW(q);
 
-        const SymmetricTensor<2,dim,number> jc_part_standard = material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx_v_standard);
+        const SymmetricTensor<2,dim,number> jc_part_standard = material_standard.act_Jc(det_F_standard,b_bar_standard,b_standard,symm_grad_Nx_v_standard);
         const Tensor<2, dim> geo_standard_v = egeo_grad(grad_Nx_v_standard,tau_ns_standard);
 
         for (unsigned int i = 0; i < dofs_per_cell; ++i)
           for (unsigned int j = 0; j <= i; ++j)
             {
-              cell_matrix(i, j) += (symm_grad_Nx[i] * material_standard.act_Jc(det_F_standard,b_bar_standard,symm_grad_Nx[j]))
+              cell_matrix(i, j) += (symm_grad_Nx[i] * material_standard.act_Jc(det_F_standard,b_bar_standard,b_standard,symm_grad_Nx[j]))
                                    * JxW;
               const Tensor<2, dim> geo_standard = egeo_grad(grad_Nx[j],tau_ns_standard);
               cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;

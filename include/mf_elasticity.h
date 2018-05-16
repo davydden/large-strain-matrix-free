@@ -144,6 +144,7 @@ namespace Cook_Membrane
         prm.declare_entry("Grid scale", "1e-3",
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
+
         prm.declare_entry("Dimension", "2",
                   Patterns::Integer(2,3),
                   "Dimension of the problem");
@@ -170,6 +171,7 @@ namespace Cook_Membrane
     {
       double nu;
       double mu;
+      unsigned int material_formulation;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -189,6 +191,10 @@ namespace Cook_Membrane
         prm.declare_entry("Shear modulus", "0.4225e6",
                           Patterns::Double(),
                           "Shear modulus");
+
+        prm.declare_entry("Formulation", "0",
+                          Patterns::Integer(0,1),
+                          "Formulation of the energy function");
       }
       prm.leave_subsection();
     }
@@ -199,6 +205,7 @@ namespace Cook_Membrane
       {
         nu = prm.get_double("Poisson's ratio");
         mu = prm.get_double("Shear modulus");
+        material_formulation = prm.get_integer("Formulation");
       }
       prm.leave_subsection();
     }
@@ -649,9 +656,9 @@ namespace Cook_Membrane
     dofs_per_cell (fe.dofs_per_cell),
     u_fe(first_u_component),
     material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
-      parameters.mu,parameters.nu)),
+      parameters.mu,parameters.nu,parameters.material_formulation)),
     material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
-      parameters.mu,parameters.nu)),
+      parameters.mu,parameters.nu,parameters.material_formulation)),
     qf_cell(n_q_points_1d),
     qf_face(n_q_points_1d),
     n_q_points (qf_cell.size()),
@@ -1236,6 +1243,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             {
               const Tensor<2,dim,NumberType> &grad_u = solution_grads_u_total[q_point];
               const Tensor<2,dim,NumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
+              const SymmetricTensor<2,dim,NumberType> b = Physics::Elasticity::Kinematics::b(F);
               const NumberType               det_F = determinant(F);
               const Tensor<2,dim,NumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
               const SymmetricTensor<2,dim,NumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
@@ -1249,7 +1257,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 }
 
               SymmetricTensor<2,dim,NumberType> tau;
-              material->get_tau(tau,det_F,b_bar);
+              material->get_tau(tau,det_F,b_bar,b);
               const Tensor<2,dim,NumberType> tau_ns (tau);
               const double JxW = fe_values_ref.JxW(q_point);
 
@@ -1263,7 +1271,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                       // contribution. It comprises a material contribution, and a
                       // geometrical stress contribution which is only added along
                       // the local matrix diagonals:
-                      cell_matrix(i, j) += (symm_grad_Nx[i] * material->act_Jc(det_F,b_bar,symm_grad_Nx[j])) // The material contribution:
+                      cell_matrix(i, j) += (symm_grad_Nx[i] * material->act_Jc(det_F,b_bar,b,symm_grad_Nx[j])) // The material contribution:
                                             * JxW;
                       // geometrical stress contribution
                       const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
