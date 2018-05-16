@@ -63,7 +63,6 @@ public:
                 const unsigned int component) const
   {
     Assert (dim>=2, ExcNotImplemented());
-    // simple shear
     static const double dx = 0.1;
     if (component==0)
       return p[0]*dx;
