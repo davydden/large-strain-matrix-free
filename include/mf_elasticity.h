@@ -889,8 +889,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
-    mf_ad_nh_operator.cache();
-    mf_ad_nh_operator.compute_diagonal();
+    if (parameters.type_lin =="MF_AD_CG")
+      {
+        mf_ad_nh_operator.cache();
+        mf_ad_nh_operator.compute_diagonal();
+      }
 
     timer.leave_subsection();
   }
@@ -1461,7 +1464,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 {
                    PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
                    preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
- 
+
                    solver_CG.solve(mf_ad_nh_operator,
                      newton_update,
                    system_rhs,
