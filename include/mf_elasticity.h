@@ -41,6 +41,15 @@
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/constraint_matrix.h>
 
+#include <deal.II/multigrid/mg_constrained_dofs.h>
+#include <deal.II/multigrid/multigrid.h>
+#include <deal.II/multigrid/mg_transfer.h>
+#include <deal.II/multigrid/mg_tools.h>
+#include <deal.II/multigrid/mg_coarse.h>
+#include <deal.II/multigrid/mg_smoother.h>
+#include <deal.II/multigrid/mg_matrix.h>
+#include <deal.II/multigrid/mg_transfer_matrix_free.h>
+
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/vector_tools.h>
 
@@ -125,6 +134,7 @@ namespace Cook_Membrane
       unsigned int elements_per_edge;
       double       scale;
       unsigned int dim;
+      unsigned int n_global_refinement;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -140,6 +150,10 @@ namespace Cook_Membrane
         prm.declare_entry("Elements per edge", "32",
                           Patterns::Integer(0),
                           "Number of elements per long edge of the beam");
+
+        prm.declare_entry("Global refinement", "0",
+                  Patterns::Integer(0),
+                  "Number of global refinements");
 
         prm.declare_entry("Grid scale", "1e-3",
                           Patterns::Double(0.0),
@@ -159,6 +173,7 @@ namespace Cook_Membrane
         elements_per_edge = prm.get_integer("Elements per edge");
         scale = prm.get_double("Grid scale");
         dim = prm.get_integer("Dimension");
+        n_global_refinement = prm.get_integer("Global refinement");
       }
       prm.leave_subsection();
     }
@@ -247,7 +262,7 @@ namespace Cook_Membrane
                           "Linear solver iterations (multiples of the system matrix size)");
 
         prm.declare_entry("Preconditioner type", "jacobi",
-                          Patterns::Selection("jacobi|ssor"),
+                          Patterns::Selection("jacobi|ssor|gmg"),
                           "Type of preconditioner");
 
         prm.declare_entry("Preconditioner relaxation", "0.65",
@@ -470,6 +485,8 @@ namespace Cook_Membrane
   class Solid
   {
   public:
+    typedef Vector<float> LevelVectorType;
+
     Solid(const Parameters::AllParameters &parameters);
 
     virtual
@@ -544,6 +561,7 @@ namespace Cook_Membrane
     // homogeneous material
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>> material;
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>> material_vec;
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<float>>> material_level;
 
     static const unsigned int        n_components = dim;
     static const unsigned int        first_u_component = 0;
@@ -577,6 +595,9 @@ namespace Cook_Membrane
 
     // current total solution:  solution_tota = solution_n + solution_delta
     Vector<double>                   solution_total;
+
+    MGLevelObject<LevelVectorType>   mg_solution_total;
+
 
     // Then define a number of variables to store norms and update norms and
     // normalisation factors.
@@ -629,8 +650,34 @@ namespace Cook_Membrane
     std::shared_ptr<MatrixFree<dim,double>> mf_data_current;
     std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
 
+
+    std::vector<std::shared_ptr<MappingQEulerian<dim,LevelVectorType>>> mg_eulerian_mapping;
+    std::vector<std::shared_ptr<MatrixFree<dim,float>>> mg_mf_data_current;
+    std::vector<std::shared_ptr<MatrixFree<dim,float>>> mg_mf_data_reference;
+
     NeoHookOperator<dim,degree,n_q_points_1d,double> mf_nh_operator;
     NeoHookOperatorAD<dim,degree,n_q_points_1d,double> mf_ad_nh_operator;
+
+    typedef NeoHookOperator<dim,degree,n_q_points_1d,float> LevelMatrixType;
+
+    MGLevelObject<LevelMatrixType> mg_mf_nh_operator;
+
+    std::shared_ptr<MGTransferPrebuilt<LevelVectorType>> mg_transfer;
+
+    typedef PreconditionChebyshev<LevelMatrixType,LevelVectorType> SmootherChebyshev;
+
+    MGSmootherPrecondition<LevelMatrixType, SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
+
+    MGCoarseGridApplySmoother<LevelVectorType> mg_coarse_chebyshev;
+
+    mg::Matrix<LevelVectorType> mg_operator_wrapper;
+
+    std::shared_ptr<Multigrid<LevelVectorType>> multigrid;
+
+    std::shared_ptr<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>> multigrid_preconditioner;
+
+    MGConstrainedDoFs       mg_constrained_dofs;
+
   };
 
 // @sect3{Implementation of the <code>Solid</code> class}
@@ -659,6 +706,8 @@ namespace Cook_Membrane
       parameters.mu,parameters.nu,parameters.material_formulation)),
     material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
       parameters.mu,parameters.nu,parameters.material_formulation)),
+    material_level(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<float>>>(
+      parameters.mu,parameters.nu,parameters.material_formulation)),
     qf_cell(n_q_points_1d),
     qf_face(n_q_points_1d),
     n_q_points (qf_cell.size()),
@@ -680,6 +729,14 @@ namespace Cook_Membrane
     eulerian_mapping.reset();
 
     dof_handler_ref.clear();
+
+    multigrid_preconditioner.reset();
+    multigrid.reset();
+    mg_coarse_chebyshev.clear();
+    mg_smoother_chebyshev.clear();
+    mg_operator_wrapper.reset();
+    mg_mf_nh_operator.clear_elements();
+    mg_transfer.reset();
   }
 
 
@@ -803,6 +860,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     GridTools::scale(parameters.scale, triangulation);
 
+    triangulation.refine_global(parameters.n_global_refinement);
+
     vol_reference = GridTools::volume(triangulation);
     vol_current = vol_reference;
     std::cout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
@@ -822,6 +881,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // The DOF handler is then initialised and we renumber the grid in an
     // efficient manner. We also record the number of DOFs per block.
     dof_handler_ref.distribute_dofs(fe);
+    dof_handler_ref.distribute_mg_dofs();
     DoFRenumbering::Cuthill_McKee(dof_handler_ref);
 
     std::cout << "Triangulation:"
@@ -857,12 +917,76 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   {
     timer.enter_subsection("Setup matrix-free");
 
+    const unsigned int max_level = triangulation.n_global_levels()-1;
+
+    if (it_nr <= 1)
+      {
+        // GMG main classes
+        multigrid_preconditioner.reset();
+        multigrid.reset();
+        // clear all pointers to level matrices in smoothers:
+        mg_coarse_chebyshev.clear();
+        mg_smoother_chebyshev.clear();
+        // reset wrappers before resizing matrices
+        mg_operator_wrapper.reset();
+        // and clean up transfer which is also initialized with mg_matrices:
+        mg_transfer.reset();
+        // Now we can reset mg_matrices
+        mg_mf_nh_operator.resize(0, max_level);
+        mg_eulerian_mapping.clear();
+
+        mg_solution_total.resize(0, max_level);
+      }
+
     // The constraints in Newton-Raphson are different for it_nr=0 and 1,
     // and then they are the same so we only need to re-init the data
     // according to the updated displacement/mapping
     const QGauss<1> quad (n_q_points_1d);
+
     typename MatrixFree<dim,double>::AdditionalData data;
     data.tasks_parallel_scheme = MatrixFree<dim,double>::AdditionalData::none;
+
+    typename MatrixFree<dim,float>::AdditionalData mg_additional_data;
+    mg_additional_data.tasks_parallel_scheme = MatrixFree<dim,float>::AdditionalData::none;//partition_color;
+    //mg_additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values;
+
+    std::set<types::boundary_id>       dirichlet_boundary_ids;
+    // see make_constraints()
+    dirichlet_boundary_ids.insert(1);
+    if (dim==3)
+      dirichlet_boundary_ids.insert(2);
+
+    mg_constrained_dofs.clear();
+    mg_constrained_dofs.initialize(dof_handler_ref);
+    mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,dirichlet_boundary_ids);
+
+    // transfer displacement to MG levels:
+    {
+      MGTransferMatrixFree<dim,float> mg_transfer_mf(mg_constrained_dofs);
+      mg_transfer_mf.build(dof_handler_ref);
+
+      LinearAlgebra::distributed::Vector<float> displacement(dof_handler_ref.n_dofs());
+      for (unsigned int i = 0; i < dof_handler_ref.n_dofs();++i)
+        displacement.local_element(i) = solution_total(i);
+      MGLevelObject<LinearAlgebra::distributed::Vector<float>> displacement_level(0, max_level);
+      mg_transfer_mf.interpolate_to_mg(dof_handler_ref,displacement_level, displacement);
+
+      for (unsigned int level = 0; level<=max_level; ++level)
+        {
+          mg_solution_total[level].reinit(dof_handler_ref.n_dofs(level));
+          for (unsigned int i = 0; i < dof_handler_ref.n_dofs(level); ++i)
+            mg_solution_total[level](i) = displacement_level[level].local_element(i);
+        }
+    }
+
+    if (it_nr <= 1)
+      {
+        mg_transfer = std::make_shared<MGTransferPrebuilt<LevelVectorType>>(mg_constrained_dofs);
+        mg_transfer->build_matrices(dof_handler_ref);
+
+        mg_mf_data_current.resize(triangulation.n_global_levels());
+        mg_mf_data_reference.resize(triangulation.n_global_levels());
+      }
 
     if (it_nr <= 1)
       {
@@ -877,6 +1001,32 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
         mf_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
         mf_ad_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
+
+        mg_eulerian_mapping.resize(0);
+
+        for (unsigned int level = 0; level<=max_level; ++level)
+          {
+            mg_additional_data.level_mg_handler = level;
+
+            ConstraintMatrix level_constraints;
+            level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
+            level_constraints.close();
+
+            mg_mf_data_current[level]   = std::make_shared<MatrixFree<dim,float>>();
+            mg_mf_data_reference[level] = std::make_shared<MatrixFree<dim,float>>();
+
+            std::shared_ptr<MappingQEulerian<dim,LevelVectorType>> euler_level = std::make_shared<MappingQEulerian<dim,LevelVectorType>>
+              (degree,dof_handler_ref,mg_solution_total[level], level);
+
+            mg_mf_data_reference[level]->reinit (              dof_handler_ref, level_constraints, quad, mg_additional_data);
+            mg_mf_data_current[level]->reinit   (*euler_level, dof_handler_ref, level_constraints, quad, mg_additional_data);
+
+            mg_eulerian_mapping.push_back(euler_level);
+
+            mg_mf_nh_operator[level].initialize(mg_mf_data_current[level],
+                                                mg_mf_data_reference[level],
+                                                mg_solution_total[level]); // (mg_level_data, mg_constrained_dofs, level);
+          }
       }
     else
       {
@@ -884,6 +1034,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // as the mapping has to be recomputed but the topology of cells is the same
         data.initialize_indices = false;
         mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+
+        mg_additional_data.initialize_indices = false;
+        for (unsigned int level = 0; level<=max_level; ++level)
+          {
+            ConstraintMatrix level_constraints;
+            level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
+            level_constraints.close();
+
+            mg_additional_data.level_mg_handler = level;
+            std::shared_ptr<MappingQEulerian<dim,LevelVectorType>> euler_level = std::make_shared<MappingQEulerian<dim,LevelVectorType>>
+              (degree,dof_handler_ref,mg_solution_total[level], level);
+            mg_mf_data_current[level]->reinit(*euler_level, dof_handler_ref, level_constraints, quad, mg_additional_data);
+          }
       }
 
     // need to cache prior to diagonal computations:
@@ -894,6 +1057,55 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mf_ad_nh_operator.cache();
         mf_ad_nh_operator.compute_diagonal();
       }
+
+    for (unsigned int level = 0; level<=max_level; ++level)
+      {
+        mg_mf_nh_operator[level].set_material(material_level);
+        mg_mf_nh_operator[level].cache();
+        mg_mf_nh_operator[level].compute_diagonal();
+      }
+
+    // setup GMG preconditioner
+    {
+      MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
+      smoother_data.resize(0, triangulation.n_global_levels()-1);
+      for (unsigned int level = 0; level<triangulation.n_global_levels(); ++level)
+        {
+          if (level==0)
+            {
+              smoother_data[level].smoothing_range = 1e-3; // reduce residual by this relative tolerance
+              smoother_data[level].degree = numbers::invalid_unsigned_int; // use as a solver
+              smoother_data[level].eig_cg_n_iterations = mg_mf_nh_operator[level].m();
+            }
+          else
+            {
+              // [1.2 \lambda_{max}/range, 1.2 \lambda_{max}]
+              smoother_data[level].smoothing_range = 2;
+              // With degree zero, the Jacobi method with optimal damping parameter is retrieved
+              smoother_data[level].degree = 4;
+              // number of CG iterataions to estimate the largest eigenvalue:
+              smoother_data[level].eig_cg_n_iterations = 30;
+            }
+          smoother_data[level].preconditioner = mg_mf_nh_operator[level].get_matrix_diagonal_inverse();
+        }
+      mg_smoother_chebyshev.initialize(mg_mf_nh_operator, smoother_data);
+      mg_coarse_chebyshev.initialize(mg_smoother_chebyshev);
+    }
+
+    // wrap our level and interface matrices in an object having the required multiplication functions.
+    mg_operator_wrapper.initialize(mg_mf_nh_operator);
+
+    multigrid_preconditioner.reset();
+    multigrid = std::make_shared<Multigrid<LevelVectorType>>(
+                  mg_operator_wrapper,
+                  mg_coarse_chebyshev,
+                  *mg_transfer,
+                  mg_smoother_chebyshev,
+                  mg_smoother_chebyshev,
+                  /*min_level*/0);
+
+    // and a preconditioner object which uses GMG
+    multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>>(dof_handler_ref,*multigrid,*mg_transfer);
 
     timer.leave_subsection();
   }
@@ -1458,10 +1670,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             }
           else
             {
-              AssertThrow(parameters.preconditioner_type == "jacobi",
-                          ExcNotImplemented());
               if (parameters.type_lin == "MF_AD_CG")
                 {
+                   AssertThrow(parameters.preconditioner_type == "jacobi",
+                               ExcNotImplemented());
                    PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
                    preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
 
@@ -1472,14 +1684,24 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 }
               else
                 {
-                  PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
-                  preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
+                  if (parameters.preconditioner_type == "jacobi")
+                    {
+                      PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
+                      preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
 
-                  solver_CG.solve(mf_nh_operator,
-                    newton_update,
-                  system_rhs,
-                  preconditioner);
-              }
+                      solver_CG.solve(mf_nh_operator,
+                        newton_update,
+                        system_rhs,
+                        preconditioner);
+                    }
+                  else
+                    {
+                      solver_CG.solve(mf_nh_operator,
+                        newton_update,
+                        system_rhs,
+                        *multigrid_preconditioner);
+                    }
+                }
             }
 
           lin_it = solver_control.last_step();
