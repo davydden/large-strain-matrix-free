@@ -41,15 +41,15 @@ using namespace dealii;
     unsigned int m () const;
     unsigned int n () const;
 
-    void vmult (Vector<double> &dst,
-                const Vector<double> &src) const;
+    void vmult (Vector<number> &dst,
+                const Vector<number> &src) const;
 
-    void Tvmult (Vector<double> &dst,
-                 const Vector<double> &src) const;
-    void vmult_add (Vector<double> &dst,
-                    const Vector<double> &src) const;
-    void Tvmult_add (Vector<double> &dst,
-                     const Vector<double> &src) const;
+    void Tvmult (Vector<number> &dst,
+                 const Vector<number> &src) const;
+    void vmult_add (Vector<number> &dst,
+                    const Vector<number> &src) const;
+    void Tvmult_add (Vector<number> &dst,
+                     const Vector<number> &src) const;
 
     number el (const unsigned int row,
                const unsigned int col) const;
@@ -57,6 +57,11 @@ using namespace dealii;
     void precondition_Jacobi(Vector<number> &dst,
                              const Vector<number> &src,
                              const number omega) const;
+
+    const std::shared_ptr<DiagonalMatrix<Vector<number>>> get_matrix_diagonal_inverse() const
+    {
+      return inverse_diagonal_entries;
+    }
 
     /**
      * Cache a few things for the current displacement.
@@ -69,18 +74,17 @@ using namespace dealii;
      * Apply operator on a range of cells.
      */
     void local_apply_cell (const MatrixFree<dim,number>    &data,
-                           Vector<double>                      &dst,
-                           const Vector<double>                &src,
+                           Vector<number>                      &dst,
+                           const Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const;
 
     /**
      * Apply diagonal part of the operator on a cell range.
      */
     void local_diagonal_cell (const MatrixFree<dim,number> &data,
-                              Vector<double>                                   &dst,
+                              Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const;
-
 
    /**
     * Perform operation on a cell. @p phi_current and @phi_current_s correspond to the deformed configuration
@@ -135,7 +139,7 @@ using namespace dealii;
   unsigned int
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::m () const
   {
-    return data_current.get_vector_partitioner()->size();
+    return data_current->get_vector_partitioner()->size();
   }
 
 
@@ -144,7 +148,7 @@ using namespace dealii;
   unsigned int
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::n () const
   {
-    return data_current.get_vector_partitioner()->size();
+    return data_current->get_vector_partitioner()->size();
   }
 
 
@@ -202,7 +206,7 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
-              cached_scalar(cell,q) = std::pow(det_F,-1.0/dim);
+              cached_scalar(cell,q) = std::pow(det_F,number(-1.0/dim));
             }
         }
         else if (material->formulation == 1)
@@ -233,8 +237,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<double>       &dst,
-                                                const Vector<double> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<number>       &dst,
+                                                const Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst, src);
@@ -244,8 +248,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<double>       &dst,
-                                                 const Vector<double> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<number>       &dst,
+                                                 const Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst,src);
@@ -255,8 +259,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<double>       &dst,
-                                                     const Vector<double> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<number>       &dst,
+                                                     const Vector<number> &src) const
   {
     vmult_add (dst,src);
   }
@@ -265,8 +269,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<double>       &dst,
-                                                    const Vector<double> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<number>       &dst,
+                                                    const Vector<number> &src) const
   {
     // FIXME: can't use cell_loop as we need both matrix-free data objects.
     // for now do it by hand.
@@ -302,8 +306,8 @@ using namespace dealii;
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
                            const MatrixFree<dim,number>    &/*data*/,
-                           Vector<double>                      &dst,
-                           const Vector<double>                &src,
+                           Vector<number>                      &dst,
+                           const Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const
   {
     // FIXME: I don't use data input, can this be bad?
@@ -338,7 +342,7 @@ using namespace dealii;
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
-                              Vector<double>                                   &dst,
+                              Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const
   {
