@@ -547,6 +547,7 @@ namespace Cook_Membrane
     // Also, keep track of the current time and the time spent evaluating
     // certain functions
     Time                             time;
+    std::ofstream                    timer_output_file;
     TimerOutput                      timer;
 
     // A description of the finite-element system including the displacement
@@ -677,7 +678,6 @@ namespace Cook_Membrane
     std::shared_ptr<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>> multigrid_preconditioner;
 
     MGConstrainedDoFs       mg_constrained_dofs;
-
   };
 
 // @sect3{Implementation of the <code>Solid</code> class}
@@ -693,8 +693,9 @@ namespace Cook_Membrane
     vol_current (0.0),
     triangulation(Triangulation<dim>::maximum_smoothing),
     time(parameters.end_time, parameters.delta_t),
-    timer(std::cout,
-          TimerOutput::never/*TimerOutput::summary*/,
+    timer_output_file("timings.txt"),
+    timer(timer_output_file,
+          TimerOutput::summary,
           TimerOutput::wall_times),
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
@@ -1103,6 +1104,44 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                   mg_smoother_chebyshev,
                   mg_smoother_chebyshev,
                   /*min_level*/0);
+
+    multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
+            {
+              if (start)
+                timer.enter_subsection("Coarse solve level " + Utilities::int_to_string(level));
+              else
+                timer.leave_subsection();
+            });
+
+    multigrid->connect_restriction([&](const bool start, const unsigned int level)
+             {
+               if (start)
+                 timer.enter_subsection("Coarse solve level " + Utilities::int_to_string(level));
+               else
+                 timer.leave_subsection();
+             });
+    multigrid->connect_prolongation([&](const bool start, const unsigned int level)
+             {
+               if (start)
+                 timer.enter_subsection("Prolongation level " + Utilities::int_to_string(level));
+               else
+                 timer.leave_subsection();
+             });
+    multigrid->connect_pre_smoother_step([&](const bool start, const unsigned int level)
+             {
+               if (start)
+                 timer.enter_subsection("Pre-smoothing level " + Utilities::int_to_string(level));
+               else
+                 timer.leave_subsection();
+             });
+
+    multigrid->connect_post_smoother_step([&](const bool start, const unsigned int level)
+             {
+               if (start)
+                 timer.enter_subsection("Post-smoothing level " + Utilities::int_to_string(level));
+               else
+                 timer.leave_subsection();
+             });
 
     // and a preconditioner object which uses GMG
     multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>>(dof_handler_ref,*multigrid,*mg_transfer);

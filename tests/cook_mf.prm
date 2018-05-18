@@ -11,7 +11,9 @@ end
 
 subsection Geometry
   # Number of elements per long edge of the beam
-  set Elements per edge  = 32
+  set Elements per edge  = 2
+ 
+  set Global refinement  = 5
 
   # Global grid scaling factor
   set Grid scale         = 1e-3
