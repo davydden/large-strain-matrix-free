@@ -49,6 +49,10 @@
 \def\mcl  #1{               {\cal #1}}
 %\def\bcl  #1{\mbox{\boldmath$\cal #1$}}
 
+%\DeclareMathOperator{\det}{det}
+\DeclareMathOperator{\trace}{tr}
+\newcommand{\diff}{\mathop{}\!\mathrm{d}}
+
 
 \begin{document}
 
@@ -88,6 +92,55 @@ that must be stationary in order for the system to be in equilibrium:
 TODO: linearize and show how tangent look like.
 Also show what it boils down in the case of small strain.
 
+\subsection{Constitutive modelling}
+
+Neo-Hookean model
+\begin{gather}
+\psi \left( \mathbf{C} \right)
+  = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
+  - \lambda \ln^{2}\left( J \right)
+\end{gather}
+where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter,
+and the volumetric Jacobian $J = \det\left(\mathbf{F}\right) = \sqrt{\det\left(\mathbf{C}\right)}$.
+\begin{gather}
+\frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}}
+  = \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1}
+\end{gather}
+\begin{gather}
+\frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}}
+  = \left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
+  + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
+\end{gather}
+
+Denoting $\chi\left( \bullet \right)$ as the Piola transformation, which implies
+\begin{gather}
+\chi\left( \mathbf{A} \right)_{ij}
+  = F_{iA} A_{AB} F_{jB} \\
+\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
+  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD} 
+\end{gather}
+for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then the Kirchhoff stress and its associated material tangent are
+\begin{gather}
+\boldsymbol{\tau}
+  \equiv J \boldsymbol{\sigma}
+  = \chi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
+  = \mu \mathbf{b} - \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{I}
+\end{gather}
+and 
+\begin{gather}
+J \boldsymbol{\mathcal{C}}
+  = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
+  = \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
+  + \frac{\lambda}{2} \mathbf{I} \otimes \mathbf{I}
+\end{gather}
+where $\boldsymbol{\mathcal{S}}$ is the fourth-order symmetric identity tensor.
+The action that $J \boldsymbol{\mathcal{C}}$ performs when contracted with an arbitrary rank-2 symmetric tensor is therefore
+\begin{gather}
+J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
+  = \left[ \mu - 2\lambda\ln\left( J \right) \right] \left( \bullet \right)
+  + \frac{\lambda}{2} \trace\left( \bullet \right) \mathbf{I}
+\end{gather}
+
 \section{Finite Element discretization}
 
 We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
@@ -112,7 +165,7 @@ Hopefully we can still use some mappings on coarse level to better represent geo
 
 \section{Numerical examples}
 
-TODO: question to asnwer -- how much to cache? At least detF ^ {2/3}. Other options is stress and strain at quadrature points.
+TODO: question to asnwer -- how much to cache? At least $detF ^ {2/3}$. Other options is stress and strain at quadrature points.
 Run benchmarks and see.
 
 \subsection{Small strain linear elasticity}
