@@ -666,9 +666,18 @@ namespace Cook_Membrane
 
     typedef PreconditionChebyshev<LevelMatrixType,LevelVectorType> SmootherChebyshev;
 
-    MGSmootherPrecondition<LevelMatrixType, SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
+    // MGSmootherPrecondition<LevelMatrixType, SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
+    mg::SmootherRelaxation<SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
 
     MGCoarseGridApplySmoother<LevelVectorType> mg_coarse_chebyshev;
+
+    std::shared_ptr<SolverControl> coarse_solver_control;
+    std::shared_ptr<SolverCG<LevelVectorType>> coarse_solver;
+
+    MGCoarseGridIterativeSolver<LevelVectorType,
+                                SolverCG<LevelVectorType>,
+                                LevelMatrixType,
+                                SmootherChebyshev> mg_coarse_iterative;
 
     mg::Matrix<LevelVectorType> mg_operator_wrapper;
 
@@ -919,6 +928,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     const unsigned int max_level = triangulation.n_global_levels()-1;
 
+    mg_coarse_iterative.clear();
+    coarse_solver.reset();
+
     if (it_nr <= 1)
       {
         // GMG main classes
@@ -1091,6 +1103,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       mg_smoother_chebyshev.initialize(mg_mf_nh_operator, smoother_data);
       mg_coarse_chebyshev.initialize(mg_smoother_chebyshev);
     }
+
+    coarse_solver_control = std::make_shared<SolverControl>(mg_mf_nh_operator[0].m(),1e-10, false, false);
+    coarse_solver = std::make_shared<SolverCG<LevelVectorType>>(*coarse_solver_control);
+    mg_coarse_iterative.initialize(*coarse_solver,mg_mf_nh_operator[0],mg_smoother_chebyshev[0]);
 
     // wrap our level and interface matrices in an object having the required multiplication functions.
     mg_operator_wrapper.initialize(mg_mf_nh_operator);
