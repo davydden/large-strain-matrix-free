@@ -1078,12 +1078,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       }
 
     // setup GMG preconditioner
+    const bool cheb_coarse = true;
     {
       MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
       smoother_data.resize(0, triangulation.n_global_levels()-1);
       for (unsigned int level = 0; level<triangulation.n_global_levels(); ++level)
         {
-          if (level==0)
+          if (cheb_coarse && level==0)
             {
               smoother_data[level].smoothing_range = 1e-3; // reduce residual by this relative tolerance
               smoother_data[level].degree = numbers::invalid_unsigned_int; // use as a solver
@@ -1112,13 +1113,23 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     mg_operator_wrapper.initialize(mg_mf_nh_operator);
 
     multigrid_preconditioner.reset();
-    multigrid = std::make_shared<Multigrid<LevelVectorType>>(
-                  mg_operator_wrapper,
-                  mg_coarse_chebyshev,
-                  *mg_transfer,
-                  mg_smoother_chebyshev,
-                  mg_smoother_chebyshev,
-                  /*min_level*/0);
+    if (cheb_coarse)
+      multigrid = std::make_shared<Multigrid<LevelVectorType>>(
+                    mg_operator_wrapper,
+                    mg_coarse_chebyshev,
+                    *mg_transfer,
+                    mg_smoother_chebyshev,
+                    mg_smoother_chebyshev,
+                    /*min_level*/0);
+    else
+      multigrid = std::make_shared<Multigrid<LevelVectorType>>(
+                mg_operator_wrapper,
+                mg_coarse_iterative,
+                *mg_transfer,
+                mg_smoother_chebyshev,
+                mg_smoother_chebyshev,
+                /*min_level*/0);
+
 
     multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
             {
