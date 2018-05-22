@@ -1105,7 +1105,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       mg_coarse_chebyshev.initialize(mg_smoother_chebyshev);
     }
 
-    coarse_solver_control = std::make_shared<SolverControl>(mg_mf_nh_operator[0].m(),1e-10, false, false);
+    coarse_solver_control = std::make_shared<ReductionControl>(std::max(mg_mf_nh_operator[0].m(),(unsigned int)100),
+                                                               1e-10,
+                                                               1e-3,
+                                                               false,
+                                                               false);
     coarse_solver = std::make_shared<SolverCG<LevelVectorType>>(*coarse_solver_control);
     mg_coarse_iterative.initialize(*coarse_solver,mg_mf_nh_operator[0],mg_smoother_chebyshev[0]);
 
