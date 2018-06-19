@@ -306,10 +306,6 @@ void test_elasticity (const Function<dim> &displacement_function)
           // phi_reference.JxW(q) / phi_current.JxW(q)
           ,q);
 
-        // actually do the contraction
-        phi_current.integrate (false,true);
-        phi_current_s.integrate (false,true);
-
         //=================
         // DEBUG
         //=================
@@ -432,6 +428,10 @@ void test_elasticity (const Function<dim> &displacement_function)
         AssertThrow(geo_diff.norm() < 1e-12 * geo_standard_v.norm(), ExcMessage("geo"));
 
       } // end of the loop over quadrature
+
+    // actually do the contraction
+    phi_current.integrate (false,true);
+    phi_current_s.integrate (false,true);
 
     phi_current.distribute_local_to_global(dst);
     phi_current_s.distribute_local_to_global(dst);
