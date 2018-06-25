@@ -38,7 +38,7 @@
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_direct.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
@@ -579,10 +579,9 @@ namespace Cook_Membrane
     const unsigned int               n_q_points_f;
 
     // Objects that store the converged solution and right-hand side vectors,
-    // as well as the tangent matrix. There is a ConstraintMatrix object used
-    // to keep track of constraints.  We make use of a sparsity pattern
-    // designed for a block system.
-    ConstraintMatrix                 constraints;
+    // as well as the tangent matrix. There is a AffineConstraints object used
+    // to keep track of constraints.
+    AffineConstraints<double>        constraints;
     SparsityPattern                  sparsity_pattern;
     SparseMatrix<double>             tangent_matrix;
     Vector<double>                   system_rhs;
@@ -1020,7 +1019,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           {
             mg_additional_data.level_mg_handler = level;
 
-            ConstraintMatrix level_constraints;
+            AffineConstraints<double> level_constraints;
             level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
@@ -1050,7 +1049,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mg_additional_data.initialize_indices = false;
         for (unsigned int level = 0; level<=max_level; ++level)
           {
-            ConstraintMatrix level_constraints;
+            AffineConstraints<double> level_constraints;
             level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
