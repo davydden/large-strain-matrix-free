@@ -26,6 +26,9 @@
 
 #include <mf_elasticity.h>
 
+// same as mf_neo_hook_operator but tests cell-based large strain elasticity operator
+// with formulation 1
+
 using namespace dealii;
 
 template <int dim>
@@ -121,6 +124,8 @@ template <int dim, int fe_degree, int n_q_points_1d>
 void test_elasticity (const Function<dim> &displacement_function)
 {
   typedef double number;
+  typedef VectorizedArray<number> NumberType;
+
   parallel::distributed::Triangulation<dim> tria (MPI_COMM_WORLD);
   GridGenerator::hyper_cube (tria);
 
@@ -204,7 +209,8 @@ void test_elasticity (const Function<dim> &displacement_function)
 
   const double nu = 0.3; // poisson
   const double mu = 0.4225e6; // shear
-  const unsigned int material_formulation = 0;
+  const double lambda = (2.0*mu*nu)/(1.0-2.0*nu);
+  const unsigned int material_formulation = 1;
   Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>> material(mu,nu,material_formulation);
   Material_Compressible_Neo_Hook_One_Field<dim,number> material_standard(mu,nu,material_formulation );
 
@@ -265,23 +271,35 @@ void test_elasticity (const Function<dim> &displacement_function)
     phi_current_s.evaluate (false,true,false);
     for (unsigned int q=0; q<n_q_points; ++q)
       {
+        // formulation == 1 in mf_nh_operator.h
         // reference configuration:
-        const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
-        const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
-        const SymmetricTensor<2,dim,VectorizedArray<number>> b      = Physics::Elasticity::Kinematics::b(F);
-        const VectorizedArray<number>                        det_F  = determinant(F);
-        const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
-        const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
+        const Tensor<2,dim,NumberType>         &grad_u = phi_reference.get_gradient(q);
+        const Tensor<2,dim,NumberType>          F      = Physics::Elasticity::Kinematics::F(grad_u);
+        const SymmetricTensor<2,dim,NumberType> b      = Physics::Elasticity::Kinematics::b(F);
 
-        // current configuration
-        const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
-        const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
+        const Tensor<2,dim,NumberType>          &grad_Nx_v      = phi_current.get_gradient(q);
+        const SymmetricTensor<2,dim,NumberType> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
 
-        SymmetricTensor<2,dim,VectorizedArray<number>> tau;
-        material.get_tau(tau,det_F,b_bar,b);
-        const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
+        // cached part
+        const VectorizedArray<number>           det_F  = determinant(F);
+        const VectorizedArray<number>           log_J  = std::log(det_F);
 
-        const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,b,symm_grad_Nx_v);
+
+        SymmetricTensor<2,dim,NumberType> tau;
+        {
+          tau = mu*b;
+          const NumberType tmp = mu - 2.0*lambda*log_J;
+          for (unsigned int d = 0; d < dim; ++d)
+            tau[d][d] -= tmp;
+        }
+
+        SymmetricTensor<2,dim,VectorizedArray<number>> jc_part;
+        {
+          jc_part = 2.0*(mu - 2.0*lambda*log_J)*symm_grad_Nx_v;
+          const NumberType tmp = 2.0*lambda*trace(symm_grad_Nx_v);
+          for (unsigned int i = 0; i < dim; ++i)
+            jc_part[i][i] += tmp;
+        }
 
         const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
         VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
@@ -289,22 +307,13 @@ void test_elasticity (const Function<dim> &displacement_function)
           if (std::abs(JxW_current[i])>1e-10)
             JxW_scale[i] *= 1./JxW_current[i];
 
-        // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
-        // contribution. It comprises a material contribution, and a
-        // geometrical stress contribution which is only added along
-        // the local matrix diagonals:
         phi_current_s.submit_symmetric_gradient(
-          jc_part * JxW_scale
-          // Note: We need to integrate over the reference element, so the weights have to be adjusted
-          ,q);
+          jc_part * JxW_scale,q);
 
-        // geometrical stress contribution
-        const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
+        const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
+        const Tensor<2,dim,VectorizedArray<number>> geo = grad_Nx_v * tau_ns;
         phi_current.submit_gradient(
-          geo * JxW_scale
-          // Note: We need to integrate over the reference element, so the weights have to be adjusted
-          // phi_reference.JxW(q) / phi_current.JxW(q)
-          ,q);
+          geo * JxW_scale,q);
 
         //=================
         // DEBUG
