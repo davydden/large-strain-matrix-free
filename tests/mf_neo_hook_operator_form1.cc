@@ -210,7 +210,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   }
 
   // setup current configuration mapping
-  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(/*degree*/1,dof,displacement);
+  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(fe_degree,dof,displacement);
   //auto mapping = std::make_shared<MappingFEField<dim,dim,LinearAlgebra::distributed::Vector<number>>>(dof,displacement);
 
   // output for debug purposes
