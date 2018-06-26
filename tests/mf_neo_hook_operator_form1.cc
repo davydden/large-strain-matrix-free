@@ -53,6 +53,31 @@ public:
 };
 
 
+/**
+ * Similar to shear but make i non-linear (quadratic)
+ */
+template <int dim>
+class Shear2 : public Function<dim>
+{
+public:
+  Shear2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    // simple shear
+    static const double gamma = 0.1;
+    if (component==0)
+      return p[1]*p[1]*gamma;
+    else
+      return 0.;
+  }
+};
+
+
 
 template <int dim>
 class UniaxialTension : public Function<dim>
@@ -74,6 +99,29 @@ public:
   }
 };
 
+
+/**
+ * Same as UniaxialTension but non-linear (quadratic w.r.t. Px)
+ */
+template <int dim>
+class UniaxialTension2 : public Function<dim>
+{
+public:
+  UniaxialTension2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    static const double dx = 0.1;
+    if (component==0)
+      return p[0]*p[0]*dx;
+    else
+      return 0.;
+  }
+};
 
 template <int dim> class Rotation;
 
@@ -120,7 +168,7 @@ public:
 
 
 
-template <int dim, int fe_degree, int n_q_points_1d>
+template <int dim, int fe_degree, int n_q_points_1d=fe_degree+1>
 void test_elasticity (const Function<dim> &displacement_function)
 {
   typedef double number;
@@ -239,7 +287,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   std::vector<Tensor<2,dim,number>>  solution_grads_u_total(qf_cell.size());
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
   const FEValuesExtractors::Vector u_fe(0);
-  FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
+  FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values | update_quadrature_points);
   std::vector<Tensor<2, dim,number>>         grad_Nx(dofs_per_cell);
   std::vector<SymmetricTensor<2,dim,number>> symm_grad_Nx(dofs_per_cell);
   FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
@@ -356,8 +404,10 @@ void test_elasticity (const Function<dim> &displacement_function)
               cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;
             }
 
+        const auto & qp_coord = fe_values_ref.get_quadrature_points();
         std::cout << "=====================" << std::endl
-                  << "quadrature point " << q << std::endl;
+                  << "quadrature point " << q << ": "
+                  << qp_coord[q] << std::endl;
 
         std::cout << "JxW ref:" << std::endl
                   << JxW << std::endl
@@ -478,34 +528,38 @@ int main (int argc, char **argv)
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
-  deallog.push(Utilities::int_to_string(myid));
+  Assert (Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)==1,
+          ExcNotImplemented());
 
-  if (myid == 0)
-    {
-      const std::string deallogname = "output";
-      std::ofstream deallogfile;
-      deallogfile.open(deallogname.c_str());
-      deallog.attach(deallogfile);
-      deallog.depth_console(0);
-      deallog << std::setprecision(4);
+  const std::string deallogname = "output";
+  std::ofstream deallogfile;
+  deallogfile.open(deallogname.c_str());
+  deallog.attach(deallogfile);
+  deallog.depth_console(0);
+  deallog << std::setprecision(4);
 
-      deallog.push("2d");
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
-      deallog.pop();
-      deallog.push("3d");
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-      test_elasticity<3,1,2>(Rotation<3>());
-      deallog.pop();
-    }
-  else
-    {
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
+  deallog.push("2d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<2,1>(Shear<2>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<2,2>(Shear2<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<2,1>(UniaxialTension<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<2,2>(UniaxialTension2<2>());
 
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-    }
+  deallog.pop();
+  deallog.push("3d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<3,1>(Shear<3>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<3,2>(Shear2<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<3,1>(UniaxialTension<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<3,2>(UniaxialTension2<3>());
+  std::cout << "=====================" << std::endl << "Rotation" << std::endl;
+  test_elasticity<3,1>(Rotation<3>());
+  deallog.pop();
+
 }
