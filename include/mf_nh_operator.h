@@ -206,16 +206,22 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
+              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
               cached_scalar(cell,q) = std::pow(det_F,number(-1.0/dim));
             }
         }
         else if (material->formulation == 1)
-        { 
+        {
           for (unsigned int q=0; q<phi_reference.n_q_points; ++q)
             {
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
+              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
               cached_scalar(cell,q) = std::log(det_F);
             }
         }
@@ -443,6 +449,9 @@ using namespace dealii;
           const NumberType                        det_F  = determinant(F);
           const Tensor<2,dim,NumberType>          F_bar  = F * cached_scalar(cell,q);
           const SymmetricTensor<2,dim,NumberType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
+
+          for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+            Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
 
           // current configuration
           const Tensor<2,dim,NumberType>          &grad_Nx_v      = phi_current.get_gradient(q);

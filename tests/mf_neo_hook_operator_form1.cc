@@ -330,6 +330,9 @@ void test_elasticity (const Function<dim> &displacement_function)
 
         // cached part
         const VectorizedArray<number>           det_F  = determinant(F);
+        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
         const VectorizedArray<number>           log_J  = std::log(det_F);
 
 
@@ -413,7 +416,10 @@ void test_elasticity (const Function<dim> &displacement_function)
                   << JxW << std::endl
                   << phi_reference.JxW(q)[0] << std::endl
                   << "JxW current:" << std::endl
-                  << phi_current.JxW(q)[0] << std::endl;
+                  << phi_current.JxW(q)[0] << std::endl
+                  << "det_F:" << std::endl
+                  << det_F_standard << std::endl
+                  << det_F[0] << std::endl;
 
         std::cout << "Grad u:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)

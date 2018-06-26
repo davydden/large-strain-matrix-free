@@ -325,6 +325,9 @@ void test_elasticity (const Function<dim> &displacement_function)
         const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
         const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
+        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
         // current configuration
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
@@ -406,7 +409,10 @@ void test_elasticity (const Function<dim> &displacement_function)
                   << JxW << std::endl
                   << phi_reference.JxW(q)[0] << std::endl
                   << "JxW current:" << std::endl
-                  << phi_current.JxW(q)[0] << std::endl;
+                  << phi_current.JxW(q)[0] << std::endl
+                  << "det_F:" << std::endl
+                  << det_F_standard << std::endl
+                  << det_F[0] << std::endl;
 
         std::cout << "Grad u:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
