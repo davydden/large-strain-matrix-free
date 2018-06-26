@@ -5,7 +5,7 @@
 #include <deal.II/grid/manifold_lib.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
 #include <deal.II/matrix_free/operators.h>
@@ -132,7 +132,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   IndexSet relevant_set;
   DoFTools::extract_locally_relevant_dofs (dof, relevant_set);
 
-  ConstraintMatrix constraints (relevant_set);
+  AffineConstraints<double> constraints (relevant_set);
   DoFTools::make_hanging_node_constraints(dof, constraints);
   // VectorTools::interpolate_boundary_values (dof, 0, Functions::ZeroFunction<dim>(),
   //                                           constraints);
