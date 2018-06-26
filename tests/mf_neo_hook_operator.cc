@@ -338,27 +338,21 @@ void test_elasticity (const Function<dim> &displacement_function)
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,b,symm_grad_Nx_v);
 
-        const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-        VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-          if (std::abs(JxW_current[i])>1e-10)
-            JxW_scale[i] *= 1./JxW_current[i];
-
         // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
         // contribution. It comprises a material contribution, and a
         // geometrical stress contribution which is only added along
         // the local matrix diagonals:
         phi_current_s.submit_symmetric_gradient(
-          jc_part * JxW_scale
+          jc_part / det_F
           // Note: We need to integrate over the reference element, so the weights have to be adjusted
           ,q);
 
         // geometrical stress contribution
         const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
         phi_current.submit_gradient(
-          geo * JxW_scale
+          geo / det_F
           // Note: We need to integrate over the reference element, so the weights have to be adjusted
-          // phi_reference.JxW(q) / phi_current.JxW(q)
+          // phi_reference.JxW(q) / phi_current.JxW(q) == 1/det_F
           ,q);
 
         //=================

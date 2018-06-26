@@ -352,19 +352,13 @@ void test_elasticity (const Function<dim> &displacement_function)
             jc_part[i][i] += tmp;
         }
 
-        const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-        VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-          if (std::abs(JxW_current[i])>1e-10)
-            JxW_scale[i] *= 1./JxW_current[i];
-
         phi_current_s.submit_symmetric_gradient(
-          jc_part * JxW_scale,q);
+          jc_part / det_F,q);
 
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
         const Tensor<2,dim,VectorizedArray<number>> geo = grad_Nx_v * tau_ns;
         phi_current.submit_gradient(
-          geo * JxW_scale,q);
+          geo / det_F,q);
 
         //=================
         // DEBUG
