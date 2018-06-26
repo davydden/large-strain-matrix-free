@@ -5,7 +5,7 @@
 #include <deal.II/grid/manifold_lib.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
 #include <deal.II/matrix_free/operators.h>
@@ -53,6 +53,31 @@ public:
 };
 
 
+/**
+ * Similar to shear but make i non-linear (quadratic)
+ */
+template <int dim>
+class Shear2 : public Function<dim>
+{
+public:
+  Shear2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    // simple shear
+    static const double gamma = 0.1;
+    if (component==0)
+      return p[1]*p[1]*gamma;
+    else
+      return 0.;
+  }
+};
+
+
 
 template <int dim>
 class UniaxialTension : public Function<dim>
@@ -74,6 +99,29 @@ public:
   }
 };
 
+
+/**
+ * Same as UniaxialTension but non-linear (quadratic w.r.t. Px)
+ */
+template <int dim>
+class UniaxialTension2 : public Function<dim>
+{
+public:
+  UniaxialTension2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    static const double dx = 0.1;
+    if (component==0)
+      return p[0]*p[0]*dx;
+    else
+      return 0.;
+  }
+};
 
 template <int dim> class Rotation;
 
@@ -120,7 +168,7 @@ public:
 
 
 
-template <int dim, int fe_degree, int n_q_points_1d>
+template <int dim, int fe_degree, int n_q_points_1d=fe_degree+1>
 void test_elasticity (const Function<dim> &displacement_function)
 {
   typedef double number;
@@ -137,7 +185,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   IndexSet relevant_set;
   DoFTools::extract_locally_relevant_dofs (dof, relevant_set);
 
-  ConstraintMatrix constraints (relevant_set);
+  AffineConstraints<double> constraints (relevant_set);
   DoFTools::make_hanging_node_constraints(dof, constraints);
   // VectorTools::interpolate_boundary_values (dof, 0, Functions::ZeroFunction<dim>(),
   //                                           constraints);
@@ -162,7 +210,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   }
 
   // setup current configuration mapping
-  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(/*degree*/1,dof,displacement);
+  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(fe_degree,dof,displacement);
   //auto mapping = std::make_shared<MappingFEField<dim,dim,LinearAlgebra::distributed::Vector<number>>>(dof,displacement);
 
   // output for debug purposes
@@ -239,7 +287,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   std::vector<Tensor<2,dim,number>>  solution_grads_u_total(qf_cell.size());
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
   const FEValuesExtractors::Vector u_fe(0);
-  FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
+  FEValues<dim>  fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values | update_quadrature_points);
   std::vector<Tensor<2, dim,number>>         grad_Nx(dofs_per_cell);
   std::vector<SymmetricTensor<2,dim,number>> symm_grad_Nx(dofs_per_cell);
   FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
@@ -282,6 +330,9 @@ void test_elasticity (const Function<dim> &displacement_function)
 
         // cached part
         const VectorizedArray<number>           det_F  = determinant(F);
+        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
         const VectorizedArray<number>           log_J  = std::log(det_F);
 
 
@@ -301,19 +352,13 @@ void test_elasticity (const Function<dim> &displacement_function)
             jc_part[i][i] += tmp;
         }
 
-        const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-        VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-          if (std::abs(JxW_current[i])>1e-10)
-            JxW_scale[i] *= 1./JxW_current[i];
-
         phi_current_s.submit_symmetric_gradient(
-          jc_part * JxW_scale,q);
+          jc_part / det_F,q);
 
         const Tensor<2,dim,VectorizedArray<number>> tau_ns (tau);
         const Tensor<2,dim,VectorizedArray<number>> geo = grad_Nx_v * tau_ns;
         phi_current.submit_gradient(
-          geo * JxW_scale,q);
+          geo / det_F,q);
 
         //=================
         // DEBUG
@@ -356,14 +401,19 @@ void test_elasticity (const Function<dim> &displacement_function)
               cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo_standard) * JxW;
             }
 
+        const auto & qp_coord = fe_values_ref.get_quadrature_points();
         std::cout << "=====================" << std::endl
-                  << "quadrature point " << q << std::endl;
+                  << "quadrature point " << q << ": "
+                  << qp_coord[q] << std::endl;
 
         std::cout << "JxW ref:" << std::endl
                   << JxW << std::endl
                   << phi_reference.JxW(q)[0] << std::endl
                   << "JxW current:" << std::endl
-                  << phi_current.JxW(q)[0] << std::endl;
+                  << phi_current.JxW(q)[0] << std::endl
+                  << "det_F:" << std::endl
+                  << det_F_standard << std::endl
+                  << det_F[0] << std::endl;
 
         std::cout << "Grad u:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
@@ -478,34 +528,38 @@ int main (int argc, char **argv)
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
-  deallog.push(Utilities::int_to_string(myid));
+  Assert (Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)==1,
+          ExcNotImplemented());
 
-  if (myid == 0)
-    {
-      const std::string deallogname = "output";
-      std::ofstream deallogfile;
-      deallogfile.open(deallogname.c_str());
-      deallog.attach(deallogfile);
-      deallog.depth_console(0);
-      deallog << std::setprecision(4);
+  const std::string deallogname = "output";
+  std::ofstream deallogfile;
+  deallogfile.open(deallogname.c_str());
+  deallog.attach(deallogfile);
+  deallog.depth_console(0);
+  deallog << std::setprecision(4);
 
-      deallog.push("2d");
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
-      deallog.pop();
-      deallog.push("3d");
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-      test_elasticity<3,1,2>(Rotation<3>());
-      deallog.pop();
-    }
-  else
-    {
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
+  deallog.push("2d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<2,1>(Shear<2>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<2,2>(Shear2<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<2,1>(UniaxialTension<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<2,2>(UniaxialTension2<2>());
 
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-    }
+  deallog.pop();
+  deallog.push("3d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<3,1>(Shear<3>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<3,2>(Shear2<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<3,1>(UniaxialTension<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<3,2>(UniaxialTension2<3>());
+  std::cout << "=====================" << std::endl << "Rotation" << std::endl;
+  test_elasticity<3,1>(Rotation<3>());
+  deallog.pop();
+
 }

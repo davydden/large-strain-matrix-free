@@ -5,7 +5,7 @@
 #include <deal.II/grid/manifold_lib.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
 #include <deal.II/matrix_free/operators.h>
@@ -51,6 +51,32 @@ public:
 
 
 
+/**
+ * Similar to shear but make i non-linear (quadratic)
+ */
+template <int dim>
+class Shear2 : public Function<dim>
+{
+public:
+  Shear2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    // simple shear
+    static const double gamma = 0.1;
+    if (component==0)
+      return p[1]*p[1]*gamma;
+    else
+      return 0.;
+  }
+};
+
+
+
 template <int dim>
 class UniaxialTension : public Function<dim>
 {
@@ -70,6 +96,32 @@ public:
       return 0.;
   }
 };
+
+
+
+/**
+ * Same as UniaxialTension but non-linear (quadratic w.r.t. Px)
+ */
+template <int dim>
+class UniaxialTension2 : public Function<dim>
+{
+public:
+  UniaxialTension2() :
+    Function<dim>(dim)
+  {}
+
+  double value (const Point<dim> &p,
+                const unsigned int component) const
+  {
+    Assert (dim>=2, ExcNotImplemented());
+    static const double dx = 0.1;
+    if (component==0)
+      return p[0]*p[0]*dx;
+    else
+      return 0.;
+  }
+};
+
 
 
 template <int dim> class Rotation;
@@ -117,7 +169,7 @@ public:
 
 
 
-template <int dim, int fe_degree, int n_q_points_1d>
+template <int dim, int fe_degree, int n_q_points_1d=fe_degree+1>
 void test_elasticity (const Function<dim> &displacement_function)
 {
   typedef double number;
@@ -132,7 +184,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   IndexSet relevant_set;
   DoFTools::extract_locally_relevant_dofs (dof, relevant_set);
 
-  ConstraintMatrix constraints (relevant_set);
+  AffineConstraints<double> constraints (relevant_set);
   DoFTools::make_hanging_node_constraints(dof, constraints);
   // VectorTools::interpolate_boundary_values (dof, 0, Functions::ZeroFunction<dim>(),
   //                                           constraints);
@@ -157,7 +209,7 @@ void test_elasticity (const Function<dim> &displacement_function)
   }
 
   // setup current configuration mapping
-  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(/*degree*/1,dof,displacement);
+  auto mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<number>>>(fe_degree,dof,displacement);
   //auto mapping = std::make_shared<MappingFEField<dim,dim,LinearAlgebra::distributed::Vector<number>>>(dof,displacement);
 
   // output for debug purposes
@@ -273,6 +325,9 @@ void test_elasticity (const Function<dim> &displacement_function)
         const Tensor<2,dim,VectorizedArray<number>>          F_bar  = Physics::Elasticity::Kinematics::F_iso(F);
         const SymmetricTensor<2,dim,VectorizedArray<number>> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
+        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
         // current configuration
         const Tensor<2,dim,VectorizedArray<number>>          &grad_Nx_v      = phi_current.get_gradient(q);
         const SymmetricTensor<2,dim,VectorizedArray<number>> &symm_grad_Nx_v = phi_current.get_symmetric_gradient(q);
@@ -283,27 +338,21 @@ void test_elasticity (const Function<dim> &displacement_function)
 
         const SymmetricTensor<2,dim,VectorizedArray<number>> jc_part = material.act_Jc(det_F,b_bar,b,symm_grad_Nx_v);
 
-        const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-        VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-        for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-          if (std::abs(JxW_current[i])>1e-10)
-            JxW_scale[i] *= 1./JxW_current[i];
-
         // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
         // contribution. It comprises a material contribution, and a
         // geometrical stress contribution which is only added along
         // the local matrix diagonals:
         phi_current_s.submit_symmetric_gradient(
-          jc_part * JxW_scale
+          jc_part / det_F
           // Note: We need to integrate over the reference element, so the weights have to be adjusted
           ,q);
 
         // geometrical stress contribution
         const Tensor<2,dim,VectorizedArray<number>> geo = egeo_grad(grad_Nx_v,tau_ns);
         phi_current.submit_gradient(
-          geo * JxW_scale
+          geo / det_F
           // Note: We need to integrate over the reference element, so the weights have to be adjusted
-          // phi_reference.JxW(q) / phi_current.JxW(q)
+          // phi_reference.JxW(q) / phi_current.JxW(q) == 1/det_F
           ,q);
 
         //=================
@@ -354,7 +403,10 @@ void test_elasticity (const Function<dim> &displacement_function)
                   << JxW << std::endl
                   << phi_reference.JxW(q)[0] << std::endl
                   << "JxW current:" << std::endl
-                  << phi_current.JxW(q)[0] << std::endl;
+                  << phi_current.JxW(q)[0] << std::endl
+                  << "det_F:" << std::endl
+                  << det_F_standard << std::endl
+                  << det_F[0] << std::endl;
 
         std::cout << "Grad u:"<< std::endl;
         for (unsigned int i = 0; i < dim; ++i)
@@ -469,34 +521,37 @@ int main (int argc, char **argv)
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 
-  unsigned int myid = Utilities::MPI::this_mpi_process (MPI_COMM_WORLD);
-  deallog.push(Utilities::int_to_string(myid));
+  Assert (Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)==1,
+          ExcNotImplemented());
 
-  if (myid == 0)
-    {
-      const std::string deallogname = "output";
-      std::ofstream deallogfile;
-      deallogfile.open(deallogname.c_str());
-      deallog.attach(deallogfile);
-      deallog.depth_console(0);
-      deallog << std::setprecision(4);
+  const std::string deallogname = "output";
+  std::ofstream deallogfile;
+  deallogfile.open(deallogname.c_str());
+  deallog.attach(deallogfile);
+  deallog.depth_console(0);
+  deallog << std::setprecision(4);
 
-      deallog.push("2d");
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
-      deallog.pop();
-      deallog.push("3d");
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-      test_elasticity<3,1,2>(Rotation<3>());
-      deallog.pop();
-    }
-  else
-    {
-      test_elasticity<2,1,2>(Shear<2>());
-      test_elasticity<2,1,2>(UniaxialTension<2>());
+  deallog.push("2d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<2,1>(Shear<2>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<2,2>(Shear2<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<2,1>(UniaxialTension<2>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<2,2>(UniaxialTension2<2>());
 
-      test_elasticity<3,1,2>(Shear<3>());
-      test_elasticity<3,1,2>(UniaxialTension<3>());
-    }
+  deallog.pop();
+  deallog.push("3d");
+  std::cout << "=====================" << std::endl << "Shear" << std::endl;
+  test_elasticity<3,1>(Shear<3>());
+  std::cout << "=====================" << std::endl << "Shear2" << std::endl;
+  test_elasticity<3,2>(Shear2<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension" << std::endl;
+  test_elasticity<3,1>(UniaxialTension<3>());
+  std::cout << "=====================" << std::endl << "UniaxialTension2" << std::endl;
+  test_elasticity<3,2>(UniaxialTension2<3>());
+  std::cout << "=====================" << std::endl << "Rotation" << std::endl;
+  test_elasticity<3,1>(Rotation<3>());
+  deallog.pop();
 }
