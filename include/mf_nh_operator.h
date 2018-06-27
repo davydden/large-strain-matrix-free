@@ -427,6 +427,15 @@ using namespace dealii;
                              FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> &phi_reference,
                              const unsigned int cell) const
   {
+    // make sure both MatrixFree objects use the same cells
+    AssertDimension(data_current->n_components_filled(cell), data_reference->n_components_filled(cell));
+    for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
+      Assert (data_current->get_cell_iterator(cell,i) == data_reference->get_cell_iterator(cell,i),
+              ExcMessage("Cell block " + std::to_string(cell) +
+                         " element " + std::to_string(i) +
+                         " does not match between two MatrixFree objects."
+                         ));
+
     typedef VectorizedArray<number> NumberType;
     static constexpr number dim_f = dim;
     static constexpr number two_over_dim = 2.0/dim;
