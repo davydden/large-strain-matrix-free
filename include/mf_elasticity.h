@@ -39,6 +39,11 @@
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/trilinos_precondition.h>
+#include <deal.II/lac/trilinos_vector.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
+#include <deal.II/lac/trilinos_sparsity_pattern.h>
+#include <deal.II/lac/trilinos_solver.h>
 
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
@@ -491,7 +496,9 @@ namespace Cook_Membrane
   class Solid
   {
   public:
-    typedef Vector<float> LevelVectorType;
+    using LevelNumberType = float;
+    using LevelVectorType = LinearAlgebra::distributed::Vector<LevelNumberType>;
+    using VectorType = LinearAlgebra::distributed::Vector<double>;
 
     Solid(const Parameters::AllParameters &parameters);
 
@@ -535,13 +542,19 @@ namespace Cook_Membrane
      * number of iterations, residual and condition number estiamte.
      */
     std::tuple<unsigned int, double, double>
-    solve_linear_system(Vector<double> &newton_update) const;
+    solve_linear_system(LinearAlgebra::distributed::Vector<double> &newton_update,
+                        TrilinosWrappers::MPI::Vector &newton_update_trilinos) const;
 
     // Set total solution based on the current values of solution_n and solution_delta:
     void set_total_solution();
 
     void
     output_results() const;
+
+    /**
+     * MPI communicator
+     */
+    MPI_Comm mpi_communicator;
 
     // Finally, some member variables that describe the current state: A
     // collection of the parameters used to describe the problem setup...
@@ -552,7 +565,7 @@ namespace Cook_Membrane
     double                           vol_current;
 
     // ...and description of the geometry on which the problem is solved:
-    Triangulation<dim>               triangulation;
+    parallel::distributed::Triangulation<dim>               triangulation;
 
     // Also, keep track of the current time and the time spent evaluating
     // certain functions
@@ -568,6 +581,8 @@ namespace Cook_Membrane
     DoFHandler<dim>                  dof_handler_ref;
     const unsigned int               dofs_per_cell;
     const FEValuesExtractors::Vector u_fe;
+
+    IndexSet locally_owned_dofs, locally_relevant_dofs;
 
     // homogeneous material
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>> material;
@@ -593,18 +608,23 @@ namespace Cook_Membrane
     // as well as the tangent matrix. There is a AffineConstraints object used
     // to keep track of constraints.
     AffineConstraints<double>        constraints;
-    SparsityPattern                  sparsity_pattern;
-    SparseMatrix<double>             tangent_matrix;
-    Vector<double>                   system_rhs;
+    TrilinosWrappers::SparseMatrix   tangent_matrix;
+    TrilinosWrappers::MPI::Vector    system_rhs_trilinos;
+    TrilinosWrappers::MPI::Vector    newton_update_trilinos;
+
+    LinearAlgebra::distributed::Vector<double> system_rhs;
 
     // solution at the previous time-step
-    Vector<double>                   solution_n;
+    LinearAlgebra::distributed::Vector<double> solution_n;
 
     // current value of increment solution
-    Vector<double>                   solution_delta;
+    LinearAlgebra::distributed::Vector<double> solution_delta;
 
     // current total solution:  solution_tota = solution_n + solution_delta
-    Vector<double>                   solution_total;
+    LinearAlgebra::distributed::Vector<double> solution_total;
+
+    LinearAlgebra::distributed::Vector<double> newton_update;
+
 
     MGLevelObject<LevelVectorType>   mg_solution_total;
 
@@ -634,16 +654,12 @@ namespace Cook_Membrane
       double norm, u;
     };
 
-    Errors error_residual, error_residual_0, error_residual_norm, error_update,
+    mutable Errors error_residual, error_residual_0, error_residual_norm, error_update,
            error_update_0, error_update_norm;
 
     // Methods to calculate error measures
     void
     get_error_residual(Errors &error_residual);
-
-    void
-    get_error_update(const Vector<double> &newton_update,
-                     Errors &error_update);
 
     // Print information to screen in a pleasing way...
     static
@@ -656,7 +672,7 @@ namespace Cook_Membrane
     void
     print_vertical_tip_displacement();
 
-    std::shared_ptr<MappingQEulerian<dim,Vector<double>>> eulerian_mapping;
+    std::shared_ptr<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<double>>> eulerian_mapping;
     std::shared_ptr<MatrixFree<dim,double>> mf_data_current;
     std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
 
@@ -672,7 +688,7 @@ namespace Cook_Membrane
 
     MGLevelObject<LevelMatrixType> mg_mf_nh_operator;
 
-    std::shared_ptr<MGTransferPrebuilt<LevelVectorType>> mg_transfer;
+    std::shared_ptr<MGTransferMatrixFree<dim,float>> mg_transfer;
 
     typedef PreconditionChebyshev<LevelMatrixType,LevelVectorType> SmootherChebyshev;
 
@@ -693,7 +709,7 @@ namespace Cook_Membrane
 
     std::shared_ptr<Multigrid<LevelVectorType>> multigrid;
 
-    std::shared_ptr<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>> multigrid_preconditioner;
+    std::shared_ptr<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>> multigrid_preconditioner;
 
     MGConstrainedDoFs       mg_constrained_dofs;
   };
@@ -706,10 +722,18 @@ namespace Cook_Membrane
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   Solid<dim,degree,n_q_points_1d,NumberType>::Solid(const Parameters::AllParameters &parameters)
     :
+    mpi_communicator(MPI_COMM_WORLD),
     parameters(parameters),
     vol_reference (0.0),
     vol_current (0.0),
-    triangulation(Triangulation<dim>::maximum_smoothing),
+    triangulation(mpi_communicator,
+                  typename Triangulation<dim>::MeshSmoothing(
+                    // guarantee that the mesh also does not change by more than refinement level across vertices that might connect two cells:
+                    Triangulation<dim>::limit_level_difference_at_vertices),
+                  typename parallel::distributed::Triangulation<dim>::Settings(
+                    // needed for GMG:
+                    parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy)
+                 ),
     time(parameters.end_time, parameters.delta_t),
     timer_output_file("timings.txt"),
     timer(timer_output_file,
@@ -837,7 +861,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   void Solid<dim,degree,n_q_points_1d,NumberType>::make_grid()
   {
     // Divide the beam, but only along the x- and y-coordinate directions
-    std::vector< unsigned int > repetitions(dim, parameters.elements_per_edge);
+    std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
     // Only allow one element through the thickness
     // (modelling a plane strain condition)
     if (dim == 3)
@@ -859,9 +883,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
    // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
    // ID 2 and we will use to impose the plane strain condition)
    const double tol_boundary = 1e-6;
-   typename Triangulation<dim>::active_cell_iterator cell =
-     triangulation.begin_active(), endc = triangulation.end();
-   for (; cell != endc; ++cell)
+   for (auto cell : triangulation.active_cell_iterators())
+     if (cell->is_locally_owned())
      for (unsigned int face = 0;
           face < GeometryInfo<dim>::faces_per_cell; ++face)
        if (cell->face(face)->at_boundary() == true)
@@ -908,24 +931,36 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
               << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
               << std::endl;
 
-    // Setup the sparsity pattern and tangent matrix
+    locally_owned_dofs = dof_handler_ref.locally_owned_dofs();
+    locally_relevant_dofs.clear();
+    DoFTools::extract_locally_relevant_dofs(dof_handler_ref,
+                                            locally_relevant_dofs);
+
     tangent_matrix.clear();
     {
-      DynamicSparsityPattern dsp(dof_handler_ref.n_dofs(), dof_handler_ref.n_dofs());
-      DoFTools::make_sparsity_pattern(dof_handler_ref,
-                                      dsp,
-                                      constraints,
-                                      /* keep_constrained_dofs */ false);
-      sparsity_pattern.copy_from(dsp);
-    }
+      // Setup the sparsity pattern and tangent matrix
+      TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
+                                           mpi_communicator);
 
-    tangent_matrix.reinit(sparsity_pattern);
+      DoFTools::make_sparsity_pattern(dof_handler_ref,
+                                      sp,
+                                      constraints,
+                                      /* keep_constrained_dofs */ false,
+                                      Utilities::MPI::this_mpi_process(mpi_communicator));
+
+      sp.compress();
+      tangent_matrix.reinit(sp);
+    }
 
     // We then set up storage vectors
     system_rhs.reinit(dof_handler_ref.n_dofs());
     solution_n.reinit(dof_handler_ref.n_dofs());
     solution_delta.reinit(dof_handler_ref.n_dofs());
     solution_total.reinit(dof_handler_ref.n_dofs());
+    newton_update.reinit(dof_handler_ref.n_dofs());
+
+    newton_update_trilinos.reinit(locally_owned_dofs, mpi_communicator);
+    system_rhs_trilinos.reinit(locally_owned_dofs, mpi_communicator);
 
     timer.leave_subsection();
   }
@@ -1003,8 +1038,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     if (it_nr <= 1)
       {
-        mg_transfer = std::make_shared<MGTransferPrebuilt<LevelVectorType>>(mg_constrained_dofs);
-        mg_transfer->build_matrices(dof_handler_ref);
+        mg_transfer = std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(mg_constrained_dofs);
+        mg_transfer->build(dof_handler_ref);
 
         mg_mf_data_current.resize(triangulation.n_global_levels());
         mg_mf_data_reference.resize(triangulation.n_global_levels());
@@ -1013,7 +1048,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     if (it_nr <= 1)
       {
         // solution_total is the point around which we linearize
-        eulerian_mapping = std::make_shared<MappingQEulerian<dim,Vector<double>>>(degree,dof_handler_ref,solution_total);
+        eulerian_mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<double>>>(degree,dof_handler_ref,solution_total);
 
         mf_data_current = std::make_shared<MatrixFree<dim,double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
@@ -1184,7 +1219,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
              });
 
     // and a preconditioner object which uses GMG
-    multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferPrebuilt<LevelVectorType>>>(dof_handler_ref,*multigrid,*mg_transfer);
+    multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>>(dof_handler_ref,*multigrid,*mg_transfer);
 
     timer.leave_subsection();
   }
@@ -1200,8 +1235,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   {
     std::cout << std::endl << "Timestep " << time.get_timestep() << " @ "
               << time.current() << "s" << std::endl;
-
-    Vector<double> newton_update(dof_handler_ref.n_dofs());
 
     error_residual.reset();
     error_residual_0.reset();
@@ -1246,13 +1279,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 #ifdef DEBUG
         // check vmult of matrix-based and matrix-free for a random vector:
         {
-          Vector<double> src(dof_handler_ref.n_dofs()), dst_mb(dof_handler_ref.n_dofs()), dst_mf(dof_handler_ref.n_dofs()), diff(dof_handler_ref.n_dofs());
-          for (unsigned int i=0; i<dof_handler_ref.n_dofs(); ++i)
-            src(i) = ((double)std::rand())/RAND_MAX;
+          TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos), dst_mb(newton_update_trilinos);
+          for (unsigned int i=0; i<locally_owned_dofs.n_elements(); ++i)
+            src_trilinos(locally_owned_dofs.nth_index_in_set(i)) = ((double)std::rand())/RAND_MAX;
 
-          constraints.set_zero(src);
+          constraints.set_zero(src_trilinos);
 
-          tangent_matrix.vmult(dst_mb, src);
+          LinearAlgebra::distributed::Vector src(newton_update), dst_mf(newton_update), diff(newton_update);
+          src = src_trilinos;
+
+          tangent_matrix.vmult(dst_mb, src_trilinos);
           mf_nh_operator.vmult(dst_mf, src);
 
           diff = dst_mb;
@@ -1265,7 +1301,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                             ));
 
           // now check Jacobi preconditioner
-          tangent_matrix.precondition_Jacobi(dst_mb,src,0.8);
+          TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
+          trilinos_jacobi.initialize(tangent_matrix,0.8);
+          trilinos_jacobi.vmult(dst_mb,src_trilinos);
           mf_nh_operator.precondition_Jacobi(dst_mf,src,0.8);
 
           diff = dst_mb;
@@ -1301,9 +1339,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           }
 
         const std::tuple<unsigned int, double, double>
-        lin_solver_output = solve_linear_system(newton_update);
+        lin_solver_output = solve_linear_system(newton_update,newton_update_trilinos);
 
-        get_error_update(newton_update, error_update);
         if (newton_iteration == 0)
           error_update_0 = error_update;
 
@@ -1401,9 +1438,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     double vertical_tip_displacement = 0.0;
     double vertical_tip_displacement_check = 0.0;
 
-    typename DoFHandler<dim>::active_cell_iterator cell =
-      dof_handler_ref.begin_active(), endc = dof_handler_ref.end();
-    for (; cell != endc; ++cell)
+    for (auto cell : dof_handler_ref.active_cell_iterators())
     {
       // if (cell->point_inside(soln_pt) == true)
       for (unsigned int v=0; v<GeometryInfo<dim>::vertices_per_cell; ++v)
@@ -1451,31 +1486,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,int degree,int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::get_error_residual(Errors &error_residual)
   {
-    Vector<double> error_res(dof_handler_ref.n_dofs());
-    error_res = system_rhs;
-    constraints.set_zero(error_res);
-
-    error_residual.norm = error_res.l2_norm();
-    error_residual.u = error_res.l2_norm();
+    error_residual.norm = system_rhs.l2_norm();
+    error_residual.u = system_rhs.l2_norm();
   }
-
-
-// @sect4{Solid::get_error_udpate}
-
-// Determine the true Newton update error for the problem
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::get_error_update(const Vector<double> &newton_update,
-                                    Errors &error_update)
-  {
-    Vector<double> error_ud(dof_handler_ref.n_dofs());
-    for (unsigned int i = 0; i < dof_handler_ref.n_dofs(); ++i)
-      if (!constraints.is_constrained(i))
-        error_ud(i) = newton_update(i);
-
-    error_update.norm = error_ud.l2_norm();
-    error_update.u = error_ud.l2_norm();
-  }
-
 
 
 // @sect4{Solid::set_total_solution}
@@ -1500,7 +1513,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     std::cout << " ASM " << std::flush;
 
     tangent_matrix = 0.0;
-    system_rhs = 0.0;
+    system_rhs_trilinos = 0.0;
 
     FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
     Vector<double> cell_rhs(dofs_per_cell);
@@ -1618,8 +1631,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
           constraints.distribute_local_to_global(cell_matrix, cell_rhs,
                                                  local_dof_indices,
-                                                 tangent_matrix, system_rhs);
+                                                 tangent_matrix, system_rhs_trilinos);
         }
+
+    tangent_matrix.compress(VectorOperation::add);
+    system_rhs_trilinos.compress(VectorOperation::add);
+
+    system_rhs = system_rhs_trilinos;
   }
 
 
@@ -1708,7 +1726,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // for the linear problem is straight-forward.
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   std::tuple<unsigned int, double, double>
-  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(Vector<double> &newton_update) const
+  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(
+    LinearAlgebra::distributed::Vector<double> &newton_update,
+    TrilinosWrappers::MPI::Vector &newton_update_trilinos) const
   {
     unsigned int lin_it = 0;
     double lin_res = 0.0;
@@ -1716,16 +1736,17 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // reset solution vector each iteration
     newton_update = 0.;
+    newton_update_trilinos = 0.;
 
     // We solve for the incremental displacement $d\mathbf{u}$.
-    GrowingVectorMemory<Vector<double> > GVM;
+    GrowingVectorMemory<LinearAlgebra::distributed::Vector<double> > GVM;
     const double tol_sol = parameters.tol_lin
                       * system_rhs.l2_norm();
 
     // estimate condition number of matrix-free operator from dummy CG
     {
         IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
-        SolverCG<Vector<double> > solver_condition(control_condition, GVM);
+        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_condition(control_condition, GVM);
 
         solver_condition.connect_condition_number_slot(
           [&](const double number) {
@@ -1742,31 +1763,34 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     }
 
     timer.enter_subsection("Linear solver");
+    const int solver_its = tangent_matrix.m()
+                        * parameters.max_iterations_lin;
+    SolverControl solver_control(solver_its, tol_sol);
+
     std::cout << " SLV " << std::flush;
     if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
       {
-        const int solver_its = tangent_matrix.m()
-                                * parameters.max_iterations_lin;
-        SolverControl solver_control(solver_its, tol_sol);
 
-        SolverCG<Vector<double> > solver_CG(solver_control, GVM);
+        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_CG(solver_control, GVM);
 
         if (parameters.type_lin == "CG")
           {
-            // We've chosen by default a SSOR preconditioner as it appears to
-            // provide the fastest solver convergence characteristics for this
-            // problem on a single-thread machine.  However, for multicore
-            // computing, the Jacobi preconditioner which is multithreaded may
-            // converge quicker for larger linear systems.
-            PreconditionSelector<SparseMatrix<double>, Vector<double> >
-            preconditioner (parameters.preconditioner_type,
-                            parameters.preconditioner_relaxation);
-            preconditioner.use_matrix(tangent_matrix);
+            AssertThrow(parameters.preconditioner_type == "jacobi",
+                        ExcNotImplemented());
 
-            solver_CG.solve(tangent_matrix,
-                            newton_update,
-                            system_rhs,
+            GrowingVectorMemory<TrilinosWrappers::MPI::Vector> GVM_trilinos;
+            SolverCG<TrilinosWrappers::MPI::Vector> solver_CG_trilinos(solver_control, GVM_trilinos);
+
+            TrilinosWrappers::PreconditionJacobi preconditioner;
+            preconditioner.initialize(tangent_matrix, parameters.preconditioner_relaxation);
+
+            solver_CG_trilinos.solve(
+                            tangent_matrix,
+                            newton_update_trilinos,
+                            system_rhs_trilinos,
                             preconditioner);
+
+            newton_update = newton_update_trilinos;
           }
         else if (parameters.type_lin == "MF_AD_CG")
           {
@@ -1809,12 +1833,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       }
     else if (parameters.type_lin == "Direct")
       {
-        // Otherwise if the problem is small
-        // enough, a direct solver can be
-        // utilised.
-        SparseDirectUMFPACK A_direct;
+        TrilinosWrappers::SolverDirect A_direct(solver_control);
         A_direct.initialize(tangent_matrix);
-        A_direct.vmult(newton_update, system_rhs);
+
+        A_direct.solve(newton_update_trilinos, system_rhs_trilinos);
+
+        newton_update = newton_update_trilinos;
 
         lin_it = 1;
         lin_res = 0.0;
@@ -1823,6 +1847,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       Assert (false, ExcMessage("Linear solver type not implemented"));
 
     timer.leave_subsection();
+
+    constraints.set_zero(newton_update);
+
+    error_update.norm = newton_update.l2_norm();
+    error_update.u = newton_update.l2_norm();
 
     // Now that we have the displacement update, distribute the constraints
     // back to the Newton update:
@@ -1859,10 +1888,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // a temporary vector and then create the Eulerian mapping. We also
     // specify the polynomial degree to the DataOut object in order to produce
     // a more refined output data set when higher order polynomials are used.
-    Vector<double> soln(solution_n.size());
-    for (unsigned int i = 0; i < soln.size(); ++i)
-      soln(i) = solution_n(i);
-    MappingQEulerian<dim> q_mapping(degree, dof_handler_ref, soln);
+    MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>> q_mapping(degree, dof_handler_ref, solution_n);
     data_out.build_patches(q_mapping, degree);
 
     std::ostringstream filename;

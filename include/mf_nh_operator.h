@@ -6,7 +6,6 @@
 
 #include <deal.II/lac/diagonal_matrix.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <deal.II/lac/vector.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -26,13 +25,13 @@ using namespace dealii;
   public:
     NeoHookOperator ();
 
-    typedef typename Vector<number>::size_type size_type;
+    typedef typename LinearAlgebra::distributed::Vector<number>::size_type size_type;
 
     void clear();
 
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference,
-                    Vector<number> &displacement);
+                    LinearAlgebra::distributed::Vector<number> &displacement);
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
@@ -41,24 +40,24 @@ using namespace dealii;
     unsigned int m () const;
     unsigned int n () const;
 
-    void vmult (Vector<number> &dst,
-                const Vector<number> &src) const;
+    void vmult (LinearAlgebra::distributed::Vector<number> &dst,
+                const LinearAlgebra::distributed::Vector<number> &src) const;
 
-    void Tvmult (Vector<number> &dst,
-                 const Vector<number> &src) const;
-    void vmult_add (Vector<number> &dst,
-                    const Vector<number> &src) const;
-    void Tvmult_add (Vector<number> &dst,
-                     const Vector<number> &src) const;
+    void Tvmult (LinearAlgebra::distributed::Vector<number> &dst,
+                 const LinearAlgebra::distributed::Vector<number> &src) const;
+    void vmult_add (LinearAlgebra::distributed::Vector<number> &dst,
+                    const LinearAlgebra::distributed::Vector<number> &src) const;
+    void Tvmult_add (LinearAlgebra::distributed::Vector<number> &dst,
+                     const LinearAlgebra::distributed::Vector<number> &src) const;
 
     number el (const unsigned int row,
                const unsigned int col) const;
 
-    void precondition_Jacobi(Vector<number> &dst,
-                             const Vector<number> &src,
+    void precondition_Jacobi(LinearAlgebra::distributed::Vector<number> &dst,
+                             const LinearAlgebra::distributed::Vector<number> &src,
                              const number omega) const;
 
-    const std::shared_ptr<DiagonalMatrix<Vector<number>>> get_matrix_diagonal_inverse() const
+    const std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>> get_matrix_diagonal_inverse() const
     {
       return inverse_diagonal_entries;
     }
@@ -74,15 +73,15 @@ using namespace dealii;
      * Apply operator on a range of cells.
      */
     void local_apply_cell (const MatrixFree<dim,number>    &data,
-                           Vector<number>                      &dst,
-                           const Vector<number>                &src,
+                           LinearAlgebra::distributed::Vector<number>                      &dst,
+                           const LinearAlgebra::distributed::Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const;
 
     /**
      * Apply diagonal part of the operator on a cell range.
      */
     void local_diagonal_cell (const MatrixFree<dim,number> &data,
-                              Vector<number>                                   &dst,
+                              LinearAlgebra::distributed::Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const;
 
@@ -98,12 +97,12 @@ using namespace dealii;
     std::shared_ptr<const MatrixFree<dim,number>> data_current;
     std::shared_ptr<const MatrixFree<dim,number>> data_reference;
 
-    Vector<number> *displacement;
+    LinearAlgebra::distributed::Vector<number> *displacement;
 
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material;
 
-    std::shared_ptr<DiagonalMatrix<Vector<number>>>  inverse_diagonal_entries;
-    std::shared_ptr<DiagonalMatrix<Vector<number>>>  diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>  inverse_diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>  diagonal_entries;
 
     Table<2,VectorizedArray<number>> cached_scalar;
 
@@ -123,8 +122,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(Vector<number> &dst,
-                                            const Vector<number> &src,
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(LinearAlgebra::distributed::Vector<number> &dst,
+                                            const LinearAlgebra::distributed::Vector<number> &src,
                                             const number omega) const
   {
     Assert(inverse_diagonal_entries.get() &&
@@ -171,7 +170,7 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::initialize(
                     std::shared_ptr<const MatrixFree<dim,number>> data_current_,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference_,
-                    Vector<number> &displacement_)
+                    LinearAlgebra::distributed::Vector<number> &displacement_)
   {
     data_current = data_current_;
     data_reference = data_reference_;
@@ -243,8 +242,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<number>       &dst,
-                                                const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                const LinearAlgebra::distributed::Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst, src);
@@ -254,8 +253,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<number>       &dst,
-                                                 const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                 const LinearAlgebra::distributed::Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst,src);
@@ -265,8 +264,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<number>       &dst,
-                                                     const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                     const LinearAlgebra::distributed::Vector<number> &src) const
   {
     vmult_add (dst,src);
   }
@@ -275,8 +274,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<number>       &dst,
-                                                    const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                    const LinearAlgebra::distributed::Vector<number> &src) const
   {
     // FIXME: can't use cell_loop as we need both matrix-free data objects.
     // for now do it by hand.
@@ -312,8 +311,8 @@ using namespace dealii;
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
                            const MatrixFree<dim,number>    &/*data*/,
-                           Vector<number>                      &dst,
-                           const Vector<number>                &src,
+                           LinearAlgebra::distributed::Vector<number>                      &dst,
+                           const LinearAlgebra::distributed::Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const
   {
     // FIXME: I don't use data input, can this be bad?
@@ -348,7 +347,7 @@ using namespace dealii;
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
-                              Vector<number>                                   &dst,
+                              LinearAlgebra::distributed::Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const
   {
@@ -670,7 +669,7 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::
   compute_diagonal()
   {
-    typedef Vector<number> VectorType;
+    typedef LinearAlgebra::distributed::Vector<number> VectorType;
 
     inverse_diagonal_entries.reset(new DiagonalMatrix<VectorType>());
     diagonal_entries.reset(new DiagonalMatrix<VectorType>());
@@ -699,13 +698,13 @@ using namespace dealii;
     inverse_diagonal_vector = diagonal_vector;
 
     for (unsigned int i=0; i</*inverse_diagonal_vector.local_size()*/inverse_diagonal_vector.size(); ++i)
-      if (std::abs(inverse_diagonal_vector/*.local_element*/(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
-        inverse_diagonal_vector/*.local_element*/(i) = 1./inverse_diagonal_vector/*.local_element*/(i);
+      if (std::abs(inverse_diagonal_vector.local_element(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
+        inverse_diagonal_vector.local_element(i) = 1./inverse_diagonal_vector.local_element(i);
       else
-        inverse_diagonal_vector/*.local_element*/(i) = 1.;
+        inverse_diagonal_vector.local_element(i) = 1.;
 
-    // inverse_diagonal_vector.update_ghost_values();
-    // diagonal_vector.update_ghost_values();
+    inverse_diagonal_vector.update_ghost_values();
+    diagonal_vector.update_ghost_values();
 
     diagonal_is_available = true;
   }
