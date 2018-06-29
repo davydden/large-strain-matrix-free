@@ -236,6 +236,7 @@ namespace Cook_Membrane
       double      max_iterations_lin;
       std::string preconditioner_type;
       double      preconditioner_relaxation;
+      unsigned int cond_number_cg_iterations;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -267,6 +268,11 @@ namespace Cook_Membrane
         prm.declare_entry("Preconditioner relaxation", "0.65",
                           Patterns::Double(0.0),
                           "Preconditioner relaxation value");
+
+        prm.declare_entry("Condition number CG iterations", "20",
+                          Patterns::Integer(1),
+                          "Number of CG iterations to estimate condition number");
+
       }
       prm.leave_subsection();
     }
@@ -280,6 +286,7 @@ namespace Cook_Membrane
         max_iterations_lin = prm.get_double("Max iteration multiplier");
         preconditioner_type = prm.get("Preconditioner type");
         preconditioner_relaxation = prm.get_double("Preconditioner relaxation");
+        cond_number_cg_iterations = prm.get_integer("Condition number CG iterations");
       }
       prm.leave_subsection();
     }
@@ -523,8 +530,12 @@ namespace Cook_Membrane
     void
     solve_nonlinear_timestep();
 
-    std::pair<unsigned int, double>
-    solve_linear_system(Vector<double> &newton_update);
+    /**
+     * solve linear system and return a tuple consisting of
+     * number of iterations, residual and condition number estiamte.
+     */
+    std::tuple<unsigned int, double, double>
+    solve_linear_system(Vector<double> &newton_update) const;
 
     // Set total solution based on the current values of solution_n and solution_delta:
     void set_total_solution();
@@ -547,7 +558,7 @@ namespace Cook_Membrane
     // certain functions
     Time                             time;
     std::ofstream                    timer_output_file;
-    TimerOutput                      timer;
+    mutable TimerOutput              timer;
 
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
@@ -1289,7 +1300,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             break;
           }
 
-        const std::pair<unsigned int, double>
+        const std::tuple<unsigned int, double, double>
         lin_solver_output = solve_linear_system(newton_update);
 
         get_error_update(newton_update, error_update);
@@ -1306,8 +1317,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         solution_delta += newton_update;
 
         std::cout << " | " << std::fixed << std::setprecision(3) << std::setw(7)
-                  << std::scientific << lin_solver_output.first << "  "
-                  << lin_solver_output.second << "  " << error_residual_norm.norm
+                  << std::scientific << std::get<0>(lin_solver_output) << "  "
+                  << std::get<1>(lin_solver_output) << "  "
+                  << std::get<2>(lin_solver_output) << "  "
+                  << error_residual_norm.norm
                   << "  " << error_residual_norm.u << "  "
                   << "  " << error_update_norm.norm << "  " << error_update_norm.u
                   << "  " << std::endl;
@@ -1334,16 +1347,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_header()
   {
-    static const unsigned int l_width = 87;
+    static const unsigned int l_width = 98;
 
     for (unsigned int i = 0; i < l_width; ++i)
       std::cout << "_";
     std::cout << std::endl;
 
     std::cout << "    SOLVER STEP    "
-              << " |  LIN_IT   LIN_RES    RES_NORM    "
-              << " RES_U     NU_NORM     "
-              << " NU_U " << std::endl;
+              << " |  LIN_IT    LIN_RES   COND_NUM   RES_NORM   "
+              << "   RES_U      NU_NORM  "
+              << "     NU_U" << std::endl;
 
     for (unsigned int i = 0; i < l_width; ++i)
       std::cout << "_";
@@ -1355,7 +1368,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,int degree,int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_footer()
   {
-    static const unsigned int l_width = 87;
+    static const unsigned int l_width = 98;
 
     for (unsigned int i = 0; i < l_width; ++i)
       std::cout << "_";
@@ -1694,110 +1707,135 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 // As the system is composed of a single block, defining a solution scheme
 // for the linear problem is straight-forward.
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  std::pair<unsigned int, double>
-  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(Vector<double> &newton_update)
+  std::tuple<unsigned int, double, double>
+  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(Vector<double> &newton_update) const
   {
-    Vector<double> A(dof_handler_ref.n_dofs());
-    Vector<double> B(dof_handler_ref.n_dofs());
-
     unsigned int lin_it = 0;
     double lin_res = 0.0;
+    double cond_number = 1.0;
+
+    // reset solution vector each iteration
+    newton_update = 0.;
 
     // We solve for the incremental displacement $d\mathbf{u}$.
+    GrowingVectorMemory<Vector<double> > GVM;
+    const double tol_sol = parameters.tol_lin
+                      * system_rhs.l2_norm();
+
+    // estimate condition number of matrix-free operator from dummy CG
     {
-      timer.enter_subsection("Linear solver");
-      std::cout << " SLV " << std::flush;
-      if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
+        SolverControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
+        SolverCG<Vector<double> > solver_condition(control_condition, GVM);
+
+        solver_condition.connect_condition_number_slot(
+          [&](const double number) {
+            cond_number = number;
+          });
+
+        // we know that CG won't solve in few iterations, thus the try / catch block
+        try
         {
-          const int solver_its = tangent_matrix.m()
-                                 * parameters.max_iterations_lin;
-          const double tol_sol = parameters.tol_lin
-                                 * system_rhs.l2_norm();
-
-          SolverControl solver_control(solver_its, tol_sol);
-
-          GrowingVectorMemory<Vector<double> > GVM;
-          SolverCG<Vector<double> > solver_CG(solver_control, GVM);
-
-          if (parameters.type_lin == "CG")
-            {
-              // We've chosen by default a SSOR preconditioner as it appears to
-              // provide the fastest solver convergence characteristics for this
-              // problem on a single-thread machine.  However, for multicore
-              // computing, the Jacobi preconditioner which is multithreaded may
-              // converge quicker for larger linear systems.
-              PreconditionSelector<SparseMatrix<double>, Vector<double> >
-              preconditioner (parameters.preconditioner_type,
-                              parameters.preconditioner_relaxation);
-              preconditioner.use_matrix(tangent_matrix);
-
-              solver_CG.solve(tangent_matrix,
-                              newton_update,
-                              system_rhs,
-                              preconditioner);
-            }
-          else
-            {
-              if (parameters.type_lin == "MF_AD_CG")
-                {
-                   AssertThrow(parameters.preconditioner_type == "jacobi",
-                               ExcNotImplemented());
-                   PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
-                   preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
-
-                   solver_CG.solve(mf_ad_nh_operator,
-                     newton_update,
-                   system_rhs,
-                   preconditioner);
-                }
-              else
-                {
-                  if (parameters.preconditioner_type == "jacobi")
-                    {
-                      PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
-                      preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
-
-                      solver_CG.solve(mf_nh_operator,
-                        newton_update,
-                        system_rhs,
-                        preconditioner);
-                    }
-                  else
-                    {
-                      solver_CG.solve(mf_nh_operator,
-                        newton_update,
-                        system_rhs,
-                        *multigrid_preconditioner);
-                    }
-                }
-            }
-
-          lin_it = solver_control.last_step();
-          lin_res = solver_control.last_value();
+          solver_condition.solve(mf_nh_operator,
+                    newton_update,
+                    system_rhs,
+                    PreconditionIdentity());
         }
-      else if (parameters.type_lin == "Direct")
+        catch(...)
         {
-          // Otherwise if the problem is small
-          // enough, a direct solver can be
-          // utilised.
-          SparseDirectUMFPACK A_direct;
-          A_direct.initialize(tangent_matrix);
-          A_direct.vmult(newton_update, system_rhs);
-
-          lin_it = 1;
-          lin_res = 0.0;
         }
-      else
-        Assert (false, ExcMessage("Linear solver type not implemented"));
 
-      timer.leave_subsection();
+        // reset back to zero
+        newton_update = 0.;
     }
+
+    timer.enter_subsection("Linear solver");
+    std::cout << " SLV " << std::flush;
+    if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
+      {
+        const int solver_its = tangent_matrix.m()
+                                * parameters.max_iterations_lin;
+        SolverControl solver_control(solver_its, tol_sol);
+
+        SolverCG<Vector<double> > solver_CG(solver_control, GVM);
+
+        if (parameters.type_lin == "CG")
+          {
+            // We've chosen by default a SSOR preconditioner as it appears to
+            // provide the fastest solver convergence characteristics for this
+            // problem on a single-thread machine.  However, for multicore
+            // computing, the Jacobi preconditioner which is multithreaded may
+            // converge quicker for larger linear systems.
+            PreconditionSelector<SparseMatrix<double>, Vector<double> >
+            preconditioner (parameters.preconditioner_type,
+                            parameters.preconditioner_relaxation);
+            preconditioner.use_matrix(tangent_matrix);
+
+            solver_CG.solve(tangent_matrix,
+                            newton_update,
+                            system_rhs,
+                            preconditioner);
+          }
+        else if (parameters.type_lin == "MF_AD_CG")
+          {
+              AssertThrow(parameters.preconditioner_type == "jacobi",
+                          ExcNotImplemented());
+              PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
+              preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
+
+              solver_CG.solve(mf_ad_nh_operator,
+                newton_update,
+              system_rhs,
+              preconditioner);
+          }
+        else
+          {
+            Assert (parameters.type_lin == "MF_CG", ExcInternalError());
+
+            if (parameters.preconditioner_type == "jacobi")
+              {
+                PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
+                preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
+
+                solver_CG.solve(mf_nh_operator,
+                  newton_update,
+                  system_rhs,
+                  preconditioner);
+              }
+            else
+              {
+                Assert (parameters.preconditioner_type == "gmg", ExcInternalError());
+                solver_CG.solve(mf_nh_operator,
+                  newton_update,
+                  system_rhs,
+                  *multigrid_preconditioner);
+              }
+          }
+
+        lin_it = solver_control.last_step();
+        lin_res = solver_control.last_value();
+      }
+    else if (parameters.type_lin == "Direct")
+      {
+        // Otherwise if the problem is small
+        // enough, a direct solver can be
+        // utilised.
+        SparseDirectUMFPACK A_direct;
+        A_direct.initialize(tangent_matrix);
+        A_direct.vmult(newton_update, system_rhs);
+
+        lin_it = 1;
+        lin_res = 0.0;
+      }
+    else
+      Assert (false, ExcMessage("Linear solver type not implemented"));
+
+    timer.leave_subsection();
 
     // Now that we have the displacement update, distribute the constraints
     // back to the Newton update:
     constraints.distribute(newton_update);
 
-    return std::make_pair(lin_it, lin_res);
+    return std::make_tuple(lin_it, lin_res, cond_number);
   }
 
 // @sect4{Solid::output_results}
