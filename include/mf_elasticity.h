@@ -1724,7 +1724,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // estimate condition number of matrix-free operator from dummy CG
     {
-        SolverControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
+        IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
         SolverCG<Vector<double> > solver_condition(control_condition, GVM);
 
         solver_condition.connect_condition_number_slot(
@@ -1732,17 +1732,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             cond_number = number;
           });
 
-        // we know that CG won't solve in few iterations, thus the try / catch block
-        try
-        {
-          solver_condition.solve(mf_nh_operator,
-                    newton_update,
-                    system_rhs,
-                    PreconditionIdentity());
-        }
-        catch(...)
-        {
-        }
+        solver_condition.solve(mf_nh_operator,
+                  newton_update,
+                  system_rhs,
+                  PreconditionIdentity());
 
         // reset back to zero
         newton_update = 0.;
