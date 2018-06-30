@@ -1478,38 +1478,43 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     double vertical_tip_displacement = 0.0;
     double vertical_tip_displacement_check = 0.0;
 
-    for (auto cell : dof_handler_ref.active_cell_iterators())
-    {
-      // if (cell->point_inside(soln_pt) == true)
-      for (unsigned int v=0; v<GeometryInfo<dim>::vertices_per_cell; ++v)
-        if (cell->vertex(v).distance(soln_pt) < 1e-6)
-      {
-        // Extract y-component of solution at the given point
-        // This point is coindicent with a vertex, so we can
-        // extract it directly as we're using FE_Q finite elements
-        // that have support at the vertices
-        vertical_tip_displacement = solution_n(cell->vertex_dof_index(v,u_dof+1));
+    for (const auto &cell : dof_handler_ref.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell;
+               ++v)
+            if (cell->vertex(v).distance(soln_pt) < 1e-6)
+              {
+                // Extract y-component of solution at the given point
+                // This point is coindicent with a vertex, so we can
+                // extract it directly as we're using FE_Q finite elements
+                // that have support at the vertices
+                vertical_tip_displacement =
+                  solution_n(cell->vertex_dof_index(v, u_dof + 1));
 
-        // Sanity check using alternate method to extract the solution
-        // at the given point. To do this, we must create an FEValues instance
-        // to help us extract the solution value at the desired point
-        const MappingQ<dim> mapping (degree);
-        const Point<dim> qp_unit = mapping.transform_real_to_unit_cell(cell,soln_pt);
-        const Quadrature<dim> soln_qrule (qp_unit);
-        AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-        FEValues<dim> fe_values_soln (fe, soln_qrule, update_values);
-        fe_values_soln.reinit(cell);
+                // Sanity check using alternate method to extract the solution
+                // at the given point. To do this, we must create an FEValues
+                // instance to help us extract the solution value at the desired
+                // point
+                const MappingQ<dim> mapping(degree);
+                const Point<dim>    qp_unit =
+                  mapping.transform_real_to_unit_cell(cell, soln_pt);
+                const Quadrature<dim> soln_qrule(qp_unit);
+                AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+                FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+                fe_values_soln.reinit(cell);
 
-        // Extract y-component of solution at given point
-        std::vector< Tensor<1,dim> > soln_values (soln_qrule.size());
-        fe_values_soln[u_fe].get_function_values(solution_n,
-                                                 soln_values);
-        vertical_tip_displacement_check = soln_values[0][u_dof+1];
+                // Extract y-component of solution at given point
+                std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+                fe_values_soln[u_fe].get_function_values(solution_n,
+                                                         soln_values);
+                vertical_tip_displacement_check = soln_values[0][u_dof + 1];
 
-        break;
-      }
-    }
-    AssertThrow(vertical_tip_displacement > 0.0, ExcMessage("Found no cell with point inside!"))
+                break;
+              }
+        }
+    AssertThrow(Utilities::MPI::max(vertical_tip_displacement, mpi_communicator) > 0.0,
+                ExcMessage("Found no cell with point inside!"))
 
     std::cout << "Vertical tip displacement: " << vertical_tip_displacement
               << "\t Check: " << vertical_tip_displacement_check
