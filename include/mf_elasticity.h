@@ -13,6 +13,7 @@
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/std_cxx11/shared_ptr.h>
+#include <deal.II/base/conditional_ostream.h>
 
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -556,6 +557,11 @@ namespace Cook_Membrane
      */
     MPI_Comm mpi_communicator;
 
+    /**
+     * Terminal output on root MPI process
+     */
+    ConditionalOStream pcout;
+
     // Finally, some member variables that describe the current state: A
     // collection of the parameters used to describe the problem setup...
     const Parameters::AllParameters &parameters;
@@ -662,7 +668,6 @@ namespace Cook_Membrane
     get_error_residual(Errors &error_residual);
 
     // Print information to screen in a pleasing way...
-    static
     void
     print_conv_header();
 
@@ -723,6 +728,7 @@ namespace Cook_Membrane
   Solid<dim,degree,n_q_points_1d,NumberType>::Solid(const Parameters::AllParameters &parameters)
     :
     mpi_communicator(MPI_COMM_WORLD),
+    pcout(std::cout, Utilities::MPI::this_mpi_process(mpi_communicator)==0),
     parameters(parameters),
     vol_reference (0.0),
     vol_current (0.0),
@@ -906,7 +912,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     vol_reference = GridTools::volume(triangulation);
     vol_current = vol_reference;
-    std::cout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
+    pcout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
   }
 
 
@@ -926,10 +932,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     dof_handler_ref.distribute_mg_dofs();
     DoFRenumbering::Cuthill_McKee(dof_handler_ref);
 
-    std::cout << "Triangulation:"
-              << "\n\t Number of active cells: " << triangulation.n_active_cells()
-              << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
-              << std::endl;
+    pcout << "Triangulation:"
+          << "\n\t Number of active cells: " << triangulation.n_active_cells()
+          << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
+          << std::endl;
 
     locally_owned_dofs = dof_handler_ref.locally_owned_dofs();
     locally_relevant_dofs.clear();
@@ -1273,8 +1279,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   void
   Solid<dim,degree,n_q_points_1d,NumberType>::solve_nonlinear_timestep()
   {
-    std::cout << std::endl << "Timestep " << time.get_timestep() << " @ "
-              << time.current() << "s" << std::endl;
+    pcout << std::endl << "Timestep " << time.get_timestep() << " @ "
+          << time.current() << "s" << std::endl;
 
     error_residual.reset();
     error_residual_0.reset();
@@ -1300,7 +1306,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     for (; newton_iteration < parameters.max_iterations_NR;
          ++newton_iteration)
       {
-        std::cout << " " << std::setw(2) << newton_iteration << " " << std::flush;
+        pcout << " " << std::setw(2) << newton_iteration << " " << std::flush;
 
         // If we have decided that we want to continue with the iteration, we
         // assemble the tangent, make and impose the Dirichlet constraints,
@@ -1372,7 +1378,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         if (newton_iteration > 0 && error_update_norm.u <= parameters.tol_u
             && error_residual_norm.u <= parameters.tol_f)
           {
-            std::cout << " CONVERGED! " << std::endl;
+            pcout << " CONVERGED! " << std::endl;
             print_conv_footer();
 
             break;
@@ -1393,14 +1399,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
         solution_delta += newton_update;
 
-        std::cout << " | " << std::fixed << std::setprecision(3) << std::setw(7)
-                  << std::scientific << std::get<0>(lin_solver_output) << "  "
-                  << std::get<1>(lin_solver_output) << "  "
-                  << std::get<2>(lin_solver_output) << "  "
-                  << error_residual_norm.norm
-                  << "  " << error_residual_norm.u << "  "
-                  << "  " << error_update_norm.norm << "  " << error_update_norm.u
-                  << "  " << std::endl;
+        pcout << " | " << std::fixed << std::setprecision(3) << std::setw(7)
+              << std::scientific << std::get<0>(lin_solver_output) << "  "
+              << std::get<1>(lin_solver_output) << "  "
+              << std::get<2>(lin_solver_output) << "  "
+              << error_residual_norm.norm
+              << "  " << error_residual_norm.u << "  "
+              << "  " << error_update_norm.norm << "  " << error_update_norm.u
+              << "  " << std::endl;
       }
 
     // At the end, if it turns out that we have in fact done more iterations
@@ -1427,17 +1433,17 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     static const unsigned int l_width = 98;
 
     for (unsigned int i = 0; i < l_width; ++i)
-      std::cout << "_";
-    std::cout << std::endl;
+      pcout << "_";
+    pcout << std::endl;
 
-    std::cout << "    SOLVER STEP    "
-              << " |  LIN_IT    LIN_RES   COND_NUM   RES_NORM   "
-              << "   RES_U      NU_NORM  "
-              << "     NU_U" << std::endl;
+    pcout << "    SOLVER STEP    "
+          << " |  LIN_IT    LIN_RES   COND_NUM   RES_NORM   "
+          << "   RES_U      NU_NORM  "
+          << "     NU_U" << std::endl;
 
     for (unsigned int i = 0; i < l_width; ++i)
-      std::cout << "_";
-    std::cout << std::endl;
+      pcout << "_";
+    pcout << std::endl;
   }
 
 
@@ -1448,14 +1454,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     static const unsigned int l_width = 98;
 
     for (unsigned int i = 0; i < l_width; ++i)
-      std::cout << "_";
-    std::cout << std::endl;
+      pcout << "_";
+    pcout << std::endl;
 
-    std::cout << "Relative errors:" << std::endl
-              << "Displacement:\t" << error_update.u / error_update_0.u << std::endl
-              << "Force: \t\t" << error_residual.u / error_residual_0.u << std::endl
-              << "v / V_0:\t" << vol_current << " / " << vol_reference
-              << std::endl;
+    pcout << "Relative errors:" << std::endl
+          << "Displacement:\t" << error_update.u / error_update_0.u << std::endl
+          << "Force: \t\t" << error_residual.u / error_residual_0.u << std::endl
+          << "v / V_0:\t" << vol_current << " / " << vol_reference
+          << std::endl;
   }
 
 // At the end we also output the result that can be compared to that found in
@@ -1467,8 +1473,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     static const unsigned int l_width = 87;
 
     for (unsigned int i = 0; i < l_width; ++i)
-      std::cout << "_";
-    std::cout << std::endl;
+      pcout << "_";
+    pcout << std::endl;
 
     Point<dim> soln_pt;
     soln_pt[0] = 48.0*parameters.scale;
@@ -1516,9 +1522,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     AssertThrow(Utilities::MPI::max(vertical_tip_displacement, mpi_communicator) > 0.0,
                 ExcMessage("Found no cell with point inside!"))
 
-    std::cout << "Vertical tip displacement: " << vertical_tip_displacement
-              << "\t Check: " << vertical_tip_displacement_check
-              << std::endl;
+    pcout << "Vertical tip displacement: " << vertical_tip_displacement
+          << "\t Check: " << vertical_tip_displacement_check
+          << std::endl;
   }
 
 
@@ -1555,7 +1561,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   void Solid<dim,degree,n_q_points_1d,NumberType>::assemble_system()
   {
     TimerOutput::Scope t (timer, "Assemble linear system");
-    std::cout << " ASM " << std::flush;
+    pcout << " ASM " << std::flush;
 
     tangent_matrix = 0.0;
     system_rhs_trilinos = 0.0;
@@ -1696,7 +1702,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::make_constraints(const int &it_nr)
   {
-    std::cout << " CST " << std::flush;
+    pcout << " CST " << std::flush;
 
     // Since the constraints are different at different Newton iterations, we
     // need to clear the constraints matrix and completely rebuild
@@ -1812,7 +1818,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                         * parameters.max_iterations_lin;
     SolverControl solver_control(solver_its, tol_sol);
 
-    std::cout << " SLV " << std::flush;
+    pcout << " SLV " << std::flush;
     if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
       {
 
