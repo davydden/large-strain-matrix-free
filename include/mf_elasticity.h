@@ -962,6 +962,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     newton_update_trilinos.reinit(locally_owned_dofs, mpi_communicator);
     system_rhs_trilinos.reinit(locally_owned_dofs, mpi_communicator);
 
+    // switch to ghost mode:
+    solution_n.update_ghost_values();
+    solution_total.update_ghost_values();
+
     timer.leave_subsection();
   }
 
@@ -1093,6 +1097,55 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           }
       }
 
+    // adjust ghost range if needed
+    if (it_nr == 0)
+      {
+        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mf_data_current->get_vector_partitioner();
+        /*
+        // FIXME: why would this fail?!
+        Assert (partitioner.get() ==
+                mf_data_reference->get_vector_partitioner().get(),
+                ExcInternalError());
+        */
+
+
+        if (newton_update.get_partitioner().get() != partitioner.get() ||
+            system_rhs.get_partitioner().get() != partitioner.get() ||
+            solution_total.get_partitioner().get() != partitioner.get())
+          {
+            // we don't need to copy (via copy_locally_owned_data_from and temp vector)
+            // as neither newton_update nor system_rhs holds any info at this point
+            newton_update.reinit(partitioner);
+            system_rhs.reinit(partitioner);
+
+            LinearAlgebra::distributed::Vector<double> copy(solution_total);
+            solution_total.reinit(partitioner);
+            solution_total.copy_locally_owned_data_from(copy);
+            solution_total.update_ghost_values();
+          }
+      }
+
+    // FIXME: interpolate_to_mg will resize MG vector, make sure it has the right partition for MF
+    for (unsigned int level = 0; level<=max_level; ++level)
+      {
+        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mg_mf_data_current[level]->get_vector_partitioner();
+
+        /*
+        // FIXME: why would this fail?
+        Assert (partitioner.get() ==
+                mg_mf_data_reference[level]->get_vector_partitioner().get(),
+                ExcInternalError());
+        */
+
+        if (mg_solution_total[level].get_partitioner().get() != partitioner.get())
+          {
+            LevelVectorType copy(mg_solution_total[level]);
+            mg_solution_total[level].reinit(partitioner);
+            mg_solution_total[level].copy_locally_owned_data_from(copy);
+            mg_solution_total[level].update_ghost_values();
+          }
+      }
+
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
@@ -1207,27 +1260,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // and a preconditioner object which uses GMG
     multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>>(dof_handler_ref,*multigrid,*mg_transfer);
-
-    // adjust ghost range if needed
-    if (it_nr == 0)
-      {
-        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mf_data_current->get_vector_partitioner();
-        /*
-        Assert (partitioner.get() ==
-                mf_data_reference->get_vector_partitioner().get(),
-                ExcInternalError());
-        */
-
-
-        if (newton_update.get_partitioner().get() != partitioner.get() ||
-            system_rhs.get_partitioner().get() != partitioner.get())
-          {
-            // we don't need to copy (via copy_locally_owned_data_from and temp vector)
-            // as neither newton_update nor system_rhs holds any info at this point
-            newton_update.reinit(partitioner);
-            system_rhs.reinit(partitioner);
-          }
-      }
 
     timer.leave_subsection();
   }

@@ -240,7 +240,7 @@ using namespace dealii;
     const std::vector<unsigned int> &
     constrained_dofs = data_reference->get_constrained_dofs(); // FIXME: is it current or reference?
     for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      dst(constrained_dofs[i]) += src(constrained_dofs[i]);
+      dst.local_element(constrained_dofs[i]) += src.local_element(constrained_dofs[i]);
   }
 
 
@@ -427,6 +427,7 @@ using namespace dealii;
     unsigned int dummy = 0;
     local_diagonal_cell(*data_reference, diagonal_vector, dummy,
                      std::make_pair<unsigned int,unsigned int>(0,data_reference->n_macro_cells()));
+    diagonal_vector.compress(VectorOperation::add);
 
     // data_current->cell_loop (&NeoHookOperatorAD::local_diagonal_cell,
     //                          this, diagonal_vector, dummy);
@@ -436,7 +437,7 @@ using namespace dealii;
       const std::vector<unsigned int> &
       constrained_dofs = data_reference->get_constrained_dofs();
       for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-        diagonal_vector(constrained_dofs[i]) = 1.;
+        diagonal_vector.local_element(constrained_dofs[i]) = 1.;
     }
 
     // calculate inverse:

@@ -289,20 +289,20 @@ using namespace dealii;
     // https://www.dealii.org/developer/doxygen/deal.II/matrix__free_8h_source.html#l00109
 
     // 1. make sure ghosts are updated
-    // src.update_ghost_values();
+    src.update_ghost_values();
 
     // 2. loop over all locally owned cell blocks
     local_apply_cell(*data_current, dst, src,
                      std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
 
     // 3. communicate results with MPI
-    // dst.compress(VectorOperation::add);
+    dst.compress(VectorOperation::add);
 
     // 4. constraints
     const std::vector<unsigned int> &
     constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
     for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      dst(constrained_dofs[i]) += src(constrained_dofs[i]);
+      dst.local_element(constrained_dofs[i]) += src.local_element(constrained_dofs[i]);
   }
 
 
@@ -682,6 +682,7 @@ using namespace dealii;
     unsigned int dummy = 0;
     local_diagonal_cell(*data_current, diagonal_vector, dummy,
                      std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
+    diagonal_vector.compress(VectorOperation::add);
 
     // data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
     //                          this, diagonal_vector, dummy);
@@ -691,13 +692,13 @@ using namespace dealii;
       const std::vector<unsigned int> &
       constrained_dofs = data_current->get_constrained_dofs();
       for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-        diagonal_vector(constrained_dofs[i]) = 1.;
+        diagonal_vector.local_element(constrained_dofs[i]) = 1.;
     }
 
     // calculate inverse:
     inverse_diagonal_vector = diagonal_vector;
 
-    for (unsigned int i=0; i</*inverse_diagonal_vector.local_size()*/inverse_diagonal_vector.size(); ++i)
+    for (unsigned int i=0; i<inverse_diagonal_vector.local_size(); ++i)
       if (std::abs(inverse_diagonal_vector.local_element(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
         inverse_diagonal_vector.local_element(i) = 1./inverse_diagonal_vector.local_element(i);
       else
