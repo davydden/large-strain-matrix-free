@@ -953,11 +953,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     }
 
     // We then set up storage vectors
-    system_rhs.reinit(dof_handler_ref.n_dofs());
-    solution_n.reinit(dof_handler_ref.n_dofs());
-    solution_delta.reinit(dof_handler_ref.n_dofs());
-    solution_total.reinit(dof_handler_ref.n_dofs());
-    newton_update.reinit(dof_handler_ref.n_dofs());
+    system_rhs.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    solution_n.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    solution_delta.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    solution_total.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    newton_update.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
 
     newton_update_trilinos.reinit(locally_owned_dofs, mpi_communicator);
     system_rhs_trilinos.reinit(locally_owned_dofs, mpi_communicator);
@@ -1017,25 +1017,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     mg_constrained_dofs.initialize(dof_handler_ref);
     mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,dirichlet_boundary_ids);
 
-    // transfer displacement to MG levels:
-    {
-      MGTransferMatrixFree<dim,float> mg_transfer_mf(mg_constrained_dofs);
-      mg_transfer_mf.build(dof_handler_ref);
-
-      LinearAlgebra::distributed::Vector<float> displacement(dof_handler_ref.n_dofs());
-      for (unsigned int i = 0; i < dof_handler_ref.n_dofs();++i)
-        displacement.local_element(i) = solution_total(i);
-      MGLevelObject<LinearAlgebra::distributed::Vector<float>> displacement_level(0, max_level);
-      mg_transfer_mf.interpolate_to_mg(dof_handler_ref,displacement_level, displacement);
-
-      for (unsigned int level = 0; level<=max_level; ++level)
-        {
-          mg_solution_total[level].reinit(dof_handler_ref.n_dofs(level));
-          for (unsigned int i = 0; i < dof_handler_ref.n_dofs(level); ++i)
-            mg_solution_total[level](i) = displacement_level[level].local_element(i);
-        }
-    }
-
     if (it_nr <= 1)
       {
         mg_transfer = std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(mg_constrained_dofs);
@@ -1044,6 +1025,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mg_mf_data_current.resize(triangulation.n_global_levels());
         mg_mf_data_reference.resize(triangulation.n_global_levels());
       }
+
+    // transfer displacement to MG levels:
+    LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
+    solution_total_transfer.reinit(solution_total);
+    solution_total_transfer = solution_total;
+    mg_transfer->interpolate_to_mg(dof_handler_ref,mg_solution_total, solution_total_transfer);
 
     if (it_nr <= 1)
       {
@@ -1220,6 +1207,27 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // and a preconditioner object which uses GMG
     multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>>(dof_handler_ref,*multigrid,*mg_transfer);
+
+    // adjust ghost range if needed
+    if (it_nr == 0)
+      {
+        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mf_data_current->get_vector_partitioner();
+        /*
+        Assert (partitioner.get() ==
+                mf_data_reference->get_vector_partitioner().get(),
+                ExcInternalError());
+        */
+
+
+        if (newton_update.get_partitioner().get() != partitioner.get() ||
+            system_rhs.get_partitioner().get() != partitioner.get())
+          {
+            // we don't need to copy (via copy_locally_owned_data_from and temp vector)
+            // as neither newton_update nor system_rhs holds any info at this point
+            newton_update.reinit(partitioner);
+            system_rhs.reinit(partitioner);
+          }
+      }
 
     timer.leave_subsection();
   }
