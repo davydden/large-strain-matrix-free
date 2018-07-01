@@ -1122,12 +1122,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     {
       const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
         mf_data_current->get_vector_partitioner();
-      /*
-      // FIXME: why would this fail?!
-      Assert (partitioner.get() ==
-              mf_data_reference->get_vector_partitioner().get(),
-              ExcInternalError());
-      */
+
+      Assert(partitioner->is_globally_compatible(
+               *mf_data_reference->get_vector_partitioner().get()),
+             ExcInternalError());
 
       adjust_ghost_range_if_necessary(partitioner, newton_update);
       adjust_ghost_range_if_necessary(partitioner, system_rhs);
@@ -1143,12 +1141,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
           mg_mf_data_current[level]->get_vector_partitioner();
 
-        /*
-        // FIXME: why would this fail?
-        Assert (partitioner.get() ==
-                mg_mf_data_reference[level]->get_vector_partitioner().get(),
-                ExcInternalError());
-        */
+        Assert(partitioner->is_globally_compatible(
+                 *mg_mf_data_reference[level]->get_vector_partitioner().get()),
+               ExcInternalError());
 
         adjust_ghost_range_if_necessary(partitioner, mg_solution_total[level]);
         mg_solution_total[level].update_ghost_values();
