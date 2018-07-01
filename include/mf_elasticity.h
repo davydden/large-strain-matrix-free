@@ -663,10 +663,6 @@ namespace Cook_Membrane
     mutable Errors error_residual, error_residual_0, error_residual_norm, error_update,
            error_update_0, error_update_norm;
 
-    // Methods to calculate error measures
-    void
-    get_error_residual(Errors &error_residual);
-
     // Print information to screen in a pleasing way...
     void
     print_conv_header();
@@ -1362,8 +1358,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         }
 #endif
 
-        get_error_residual(error_residual);
-
         if (newton_iteration == 0)
           error_residual_0 = error_residual;
 
@@ -1525,20 +1519,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 
-// @sect4{Solid::get_error_residual}
-
-// Determine the true residual error for the problem.  That is, determine the
-// error in the residual for the unconstrained degrees of freedom.  Note that to
-// do so, we need to ignore constrained DOFs by setting the residual in these
-// vector components to zero.
-  template <int dim,int degree,int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::get_error_residual(Errors &error_residual)
-  {
-    error_residual.norm = system_rhs.l2_norm();
-    error_residual.u = system_rhs.l2_norm();
-  }
-
-
 // @sect4{Solid::set_total_solution}
 
 // This function sets the total solution, which is valid at any Newton step.
@@ -1684,6 +1664,15 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     tangent_matrix.compress(VectorOperation::add);
     system_rhs_trilinos.compress(VectorOperation::add);
+
+    // Determine the true residual error for the problem.  That is, determine
+    // the error in the residual for the unconstrained degrees of freedom. Note
+    // that to do so, we need to ignore constrained DOFs by setting the residual
+    // in these vector components to zero. That will not affect the solution of
+    // linear system, though.
+    constraints.set_zero(system_rhs_trilinos);
+    error_residual.norm = system_rhs_trilinos.l2_norm();
+    error_residual.u    = system_rhs_trilinos.l2_norm();
 
     system_rhs = system_rhs_trilinos;
   }
