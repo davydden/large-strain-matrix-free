@@ -935,7 +935,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     DoFRenumbering::Cuthill_McKee(dof_handler_ref);
 
     pcout << "Triangulation:"
-          << "\n\t Number of active cells: " << triangulation.n_active_cells()
+          << "\n\t Number of active cells: " << triangulation.n_global_active_cells()
           << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
           << std::endl;
 
