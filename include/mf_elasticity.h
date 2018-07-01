@@ -972,6 +972,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // switch to ghost mode:
     solution_n.update_ghost_values();
+    solution_delta.update_ghost_values();
     solution_total.update_ghost_values();
 
     timer.leave_subsection();
@@ -1536,7 +1537,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   void
   Solid<dim,degree,n_q_points_1d,NumberType>::set_total_solution()
   {
-    solution_total = solution_n;
+    solution_total.equ(1, solution_n);
     solution_total += solution_delta;
   }
 
