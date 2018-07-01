@@ -1775,33 +1775,29 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     LinearAlgebra::distributed::Vector<double> &newton_update,
     TrilinosWrappers::MPI::Vector &newton_update_trilinos) const
   {
-    unsigned int lin_it = 0;
-    double lin_res = 0.0;
-    double cond_number = 1.0;
+    unsigned int lin_it      = 0;
+    double       lin_res     = 0.0;
+    double       cond_number = 1.0;
 
     // reset solution vector each iteration
-    newton_update = 0.;
+    newton_update          = 0.;
     newton_update_trilinos = 0.;
 
     // We solve for the incremental displacement $d\mathbf{u}$.
-    GrowingVectorMemory<LinearAlgebra::distributed::Vector<double> > GVM;
-    const double tol_sol = parameters.tol_lin
-                      * system_rhs.l2_norm();
+    const double tol_sol = parameters.tol_lin * system_rhs.l2_norm();
 
     // estimate condition number of matrix-free operator from dummy CG
     {
         IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
-        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_condition(control_condition, GVM);
+        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_condition(control_condition);
 
         solver_condition.connect_condition_number_slot(
-          [&](const double number) {
-            cond_number = number;
-          });
+          [&](const double number) { cond_number = number; });
 
         solver_condition.solve(mf_nh_operator,
-                  newton_update,
-                  system_rhs,
-                  PreconditionIdentity());
+                               newton_update,
+                               system_rhs,
+                               PreconditionIdentity());
 
         // reset back to zero
         newton_update = 0.;
@@ -1816,7 +1812,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
       {
 
-        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_CG(solver_control, GVM);
+        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_CG(solver_control);
+        constraints.set_zero(newton_update);
 
         if (parameters.type_lin == "CG")
           {
@@ -1829,11 +1826,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             TrilinosWrappers::PreconditionJacobi preconditioner;
             preconditioner.initialize(tangent_matrix, parameters.preconditioner_relaxation);
 
-            solver_CG_trilinos.solve(
-                            tangent_matrix,
-                            newton_update_trilinos,
-                            system_rhs_trilinos,
-                            preconditioner);
+            solver_CG_trilinos.solve(tangent_matrix,
+                                     newton_update_trilinos,
+                                     system_rhs_trilinos,
+                                     preconditioner);
 
             newton_update = newton_update_trilinos;
           }
@@ -1845,9 +1841,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
               preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
 
               solver_CG.solve(mf_ad_nh_operator,
-                newton_update,
-              system_rhs,
-              preconditioner);
+                              newton_update,
+                              system_rhs,
+                              preconditioner);
           }
         else
           {
@@ -1859,21 +1855,21 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
 
                 solver_CG.solve(mf_nh_operator,
-                  newton_update,
-                  system_rhs,
-                  preconditioner);
+                                newton_update,
+                                system_rhs,
+                                preconditioner);
               }
             else
               {
                 Assert (parameters.preconditioner_type == "gmg", ExcInternalError());
                 solver_CG.solve(mf_nh_operator,
-                  newton_update,
-                  system_rhs,
-                  *multigrid_preconditioner);
+                                newton_update,
+                                system_rhs,
+                                *multigrid_preconditioner);
               }
           }
 
-        lin_it = solver_control.last_step();
+        lin_it  = solver_control.last_step();
         lin_res = solver_control.last_value();
       }
     else if (parameters.type_lin == "Direct")
@@ -1885,7 +1881,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
         newton_update = newton_update_trilinos;
 
-        lin_it = 1;
+        lin_it  = 1;
         lin_res = 0.0;
       }
     else
@@ -1896,7 +1892,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     constraints.set_zero(newton_update);
 
     error_update.norm = newton_update.l2_norm();
-    error_update.u = newton_update.l2_norm();
+    error_update.u    = newton_update.l2_norm();
 
     // Now that we have the displacement update, distribute the constraints
     // back to the Newton update:
