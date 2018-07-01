@@ -976,6 +976,21 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 
+  template <typename Number>
+  void
+  adjust_ghost_range_if_necessary(
+    const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner,
+    LinearAlgebra::distributed::Vector<Number> &              vec)
+  {
+    if (vec.get_partitioner().get() != partitioner.get())
+      {
+        LinearAlgebra::distributed::Vector<Number> copy(vec);
+        vec.reinit(partitioner);
+        vec.copy_locally_owned_data_from(copy);
+      }
+  }
+
+
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::setup_matrix_free(const int &it_nr)
   {
@@ -1104,37 +1119,29 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       }
 
     // adjust ghost range if needed
-    if (it_nr == 0)
+    {
+      const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
+        mf_data_current->get_vector_partitioner();
+      /*
+      // FIXME: why would this fail?!
+      Assert (partitioner.get() ==
+              mf_data_reference->get_vector_partitioner().get(),
+              ExcInternalError());
+      */
+
+      adjust_ghost_range_if_necessary(partitioner, newton_update);
+      adjust_ghost_range_if_necessary(partitioner, system_rhs);
+
+      adjust_ghost_range_if_necessary(partitioner, solution_total);
+      solution_total.update_ghost_values();
+    }
+
+    // FIXME: interpolate_to_mg will resize MG vector, make sure it has the
+    // right partition for MF
+    for (unsigned int level = 0; level <= max_level; ++level)
       {
-        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mf_data_current->get_vector_partitioner();
-        /*
-        // FIXME: why would this fail?!
-        Assert (partitioner.get() ==
-                mf_data_reference->get_vector_partitioner().get(),
-                ExcInternalError());
-        */
-
-
-        if (newton_update.get_partitioner().get() != partitioner.get() ||
-            system_rhs.get_partitioner().get() != partitioner.get() ||
-            solution_total.get_partitioner().get() != partitioner.get())
-          {
-            // we don't need to copy (via copy_locally_owned_data_from and temp vector)
-            // as neither newton_update nor system_rhs holds any info at this point
-            newton_update.reinit(partitioner);
-            system_rhs.reinit(partitioner);
-
-            LinearAlgebra::distributed::Vector<double> copy(solution_total);
-            solution_total.reinit(partitioner);
-            solution_total.copy_locally_owned_data_from(copy);
-            solution_total.update_ghost_values();
-          }
-      }
-
-    // FIXME: interpolate_to_mg will resize MG vector, make sure it has the right partition for MF
-    for (unsigned int level = 0; level<=max_level; ++level)
-      {
-        const std::shared_ptr<const Utilities::MPI::Partitioner> & partitioner = mg_mf_data_current[level]->get_vector_partitioner();
+        const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
+          mg_mf_data_current[level]->get_vector_partitioner();
 
         /*
         // FIXME: why would this fail?
@@ -1143,13 +1150,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 ExcInternalError());
         */
 
-        if (mg_solution_total[level].get_partitioner().get() != partitioner.get())
-          {
-            LevelVectorType copy(mg_solution_total[level]);
-            mg_solution_total[level].reinit(partitioner);
-            mg_solution_total[level].copy_locally_owned_data_from(copy);
-            mg_solution_total[level].update_ghost_values();
-          }
+        adjust_ghost_range_if_necessary(partitioner, mg_solution_total[level]);
+        mg_solution_total[level].update_ghost_values();
       }
 
     // need to cache prior to diagonal computations:
