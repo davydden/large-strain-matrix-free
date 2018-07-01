@@ -1516,7 +1516,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 break;
               }
         }
-    AssertThrow(Utilities::MPI::max(vertical_tip_displacement, mpi_communicator) > 0.0,
+    vertical_tip_displacement = Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
+    vertical_tip_displacement_check = Utilities::MPI::max(vertical_tip_displacement_check, mpi_communicator);
+    AssertThrow(vertical_tip_displacement > 0.0,
                 ExcMessage("Found no cell with point inside!"))
 
     pcout << "Vertical tip displacement: " << vertical_tip_displacement
