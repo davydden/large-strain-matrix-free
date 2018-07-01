@@ -21,6 +21,7 @@
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/grid_in.h>
+#include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/tria.h>
 
 #include <deal.II/fe/fe_dgp_monomial.h>
@@ -1906,8 +1907,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   {
     DataOut<dim> data_out;
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
-    data_component_interpretation(dim,
-                                  DataComponentInterpretation::component_is_part_of_vector);
+      data_component_interpretation(
+        dim, DataComponentInterpretation::component_is_part_of_vector);
 
     std::vector<std::string> solution_name(dim, "displacement");
 
@@ -1917,6 +1918,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                              DataOut<dim>::type_dof_data,
                              data_component_interpretation);
 
+    // Per-cell data (MPI subdomains):
+    Vector<float> subdomain(triangulation.n_active_cells());
+    for (unsigned int i = 0; i < subdomain.size(); ++i)
+      subdomain(i) = triangulation.locally_owned_subdomain();
+    data_out.add_data_vector(subdomain, "subdomain");
+
     // Since we are dealing with a large deformation problem, it would be nice
     // to display the result on a displaced grid!  The MappingQEulerian class
     // linked with the DataOut class provides an interface through which this
@@ -1925,14 +1932,42 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // a temporary vector and then create the Eulerian mapping. We also
     // specify the polynomial degree to the DataOut object in order to produce
     // a more refined output data set when higher order polynomials are used.
-    MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>> q_mapping(degree, dof_handler_ref, solution_n);
+    MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>> q_mapping(
+      degree, dof_handler_ref, solution_n);
     data_out.build_patches(q_mapping, degree);
 
-    std::ostringstream filename;
-    filename << "solution-" << time.get_timestep() << ".vtk";
+    auto name_func = [&](const unsigned int proc) -> std::string {
+      return "solution-" + std::to_string(time.get_timestep()) + "_" +
+             std::to_string(proc) + ".vtu";
+    };
 
-    std::ofstream output(filename.str().c_str());
-    data_out.write_vtk(output);
+    const std::string filename =
+      name_func(triangulation.locally_owned_subdomain());
+    std::ofstream output(filename.c_str());
+    data_out.write_vtu(output);
+
+    if (dealii::Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+      {
+        // first write out "pvtu" file which combines output from all MPI cores
+        std::vector<std::string> filenames;
+        for (unsigned int i = 0;
+             i < dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
+             ++i)
+          filenames.push_back(name_func(i));
+
+        const std::string filename_pvtu =
+          "solution-" + std::to_string(time.get_timestep()) + ".pvtu";
+        std::ofstream pvtu_master(filename_pvtu.c_str());
+        data_out.write_pvtu_record(pvtu_master, filenames);
+      }
+
+    // output MG mesh
+    const std::string mg_mesh = "mg_mesh";
+    GridOut           grid_out;
+    grid_out.write_mesh_per_processor_as_vtu(triangulation,
+                                             mg_mesh,
+                                             true,
+                                             /*artificial*/ false);
   }
 
 }
