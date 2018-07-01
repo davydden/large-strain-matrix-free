@@ -578,6 +578,7 @@ namespace Cook_Membrane
     // certain functions
     Time                             time;
     std::ofstream                    timer_output_file;
+    ConditionalOStream               timer_out;
     mutable TimerOutput              timer;
 
     // A description of the finite-element system including the displacement
@@ -738,8 +739,9 @@ namespace Cook_Membrane
                     parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy)
                  ),
     time(parameters.end_time, parameters.delta_t),
-    timer_output_file("timings.txt"),
-    timer(timer_output_file,
+    timer_out(timer_output_file, Utilities::MPI::this_mpi_process(mpi_communicator)==0),
+    timer(mpi_communicator,
+          timer_out,
           TimerOutput::summary,
           TimerOutput::wall_times),
     // The Finite Element System is composed of dim continuous displacement
@@ -759,6 +761,9 @@ namespace Cook_Membrane
     n_q_points (qf_cell.size()),
     n_q_points_f (qf_face.size())
   {
+    if (Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+      timer_output_file.open("timings.txt");
+
     mf_nh_operator.set_material(material_vec);
     mf_ad_nh_operator.set_material(material_vec);
   }
