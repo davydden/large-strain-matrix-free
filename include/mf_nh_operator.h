@@ -25,7 +25,7 @@ using namespace dealii;
   public:
     NeoHookOperator ();
 
-    typedef typename LinearAlgebra::distributed::Vector<number>::size_type size_type;
+    using size_type = typename LinearAlgebra::distributed::Vector<number>::size_type;
 
     void clear();
 
@@ -97,7 +97,7 @@ using namespace dealii;
     std::shared_ptr<const MatrixFree<dim,number>> data_current;
     std::shared_ptr<const MatrixFree<dim,number>> data_reference;
 
-    LinearAlgebra::distributed::Vector<number> *displacement;
+    const LinearAlgebra::distributed::Vector<number> *displacement;
 
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material;
 
@@ -205,8 +205,14 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
-              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
+              for (unsigned int i = 0;
+                   i < data_current->n_components_filled(cell);
+                   ++i)
+                Assert(det_F[i] > 0,
+                       ExcMessage(
+                         "det_F[" + std::to_string(i) +
+                         "] is not positive: " + std::to_string(det_F[i])));
 
               cached_scalar(cell,q) = std::pow(det_F,number(-1.0/dim));
             }
@@ -218,8 +224,14 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
-              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
+              for (unsigned int i = 0;
+                   i < data_current->n_components_filled(cell);
+                   ++i)
+                Assert(det_F[i] > 0,
+                       ExcMessage(
+                         "det_F[" + std::to_string(i) +
+                         "] is not positive: " + std::to_string(det_F[i])));
 
               cached_scalar(cell,q) = std::log(det_F);
             }
@@ -277,9 +289,10 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
                                                     const LinearAlgebra::distributed::Vector<number> &src) const
   {
-    // FIXME: can't use cell_loop as we need both matrix-free data objects.
-    // for now do it by hand.
-    // BUT I might try cell_loop(), and simply use another MF object inside...
+    // FIXME: use cell_loop, should work even though we need
+    // both matrix-free data objects.
+    Assert(data_current->n_macro_cells() == data_reference->n_macro_cells(),
+           ExcInternalError());
 
     Assert (data_current->n_macro_cells() == data_reference->n_macro_cells(), ExcInternalError());
 
@@ -299,10 +312,8 @@ using namespace dealii;
     dst.compress(VectorOperation::add);
 
     // 4. constraints
-    const std::vector<unsigned int> &
-    constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
-    for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      dst.local_element(constrained_dofs[i]) += src.local_element(constrained_dofs[i]);
+    for (const auto dof : data_current->get_constrained_dofs())
+      dst.local_element(dof) += src.local_element(dof);
   }
 
 
@@ -352,6 +363,8 @@ using namespace dealii;
                               const std::pair<unsigned int,unsigned int>       &cell_range) const
   {
     // FIXME: I don't use data input, can this be bad?
+    const VectorizedArray<number> one = make_vectorized_array<number>(1.);
+    const VectorizedArray<number> zero = make_vectorized_array<number>(0.);
 
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
@@ -384,14 +397,14 @@ using namespace dealii;
                 for (unsigned int jc=0; jc<phi_current.n_components; ++jc)
                   {
                     const auto ind_j = j+jc*phi_current.dofs_per_component;
-                    phi_current.begin_dof_values()  [ind_j] = VectorizedArray<number>();
-                    phi_current_s.begin_dof_values()[ind_j] = VectorizedArray<number>();
+                    phi_current.begin_dof_values()  [ind_j] = zero;
+                    phi_current_s.begin_dof_values()[ind_j] = zero;
                   }
 
               const auto ind_i = i+ic*phi_current.dofs_per_component;
 
-              phi_current.begin_dof_values()  [ind_i] = 1.;
-              phi_current_s.begin_dof_values()[ind_i] = 1.;
+              phi_current.begin_dof_values()  [ind_i] = one;
+              phi_current_s.begin_dof_values()[ind_i] = one;
 
               do_operation_on_cell(phi_current,phi_current_s,phi_reference,cell);
 
@@ -458,7 +471,7 @@ using namespace dealii;
           const Tensor<2,dim,NumberType>          F_bar  = F * cached_scalar(cell,q);
           const SymmetricTensor<2,dim,NumberType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
-          for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
             Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
 
           // current configuration
@@ -556,24 +569,28 @@ using namespace dealii;
             // c_bar==0 so we don't have a term with it.
           }
 
-          const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-          VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
-            if (std::abs(JxW_current[i])>1e-10)
-              {
-                JxW_scale[i] *= 1./JxW_current[i];
-                // indirect check of consistency between MappingQEulerian in MatrixFree data and
-                // displacement vector stored in this operator.
-                Assert (std::abs(JxW_scale[i] * det_F[i] - 1.) < 1000.*std::numeric_limits<number>::epsilon(),
-                        ExcMessage(std::to_string(i) +
-                                   " out of " + std::to_string(VectorizedArray<number>::n_array_elements) +
-                                   ", filled " + std::to_string(data_current->n_components_filled(cell)) +
-                                   " : " +
-                                   std::to_string(det_F[i]) + "!=" +
-                                   std::to_string(1./JxW_scale[i]) + " " +
-                                   std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))
-                                  ));
-              }
+          const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
+          VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell);
+               ++i)
+            {
+              Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
+              JxW_scale[i] *= 1. / JxW_current[i];
+              // indirect check of consistency between MappingQEulerian in
+              // MatrixFree data and displacement vector stored in this
+              // operator.
+              Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                       1000. * std::numeric_limits<number>::epsilon(),
+                     ExcMessage(
+                       std::to_string(i) + " out of " +
+                       std::to_string(
+                         VectorizedArray<number>::n_array_elements) +
+                       ", filled " +
+                       std::to_string(data_current->n_components_filled(cell)) +
+                       " : " + std::to_string(det_F[i]) +
+                       "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                       std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+            }
 
           // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
           // contribution. It comprises a material contribution, and a
@@ -625,25 +642,29 @@ using namespace dealii;
               jc_part[i][i] += tmp;
           }
 
-          const NumberType                        det_F  = determinant(F);
-          const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-          VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
-            if (std::abs(JxW_current[i])>1e-10)
-              {
-                JxW_scale[i] *= 1./JxW_current[i];
-                // indirect check of consistency between MappingQEulerian in MatrixFree data and
-                // displacement vector stored in this operator.
-                Assert (std::abs(JxW_scale[i] * det_F[i] - 1.) < 1000.*std::numeric_limits<number>::epsilon(),
-                        ExcMessage(std::to_string(i) +
-                                   " out of " + std::to_string(VectorizedArray<number>::n_array_elements) +
-                                   ", filled " + std::to_string(data_current->n_components_filled(cell)) +
-                                   " : " +
-                                   std::to_string(det_F[i]) + "!=" +
-                                   std::to_string(1./JxW_scale[i]) + " " +
-                                   std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))
-                                  ));
-              }
+          const NumberType               det_F       = determinant(F);
+          const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
+          VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell);
+               ++i)
+            {
+              Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
+              JxW_scale[i] *= 1. / JxW_current[i];
+              // indirect check of consistency between MappingQEulerian in
+              // MatrixFree data and displacement vector stored in this
+              // operator.
+              Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                       1000. * std::numeric_limits<number>::epsilon(),
+                     ExcMessage(
+                       std::to_string(i) + " out of " +
+                       std::to_string(
+                         VectorizedArray<number>::n_array_elements) +
+                       ", filled " +
+                       std::to_string(data_current->n_components_filled(cell)) +
+                       " : " + std::to_string(det_F[i]) +
+                       "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                       std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+            }
 
           phi_current_s.submit_symmetric_gradient(
             jc_part * JxW_scale,q);
@@ -680,6 +701,7 @@ using namespace dealii;
     data_current->initialize_dof_vector(diagonal_vector);
 
     unsigned int dummy = 0;
+    diagonal_vector = 0.;
     local_diagonal_cell(*data_current, diagonal_vector, dummy,
                      std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
     diagonal_vector.compress(VectorOperation::add);
@@ -688,21 +710,20 @@ using namespace dealii;
     //                          this, diagonal_vector, dummy);
 
     // set_constrained_entries_to_one
-    {
-      const std::vector<unsigned int> &
-      constrained_dofs = data_current->get_constrained_dofs();
-      for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-        diagonal_vector.local_element(constrained_dofs[i]) = 1.;
-    }
+    for (const auto dof : data_current->get_constrained_dofs())
+      diagonal_vector.local_element(dof) = 1.;
 
     // calculate inverse:
     inverse_diagonal_vector = diagonal_vector;
 
-    for (unsigned int i=0; i<inverse_diagonal_vector.local_size(); ++i)
-      if (std::abs(inverse_diagonal_vector.local_element(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
-        inverse_diagonal_vector.local_element(i) = 1./inverse_diagonal_vector.local_element(i);
-      else
-        inverse_diagonal_vector.local_element(i) = 1.;
+    for (unsigned int i = 0; i < inverse_diagonal_vector.local_size(); ++i)
+      {
+        Assert(inverse_diagonal_vector.local_element(i) > 0.,
+               ExcMessage("No diagonal entry in a positive definite operator "
+                          "should be zero or negative"));
+        inverse_diagonal_vector.local_element(i) =
+          1. / diagonal_vector.local_element(i);
+      }
 
     inverse_diagonal_vector.update_ghost_values();
     diagonal_vector.update_ghost_values();
