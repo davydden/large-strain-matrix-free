@@ -1339,12 +1339,18 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
           diff = dst_mb;
           diff.add(-1, dst_mf);
-          Assert (diff.l2_norm() < 1e-10 * dst_mb.l2_norm(),
-                  ExcMessage("MF and MB are different " +
-                             std::to_string(diff.l2_norm()) +
-                             " at Newton iteration " +
-                             std::to_string(newton_iteration)
-                            ));
+
+          // FIXME: looks like there are some severe round-off errors.
+          const unsigned int ulp = (dim==2 ? 10000000 : 100000000);
+
+          for (unsigned int i = 0; i < diff.local_size(); ++i)
+            Assert (std::abs(diff.local_element(i)) <= std::numeric_limits<double>::epsilon() * ulp * std::abs(dst_mf.local_element(i)),
+                    ExcMessage("MF and MB are different on local element " + std::to_string(i) + ": " +
+                               std::to_string(dst_mf.local_element(i)) + " diff " +
+                               std::to_string(diff.local_element(i)) +
+                               " at Newton iteration " +
+                               std::to_string(newton_iteration)
+                               ));
 
           // now check Jacobi preconditioner
           TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
@@ -1354,14 +1360,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
           diff = dst_mb;
           diff.add(-1, dst_mf);
-          Assert (diff.l2_norm() < 1e-10 * dst_mb.l2_norm(),
-                  ExcMessage("MF and MB Jacobi are different " +
-                             std::to_string(diff.l2_norm()) +
-                             " (" +  std::to_string(dst_mb.l2_norm()) +
-                             "!=" +  std::to_string(dst_mf.l2_norm()) +
-                             ") at Newton iteration " +
-                             std::to_string(newton_iteration)
-                            ));
+          for (unsigned int i = 0; i < diff.local_size(); ++i)
+            Assert (std::abs(diff.local_element(i)) <= 10000. * std::numeric_limits<double>::epsilon() * std::abs(dst_mf.local_element(i)),
+                    ExcMessage("MF and MB Jacobi are different on local element " + std::to_string(i) + ": " +
+                               std::to_string(dst_mf.local_element(i)) + " diff " +
+                               std::to_string(diff.local_element(i)) +
+                               " at Newton iteration " +
+                               std::to_string(newton_iteration)
+                               ));
         }
 #endif
 
