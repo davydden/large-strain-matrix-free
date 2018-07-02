@@ -1030,10 +1030,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     typename MatrixFree<dim,double>::AdditionalData data;
     data.tasks_parallel_scheme = MatrixFree<dim,double>::AdditionalData::none;
+    data.mapping_update_flags = update_gradients | update_JxW_values;
 
     typename MatrixFree<dim,float>::AdditionalData mg_additional_data;
     mg_additional_data.tasks_parallel_scheme = MatrixFree<dim,float>::AdditionalData::none;//partition_color;
-    //mg_additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values;
+    mg_additional_data.mapping_update_flags = update_gradients | update_JxW_values;
 
     std::set<types::boundary_id>       dirichlet_boundary_ids;
     // see make_constraints()
@@ -1075,12 +1076,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mf_ad_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
 
         mg_eulerian_mapping.resize(0);
-
         for (unsigned int level = 0; level<=max_level; ++level)
           {
             mg_additional_data.level_mg_handler = level;
 
             AffineConstraints<double> level_constraints;
+            IndexSet relevant_dofs;
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+                                                          level,
+                                                          relevant_dofs);
+            level_constraints.reinit(relevant_dofs);
             level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
@@ -1111,6 +1116,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         for (unsigned int level = 0; level<=max_level; ++level)
           {
             AffineConstraints<double> level_constraints;
+            IndexSet relevant_dofs;
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+                                                          level,
+                                                          relevant_dofs);
+            level_constraints.reinit(relevant_dofs);
             level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
