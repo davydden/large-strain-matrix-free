@@ -1722,6 +1722,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     if (it_nr > 1)
       return;
     constraints.clear();
+    constraints.reinit (locally_relevant_dofs);
+
     const bool apply_dirichlet_bc = (it_nr == 0);
 
     // The boundary conditions for the indentation problem are as follows: On
