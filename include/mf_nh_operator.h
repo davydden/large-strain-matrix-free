@@ -14,6 +14,23 @@
 
 using namespace dealii;
 
+template <typename Number>
+void
+adjust_ghost_range_if_necessary(
+  const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner,
+  const LinearAlgebra::distributed::Vector<Number> &        vec)
+{
+  if (vec.get_partitioner().get() != partitioner.get())
+    {
+      LinearAlgebra::distributed::Vector<Number> copy(vec);
+      const_cast<LinearAlgebra::distributed::Vector<Number> &>(vec).reinit(
+        partitioner);
+      const_cast<LinearAlgebra::distributed::Vector<Number> &>(vec)
+        .copy_locally_owned_data_from(copy);
+    }
+}
+
+
   /**
    * Large strain Neo-Hook tangent operator.
    *
@@ -289,6 +306,16 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
                                                     const LinearAlgebra::distributed::Vector<number> &src) const
   {
+    const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
+      data_current->get_vector_partitioner();
+
+    Assert(partitioner->is_globally_compatible(
+             *data_reference->get_vector_partitioner().get()),
+           ExcMessage("Current and reference partitioners are incompatible"));
+
+    adjust_ghost_range_if_necessary(partitioner, dst);
+    adjust_ghost_range_if_necessary(partitioner, src);
+
     // FIXME: use cell_loop, should work even though we need
     // both matrix-free data objects.
     Assert(data_current->n_macro_cells() == data_reference->n_macro_cells(),

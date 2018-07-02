@@ -979,20 +979,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 
-  template <typename Number>
-  void
-  adjust_ghost_range_if_necessary(
-    const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner,
-    LinearAlgebra::distributed::Vector<Number> &              vec)
-  {
-    if (vec.get_partitioner().get() != partitioner.get())
-      {
-        LinearAlgebra::distributed::Vector<Number> copy(vec);
-        vec.reinit(partitioner);
-        vec.copy_locally_owned_data_from(copy);
-      }
-  }
-
 
   template <int dim,int degree, int n_q_points_1d,typename NumberType>
   void Solid<dim,degree,n_q_points_1d,NumberType>::setup_matrix_free(const int &it_nr)
