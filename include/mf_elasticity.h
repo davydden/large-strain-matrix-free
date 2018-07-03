@@ -1032,6 +1032,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // see make_constraints()
     dirichlet_boundary_ids.insert(1);
     if (dim==3)
+      // FIXME: this will be wrong as make_constraints() only add constrains to one component on
+      // this BC. Need to use make_zero_boundary_constraint() with component mask
       dirichlet_boundary_ids.insert(2);
 
     mg_constrained_dofs.clear();
@@ -1162,6 +1164,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
     deallog << "GMG setup Newton iteration " << it_nr << std::endl;
+    deallog << "Number of constrained DoFs " << Utilities::MPI::sum(mf_data_current->get_constrained_dofs().size(), mpi_communicator) << std::endl;
     deallog << "Diagonal:       " << mf_nh_operator.get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
     deallog << "Solution total: " << solution_total.l2_norm() << std::endl;
     if (parameters.type_lin =="MF_AD_CG")

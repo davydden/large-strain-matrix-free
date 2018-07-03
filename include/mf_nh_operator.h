@@ -740,6 +740,8 @@ adjust_ghost_range_if_necessary(
     //                          this, diagonal_vector, dummy);
 
     // set_constrained_entries_to_one
+    Assert (data_current->get_constrained_dofs().size() == data_reference->get_constrained_dofs().size(),
+            ExcInternalError());
     for (const auto dof : data_current->get_constrained_dofs())
       diagonal_vector.local_element(dof) = 1.;
 
