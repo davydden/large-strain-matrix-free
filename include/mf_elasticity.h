@@ -269,7 +269,7 @@ namespace Cook_Membrane
                           "Linear solver iterations (multiples of the system matrix size)");
 
         prm.declare_entry("Preconditioner type", "jacobi",
-                          Patterns::Selection("jacobi|ssor|gmg"),
+                          Patterns::Selection("jacobi|ssor|gmg|none"),
                           "Type of preconditioner");
 
         prm.declare_entry("Preconditioner relaxation", "0.65",
@@ -1863,6 +1863,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                 newton_update,
                                 system_rhs,
                                 preconditioner);
+              }
+            else if (parameters.preconditioner_type == "none")
+              {
+                solver_CG.solve(mf_nh_operator,
+                                newton_update,
+                                system_rhs,
+                                PreconditionIdentity());
               }
             else
               {
