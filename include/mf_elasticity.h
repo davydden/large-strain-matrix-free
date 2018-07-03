@@ -897,8 +897,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
    // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
    // ID 2 and we will use to impose the plane strain condition)
    const double tol_boundary = 1e-6;
+   // NOTE: we need to set IDs regardless of cell being locally owned or not
+   // as in the global refinement cells will be repartitioned and faces of their
+   // parents should have right IDs
    for (auto cell : triangulation.active_cell_iterators())
-     if (cell->is_locally_owned())
      for (unsigned int face = 0;
           face < GeometryInfo<dim>::faces_per_cell; ++face)
        if (cell->face(face)->at_boundary() == true)
