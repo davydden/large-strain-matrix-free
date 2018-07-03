@@ -1376,7 +1376,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           diff.add(-1, dst_mf);
 
           // FIXME: looks like there are some severe round-off errors.
-          const unsigned int ulp = 100000000;
+          const unsigned int ulp = std::pow(10,9);
 
           for (unsigned int i = 0; i < diff.local_size(); ++i)
             Assert (std::abs(diff.local_element(i)) <= std::numeric_limits<double>::epsilon() * ulp * std::abs(dst_mf.local_element(i)),
