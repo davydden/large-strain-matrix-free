@@ -48,7 +48,7 @@ adjust_ghost_range_if_necessary(
 
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference,
-                    LinearAlgebra::distributed::Vector<number> &displacement);
+                    const LinearAlgebra::distributed::Vector<number> &displacement);
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
@@ -187,7 +187,7 @@ adjust_ghost_range_if_necessary(
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::initialize(
                     std::shared_ptr<const MatrixFree<dim,number>> data_current_,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference_,
-                    LinearAlgebra::distributed::Vector<number> &displacement_)
+                    const LinearAlgebra::distributed::Vector<number> &displacement_)
   {
     data_current = data_current_;
     data_reference = data_reference_;
@@ -320,8 +320,6 @@ adjust_ghost_range_if_necessary(
     // both matrix-free data objects.
     Assert(data_current->n_macro_cells() == data_reference->n_macro_cells(),
            ExcInternalError());
-
-    Assert (data_current->n_macro_cells() == data_reference->n_macro_cells(), ExcInternalError());
 
     // MatrixFree::cell_loop() is more complicated than a simple update_ghost_values() / compress(),
     // it loops on different cells (inner without ghosts and outer) in different order
@@ -475,7 +473,7 @@ adjust_ghost_range_if_necessary(
                          " does not match between two MatrixFree objects."
                          ));
 
-    typedef VectorizedArray<number> NumberType;
+    using NumberType = VectorizedArray<number>;
     static constexpr number dim_f = dim;
     static constexpr number two_over_dim = 2.0/dim;
     const number kappa = material->kappa;
@@ -497,6 +495,9 @@ adjust_ghost_range_if_necessary(
           const NumberType                        det_F  = determinant(F);
           const Tensor<2,dim,NumberType>          F_bar  = F * cached_scalar(cell,q);
           const SymmetricTensor<2,dim,NumberType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
+
+          Assert(cached_scalar(cell, q) == std::pow(det_F, number(-1.0 / dim)),
+                 ExcMessage("Cached scalar and det_F do not match"));
 
           for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
             Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
@@ -669,7 +670,10 @@ adjust_ghost_range_if_necessary(
               jc_part[i][i] += tmp;
           }
 
-          const NumberType               det_F       = determinant(F);
+          const NumberType det_F = determinant(F);
+          Assert(cached_scalar(cell, q) == std::log(det_F),
+                 ExcMessage("Cached scalar and det_F do not match"));
+
           const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
           VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
           for (unsigned int i = 0; i < data_current->n_components_filled(cell);
