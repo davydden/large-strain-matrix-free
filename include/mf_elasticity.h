@@ -580,6 +580,7 @@ namespace Cook_Membrane
     std::ofstream                    timer_output_file;
     ConditionalOStream               timer_out;
     mutable TimerOutput              timer;
+    std::ofstream                    deallogfile;
 
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
@@ -762,7 +763,12 @@ namespace Cook_Membrane
     n_q_points_f (qf_face.size())
   {
     if (Utilities::MPI::this_mpi_process(mpi_communicator)==0)
-      timer_output_file.open("timings.txt");
+      {
+        deallogfile.open("deallog.txt");
+        deallog.attach(deallogfile);
+
+        timer_output_file.open("timings.txt");
+      }
 
     mf_nh_operator.set_material(material_vec);
     mf_ad_nh_operator.set_material(material_vec);
@@ -1811,7 +1817,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     timer.enter_subsection("Linear solver");
     const int solver_its = tangent_matrix.m()
                         * parameters.max_iterations_lin;
-    SolverControl solver_control(solver_its, tol_sol);
+    SolverControl solver_control(solver_its, tol_sol,true,true);
 
     pcout << " SLV " << std::flush;
     if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
