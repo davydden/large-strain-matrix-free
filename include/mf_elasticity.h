@@ -1227,6 +1227,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 mg_smoother_chebyshev,
                 /*min_level*/0);
 
+    multigrid->set_debug(5);
+
 
     multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
             {
