@@ -250,7 +250,7 @@ adjust_ghost_range_if_necessary(
                          "det_F[" + std::to_string(i) +
                          "] is not positive: " + std::to_string(det_F[i])));
 
-              cached_scalar(cell,q) = std::log(det_F);
+              cached_scalar(cell,q) = material->mu - 2.0*material->lambda*std::log(det_F);
             }
         }
         else
@@ -657,21 +657,20 @@ adjust_ghost_range_if_necessary(
           SymmetricTensor<2,dim,NumberType> tau;
           {
             tau = mu*b;
-            const NumberType tmp = mu - 2.0*lambda*cached_scalar(cell,q);
             for (unsigned int d = 0; d < dim; ++d)
-              tau[d][d] -= tmp;
+              tau[d][d] -= cached_scalar(cell,q);
           }
 
           SymmetricTensor<2,dim,VectorizedArray<number>> jc_part;
           {
-            jc_part = 2.0*(mu - 2.0*lambda*cached_scalar(cell,q))*symm_grad_Nx_v;
+            jc_part = 2.0*cached_scalar(cell,q)*symm_grad_Nx_v;
             const NumberType tmp = 2.0*lambda*trace(symm_grad_Nx_v);
             for (unsigned int i = 0; i < dim; ++i)
               jc_part[i][i] += tmp;
           }
 
           const NumberType det_F = determinant(F);
-          Assert(cached_scalar(cell, q) == std::log(det_F),
+          Assert(cached_scalar(cell, q) == (mu - 2.0 * lambda * std::log(det_F)),
                  ExcMessage("Cached scalar and det_F do not match"));
 
           const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
