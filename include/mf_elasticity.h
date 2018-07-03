@@ -435,7 +435,7 @@ namespace Cook_Membrane
       NonlinearSolver::parse_parameters(prm);
       Time::parse_parameters(prm);
     }
-  }
+  } // Parameters namespace
 
 // @sect3{Time class}
 
@@ -1632,7 +1632,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                       cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
                     }
                 }
-            }
+            } // end loop over quadrature points
 
           // Finally, we need to copy the lower half of the local matrix into the
           // upper half:
