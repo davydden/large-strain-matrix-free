@@ -1,5 +1,14 @@
 #pragma once
 
+/**
+ * level of output to deallog, can be:
+ * 0 - none
+ * 1 - norms of vectors
+ * 2 - CG iterations
+ * 3 - GMG iterations
+ */
+static const unsigned int debug_level = 0;
+
 // We start by including all the necessary deal.II header files and some C++
 // related ones. They have been discussed in detail in previous tutorial
 // programs, so you need only refer to past tutorials for details.
@@ -1165,10 +1174,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
-    deallog << "GMG setup Newton iteration " << it_nr << std::endl;
-    deallog << "Number of constrained DoFs " << Utilities::MPI::sum(mf_data_current->get_constrained_dofs().size(), mpi_communicator) << std::endl;
-    deallog << "Diagonal:       " << mf_nh_operator.get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
-    deallog << "Solution total: " << solution_total.l2_norm() << std::endl;
+    if (debug_level > 0)
+      {
+        deallog << "GMG setup Newton iteration " << it_nr << std::endl;
+        deallog << "Number of constrained DoFs " << Utilities::MPI::sum(mf_data_current->get_constrained_dofs().size(), mpi_communicator) << std::endl;
+        deallog << "Diagonal:       " << mf_nh_operator.get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
+        deallog << "Solution total: " << solution_total.l2_norm() << std::endl;
+      }
     if (parameters.type_lin =="MF_AD_CG")
       {
         mf_ad_nh_operator.cache();
@@ -1181,8 +1193,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mg_mf_nh_operator[level].cache();
         mg_mf_nh_operator[level].compute_diagonal();
 
-        deallog << "Diagonal on level       " << level << ": " << mg_mf_nh_operator[level].get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
-        deallog << "Solution total on level " << level << ": " << mg_solution_total[level].l2_norm() << std::endl;
+        if (debug_level > 0)
+          {
+            deallog << "Diagonal on level       " << level << ": " << mg_mf_nh_operator[level].get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
+            deallog << "Solution total on level " << level << ": " << mg_solution_total[level].l2_norm() << std::endl;
+          }
       }
 
     // setup GMG preconditioner
@@ -1242,7 +1257,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 mg_smoother_chebyshev,
                 /*min_level*/0);
 
-    multigrid->set_debug(5);
+    if (debug_level > 2)
+      multigrid->set_debug(5);
 
 
     multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
@@ -1816,7 +1832,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // estimate condition number of matrix-free operator from dummy CG
     {
-        IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol);
+        IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol,false,false);
         SolverCG<LinearAlgebra::distributed::Vector<double> > solver_condition(control_condition);
 
         solver_condition.connect_condition_number_slot(
@@ -1832,9 +1848,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     }
 
     timer.enter_subsection("Linear solver");
-    const int solver_its = tangent_matrix.m()
-                        * parameters.max_iterations_lin;
-    SolverControl solver_control(solver_its, tol_sol,true,true);
+    const int solver_its = tangent_matrix.m() * parameters.max_iterations_lin;
+
+    SolverControl solver_control(solver_its,
+                                 tol_sol,
+                                 (debug_level > 1 ? true : false),
+                                 (debug_level > 0 ? true : false));
 
     pcout << " SLV " << std::flush;
     if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
