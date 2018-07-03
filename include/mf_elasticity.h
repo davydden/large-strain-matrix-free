@@ -1081,6 +1081,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
+            // GMG MF operators do not support edge indices yet
+            Assert (mg_constrained_dofs.get_refinement_edge_indices(level).is_empty(),
+                    ExcNotImplemented());
+
             mg_mf_data_current[level]   = std::make_shared<MatrixFree<dim,float>>();
             mg_mf_data_reference[level] = std::make_shared<MatrixFree<dim,float>>();
 
@@ -1157,6 +1161,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
     mf_nh_operator.compute_diagonal();
+    deallog << "GMG setup Newton iteration " << it_nr << std::endl;
+    deallog << "Diagonal:       " << mf_nh_operator.get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
+    deallog << "Solution total: " << solution_total.l2_norm() << std::endl;
     if (parameters.type_lin =="MF_AD_CG")
       {
         mf_ad_nh_operator.cache();
@@ -1168,6 +1175,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         mg_mf_nh_operator[level].set_material(material_level);
         mg_mf_nh_operator[level].cache();
         mg_mf_nh_operator[level].compute_diagonal();
+
+        deallog << "Diagonal on level       " << level << ": " << mg_mf_nh_operator[level].get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
+        deallog << "Solution total on level " << level << ": " << mg_solution_total[level].l2_norm() << std::endl;
       }
 
     // setup GMG preconditioner
