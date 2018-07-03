@@ -1039,18 +1039,6 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     mg_additional_data.tasks_parallel_scheme = MatrixFree<dim,float>::AdditionalData::none;//partition_color;
     mg_additional_data.mapping_update_flags = update_gradients | update_JxW_values;
 
-    std::set<types::boundary_id>       dirichlet_boundary_ids;
-    // see make_constraints()
-    dirichlet_boundary_ids.insert(1);
-    if (dim==3)
-      // FIXME: this will be wrong as make_constraints() only add constrains to one component on
-      // this BC. Need to use make_zero_boundary_constraint() with component mask
-      dirichlet_boundary_ids.insert(2);
-
-    mg_constrained_dofs.clear();
-    mg_constrained_dofs.initialize(dof_handler_ref);
-    mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,dirichlet_boundary_ids);
-
     if (it_nr <= 1)
       {
         mg_transfer = std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(mg_constrained_dofs);
@@ -1746,8 +1734,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // and we can simply skip the rebuilding step if we do not clear it.
     if (it_nr > 1)
       return;
+
     constraints.clear();
     constraints.reinit (locally_relevant_dofs);
+
+    mg_constrained_dofs.clear();
+    mg_constrained_dofs.initialize(dof_handler_ref);
 
     const bool apply_dirichlet_bc = (it_nr == 0);
 
@@ -1768,9 +1760,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // select. To this end we first set up such extractor objects and later
     // use it when generating the relevant component masks:
 
+    // We also setup GMG constraints
+
     // Fixed left hand side of the beam
     {
       const int boundary_id = 1;
+      const auto mask = fe.component_mask(u_fe);
+
+      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,{boundary_id},mask);
 
       if (apply_dirichlet_bc == true)
         VectorTools::interpolate_boundary_values(dof_handler_ref,
@@ -1792,19 +1789,22 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     {
       const int boundary_id = 2;
       const FEValuesExtractors::Scalar z_displacement(2);
+      const auto mask = fe.component_mask(z_displacement);
+
+      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,{boundary_id}, mask);
 
       if (apply_dirichlet_bc == true)
         VectorTools::interpolate_boundary_values(dof_handler_ref,
                                                  boundary_id,
                                                  ZeroFunction<dim>(n_components),
                                                  constraints,
-                                                 fe.component_mask(z_displacement));
+                                                 mask);
       else
         VectorTools::interpolate_boundary_values(dof_handler_ref,
                                                  boundary_id,
                                                  ZeroFunction<dim>(n_components),
                                                  constraints,
-                                                 fe.component_mask(z_displacement));
+                                                 mask);
     }
 
     constraints.close();
