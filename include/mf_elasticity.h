@@ -85,6 +85,22 @@ static const unsigned int debug_level = 0;
 
 using namespace dealii;
 
+template <typename Number>
+void
+copy_trilinos(LinearAlgebra::distributed::Vector<Number> &dst,
+              const TrilinosWrappers::MPI::Vector &       trilinos_vec)
+{
+  // copy-paste operator= from LA::d::Vectro
+  IndexSet combined_set = dst.get_partitioner()->locally_owned_range();
+  combined_set.add_indices(dst.get_partitioner()->ghost_indices());
+  LinearAlgebra::ReadWriteVector<Number> rw_vector(combined_set);
+  rw_vector.import(trilinos_vec, VectorOperation::insert);
+  dst.import(rw_vector, VectorOperation::insert);
+
+  if (dst.has_ghost_elements() || trilinos_vec.has_ghost_elements())
+    dst.update_ghost_values();
+}
+
 // We then stick everything that relates to this tutorial program into a
 // namespace of its own, and import all the deal.II function and class names
 // into it:
@@ -1245,8 +1261,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 mg_smoother_chebyshev,
                 /*min_level*/0);
 
-    if (debug_level > 2)
-      multigrid->set_debug(5);
+    // set_debug() is deprecated, keep this commented for now
+    // if (debug_level > 2)
+    //   multigrid->set_debug(5);
 
 
     multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
@@ -1355,12 +1372,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           constraints.set_zero(src_trilinos);
 
           LinearAlgebra::distributed::Vector src(newton_update), dst_mf(newton_update), diff(newton_update);
-          src = src_trilinos;
+          copy_trilinos(src, src_trilinos);
 
           tangent_matrix.vmult(dst_mb, src_trilinos);
           mf_nh_operator.vmult(dst_mf, src);
 
-          diff = dst_mb;
+          copy_trilinos(diff, dst_mb);
           diff.add(-1, dst_mf);
 
           // FIXME: looks like there are some severe round-off errors.
@@ -1381,7 +1398,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           trilinos_jacobi.vmult(dst_mb,src_trilinos);
           mf_nh_operator.precondition_Jacobi(dst_mf,src,0.8);
 
-          diff = dst_mb;
+          copy_trilinos(diff, dst_mb);
           diff.add(-1, dst_mf);
           for (unsigned int i = 0; i < diff.local_size(); ++i)
             Assert (std::abs(diff.local_element(i)) <= 10000. * std::numeric_limits<double>::epsilon() * std::abs(dst_mf.local_element(i)),
@@ -1712,7 +1729,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     error_residual.norm = system_rhs_trilinos.l2_norm();
     error_residual.u    = system_rhs_trilinos.l2_norm();
 
-    system_rhs = system_rhs_trilinos;
+    copy_trilinos(system_rhs, system_rhs_trilinos);
   }
 
 
@@ -1878,7 +1895,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                      system_rhs_trilinos,
                                      preconditioner);
 
-            newton_update = newton_update_trilinos;
+            copy_trilinos(newton_update, newton_update_trilinos);
           }
         else if (parameters.type_lin == "MF_AD_CG")
           {
@@ -1933,7 +1950,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
         A_direct.solve(newton_update_trilinos, system_rhs_trilinos);
 
-        newton_update = newton_update_trilinos;
+        copy_trilinos(newton_update, newton_update_trilinos);
 
         lin_it  = 1;
         lin_res = 0.0;
