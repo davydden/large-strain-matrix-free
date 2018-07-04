@@ -6,7 +6,6 @@
 
 #include <deal.II/lac/diagonal_matrix.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <deal.II/lac/vector.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -14,6 +13,23 @@
 #include <material.h>
 
 using namespace dealii;
+
+template <typename Number>
+void
+adjust_ghost_range_if_necessary(
+  const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner,
+  const LinearAlgebra::distributed::Vector<Number> &        vec)
+{
+  if (vec.get_partitioner().get() != partitioner.get())
+    {
+      LinearAlgebra::distributed::Vector<Number> copy(vec);
+      const_cast<LinearAlgebra::distributed::Vector<Number> &>(vec).reinit(
+        partitioner);
+      const_cast<LinearAlgebra::distributed::Vector<Number> &>(vec)
+        .copy_locally_owned_data_from(copy);
+    }
+}
+
 
   /**
    * Large strain Neo-Hook tangent operator.
@@ -26,13 +42,13 @@ using namespace dealii;
   public:
     NeoHookOperator ();
 
-    typedef typename Vector<number>::size_type size_type;
+    using size_type = typename LinearAlgebra::distributed::Vector<number>::size_type;
 
     void clear();
 
     void initialize(std::shared_ptr<const MatrixFree<dim,number>> data_current,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference,
-                    Vector<number> &displacement);
+                    const LinearAlgebra::distributed::Vector<number> &displacement);
 
     void set_material(std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material);
 
@@ -41,24 +57,24 @@ using namespace dealii;
     unsigned int m () const;
     unsigned int n () const;
 
-    void vmult (Vector<number> &dst,
-                const Vector<number> &src) const;
+    void vmult (LinearAlgebra::distributed::Vector<number> &dst,
+                const LinearAlgebra::distributed::Vector<number> &src) const;
 
-    void Tvmult (Vector<number> &dst,
-                 const Vector<number> &src) const;
-    void vmult_add (Vector<number> &dst,
-                    const Vector<number> &src) const;
-    void Tvmult_add (Vector<number> &dst,
-                     const Vector<number> &src) const;
+    void Tvmult (LinearAlgebra::distributed::Vector<number> &dst,
+                 const LinearAlgebra::distributed::Vector<number> &src) const;
+    void vmult_add (LinearAlgebra::distributed::Vector<number> &dst,
+                    const LinearAlgebra::distributed::Vector<number> &src) const;
+    void Tvmult_add (LinearAlgebra::distributed::Vector<number> &dst,
+                     const LinearAlgebra::distributed::Vector<number> &src) const;
 
     number el (const unsigned int row,
                const unsigned int col) const;
 
-    void precondition_Jacobi(Vector<number> &dst,
-                             const Vector<number> &src,
+    void precondition_Jacobi(LinearAlgebra::distributed::Vector<number> &dst,
+                             const LinearAlgebra::distributed::Vector<number> &src,
                              const number omega) const;
 
-    const std::shared_ptr<DiagonalMatrix<Vector<number>>> get_matrix_diagonal_inverse() const
+    const std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>> get_matrix_diagonal_inverse() const
     {
       return inverse_diagonal_entries;
     }
@@ -74,15 +90,15 @@ using namespace dealii;
      * Apply operator on a range of cells.
      */
     void local_apply_cell (const MatrixFree<dim,number>    &data,
-                           Vector<number>                      &dst,
-                           const Vector<number>                &src,
+                           LinearAlgebra::distributed::Vector<number>                      &dst,
+                           const LinearAlgebra::distributed::Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const;
 
     /**
      * Apply diagonal part of the operator on a cell range.
      */
     void local_diagonal_cell (const MatrixFree<dim,number> &data,
-                              Vector<number>                                   &dst,
+                              LinearAlgebra::distributed::Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const;
 
@@ -98,12 +114,12 @@ using namespace dealii;
     std::shared_ptr<const MatrixFree<dim,number>> data_current;
     std::shared_ptr<const MatrixFree<dim,number>> data_reference;
 
-    Vector<number> *displacement;
+    const LinearAlgebra::distributed::Vector<number> *displacement;
 
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<number>>> material;
 
-    std::shared_ptr<DiagonalMatrix<Vector<number>>>  inverse_diagonal_entries;
-    std::shared_ptr<DiagonalMatrix<Vector<number>>>  diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>  inverse_diagonal_entries;
+    std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>  diagonal_entries;
 
     Table<2,VectorizedArray<number>> cached_scalar;
 
@@ -123,8 +139,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(Vector<number> &dst,
-                                            const Vector<number> &src,
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::precondition_Jacobi(LinearAlgebra::distributed::Vector<number> &dst,
+                                            const LinearAlgebra::distributed::Vector<number> &src,
                                             const number omega) const
   {
     Assert(inverse_diagonal_entries.get() &&
@@ -171,7 +187,7 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::initialize(
                     std::shared_ptr<const MatrixFree<dim,number>> data_current_,
                     std::shared_ptr<const MatrixFree<dim,number>> data_reference_,
-                    Vector<number> &displacement_)
+                    const LinearAlgebra::distributed::Vector<number> &displacement_)
   {
     data_current = data_current_;
     data_reference = data_reference_;
@@ -206,8 +222,14 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
-              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
+
+              for (unsigned int i = 0;
+                   i < data_current->n_components_filled(cell);
+                   ++i)
+                Assert(det_F[i] > 0,
+                       ExcMessage(
+                         "det_F[" + std::to_string(i) +
+                         "] is not positive: " + std::to_string(det_F[i])));
 
               cached_scalar(cell,q) = std::pow(det_F,number(-1.0/dim));
             }
@@ -219,10 +241,16 @@ using namespace dealii;
               const Tensor<2,dim,VectorizedArray<number>>         &grad_u = phi_reference.get_gradient(q);
               const Tensor<2,dim,VectorizedArray<number>>          F      = Physics::Elasticity::Kinematics::F(grad_u);
               const VectorizedArray<number>                        det_F  = determinant(F);
-              for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
-                Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
 
-              cached_scalar(cell,q) = std::log(det_F);
+              for (unsigned int i = 0;
+                   i < data_current->n_components_filled(cell);
+                   ++i)
+                Assert(det_F[i] > 0,
+                       ExcMessage(
+                         "det_F[" + std::to_string(i) +
+                         "] is not positive: " + std::to_string(det_F[i])));
+
+              cached_scalar(cell,q) = material->mu - 2.0*material->lambda*std::log(det_F);
             }
         }
         else
@@ -243,8 +271,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (Vector<number>       &dst,
-                                                const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                const LinearAlgebra::distributed::Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst, src);
@@ -254,8 +282,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (Vector<number>       &dst,
-                                                 const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                 const LinearAlgebra::distributed::Vector<number> &src) const
   {
     dst = 0;
     vmult_add (dst,src);
@@ -265,8 +293,8 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (Vector<number>       &dst,
-                                                     const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::Tvmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                     const LinearAlgebra::distributed::Vector<number> &src) const
   {
     vmult_add (dst,src);
   }
@@ -275,14 +303,23 @@ using namespace dealii;
 
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
-  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (Vector<number>       &dst,
-                                                    const Vector<number> &src) const
+  NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::vmult_add (LinearAlgebra::distributed::Vector<number>       &dst,
+                                                    const LinearAlgebra::distributed::Vector<number> &src) const
   {
-    // FIXME: can't use cell_loop as we need both matrix-free data objects.
-    // for now do it by hand.
-    // BUT I might try cell_loop(), and simply use another MF object inside...
+    const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
+      data_current->get_vector_partitioner();
 
-    Assert (data_current->n_macro_cells() == data_reference->n_macro_cells(), ExcInternalError());
+    Assert(partitioner->is_globally_compatible(
+             *data_reference->get_vector_partitioner().get()),
+           ExcMessage("Current and reference partitioners are incompatible"));
+
+    adjust_ghost_range_if_necessary(partitioner, dst);
+    adjust_ghost_range_if_necessary(partitioner, src);
+
+    // FIXME: use cell_loop, should work even though we need
+    // both matrix-free data objects.
+    Assert(data_current->n_macro_cells() == data_reference->n_macro_cells(),
+           ExcInternalError());
 
     // MatrixFree::cell_loop() is more complicated than a simple update_ghost_values() / compress(),
     // it loops on different cells (inner without ghosts and outer) in different order
@@ -290,20 +327,18 @@ using namespace dealii;
     // https://www.dealii.org/developer/doxygen/deal.II/matrix__free_8h_source.html#l00109
 
     // 1. make sure ghosts are updated
-    // src.update_ghost_values();
+    src.update_ghost_values();
 
     // 2. loop over all locally owned cell blocks
     local_apply_cell(*data_current, dst, src,
                      std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
 
     // 3. communicate results with MPI
-    // dst.compress(VectorOperation::add);
+    dst.compress(VectorOperation::add);
 
     // 4. constraints
-    const std::vector<unsigned int> &
-    constrained_dofs = data_current->get_constrained_dofs(); // FIXME: is it current or reference?
-    for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-      dst(constrained_dofs[i]) += src(constrained_dofs[i]);
+    for (const auto dof : data_current->get_constrained_dofs())
+      dst.local_element(dof) += src.local_element(dof);
   }
 
 
@@ -312,8 +347,8 @@ using namespace dealii;
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_apply_cell (
                            const MatrixFree<dim,number>    &/*data*/,
-                           Vector<number>                      &dst,
-                           const Vector<number>                &src,
+                           LinearAlgebra::distributed::Vector<number>                      &dst,
+                           const LinearAlgebra::distributed::Vector<number>                &src,
                            const std::pair<unsigned int,unsigned int> &cell_range) const
   {
     // FIXME: I don't use data input, can this be bad?
@@ -348,11 +383,13 @@ using namespace dealii;
   template <int dim, int fe_degree, int n_q_points_1d, typename number>
   void
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::local_diagonal_cell (const MatrixFree<dim,number> &/*data*/,
-                              Vector<number>                                   &dst,
+                              LinearAlgebra::distributed::Vector<number>                                   &dst,
                               const unsigned int &,
                               const std::pair<unsigned int,unsigned int>       &cell_range) const
   {
     // FIXME: I don't use data input, can this be bad?
+    const VectorizedArray<number> one = make_vectorized_array<number>(1.);
+    const VectorizedArray<number> zero = make_vectorized_array<number>(0.);
 
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current  (*data_current);
     FEEvaluation<dim,fe_degree,n_q_points_1d,dim,number> phi_current_s(*data_current);
@@ -385,14 +422,14 @@ using namespace dealii;
                 for (unsigned int jc=0; jc<phi_current.n_components; ++jc)
                   {
                     const auto ind_j = j+jc*phi_current.dofs_per_component;
-                    phi_current.begin_dof_values()  [ind_j] = VectorizedArray<number>();
-                    phi_current_s.begin_dof_values()[ind_j] = VectorizedArray<number>();
+                    phi_current.begin_dof_values()  [ind_j] = zero;
+                    phi_current_s.begin_dof_values()[ind_j] = zero;
                   }
 
               const auto ind_i = i+ic*phi_current.dofs_per_component;
 
-              phi_current.begin_dof_values()  [ind_i] = 1.;
-              phi_current_s.begin_dof_values()[ind_i] = 1.;
+              phi_current.begin_dof_values()  [ind_i] = one;
+              phi_current_s.begin_dof_values()[ind_i] = one;
 
               do_operation_on_cell(phi_current,phi_current_s,phi_reference,cell);
 
@@ -436,7 +473,7 @@ using namespace dealii;
                          " does not match between two MatrixFree objects."
                          ));
 
-    typedef VectorizedArray<number> NumberType;
+    using NumberType = VectorizedArray<number>;
     static constexpr number dim_f = dim;
     static constexpr number two_over_dim = 2.0/dim;
     const number kappa = material->kappa;
@@ -459,7 +496,10 @@ using namespace dealii;
           const Tensor<2,dim,NumberType>          F_bar  = F * cached_scalar(cell,q);
           const SymmetricTensor<2,dim,NumberType> b_bar  = Physics::Elasticity::Kinematics::b(F_bar);
 
-          for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; ++i)
+          Assert(cached_scalar(cell, q) == std::pow(det_F, number(-1.0 / dim)),
+                 ExcMessage("Cached scalar and det_F do not match"));
+
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
             Assert (det_F[i] > 0, ExcMessage("det_F[" + std::to_string(i) + "] is not positive"));
 
           // current configuration
@@ -557,24 +597,28 @@ using namespace dealii;
             // c_bar==0 so we don't have a term with it.
           }
 
-          const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-          VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
-            if (std::abs(JxW_current[i])>1e-10)
-              {
-                JxW_scale[i] *= 1./JxW_current[i];
-                // indirect check of consistency between MappingQEulerian in MatrixFree data and
-                // displacement vector stored in this operator.
-                Assert (std::abs(JxW_scale[i] * det_F[i] - 1.) < 1000.*std::numeric_limits<number>::epsilon(),
-                        ExcMessage(std::to_string(i) +
-                                   " out of " + std::to_string(VectorizedArray<number>::n_array_elements) +
-                                   ", filled " + std::to_string(data_current->n_components_filled(cell)) +
-                                   " : " +
-                                   std::to_string(det_F[i]) + "!=" +
-                                   std::to_string(1./JxW_scale[i]) + " " +
-                                   std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))
-                                  ));
-              }
+          const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
+          VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell);
+               ++i)
+            {
+              Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
+              JxW_scale[i] *= 1. / JxW_current[i];
+              // indirect check of consistency between MappingQEulerian in
+              // MatrixFree data and displacement vector stored in this
+              // operator.
+              Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                       1000. * std::numeric_limits<number>::epsilon(),
+                     ExcMessage(
+                       std::to_string(i) + " out of " +
+                       std::to_string(
+                         VectorizedArray<number>::n_array_elements) +
+                       ", filled " +
+                       std::to_string(data_current->n_components_filled(cell)) +
+                       " : " + std::to_string(det_F[i]) +
+                       "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                       std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+            }
 
           // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
           // contribution. It comprises a material contribution, and a
@@ -613,38 +657,44 @@ using namespace dealii;
           SymmetricTensor<2,dim,NumberType> tau;
           {
             tau = mu*b;
-            const NumberType tmp = mu - 2.0*lambda*cached_scalar(cell,q);
             for (unsigned int d = 0; d < dim; ++d)
-              tau[d][d] -= tmp;
+              tau[d][d] -= cached_scalar(cell,q);
           }
 
           SymmetricTensor<2,dim,VectorizedArray<number>> jc_part;
           {
-            jc_part = 2.0*(mu - 2.0*lambda*cached_scalar(cell,q))*symm_grad_Nx_v;
+            jc_part = 2.0*cached_scalar(cell,q)*symm_grad_Nx_v;
             const NumberType tmp = 2.0*lambda*trace(symm_grad_Nx_v);
             for (unsigned int i = 0; i < dim; ++i)
               jc_part[i][i] += tmp;
           }
 
-          const NumberType                        det_F  = determinant(F);
-          const VectorizedArray<number> & JxW_current = phi_current.JxW(q);
-          VectorizedArray<number> JxW_scale = phi_reference.JxW(q);
-          for (unsigned int i = 0; i < data_current->n_components_filled(cell); ++i)
-            if (std::abs(JxW_current[i])>1e-10)
-              {
-                JxW_scale[i] *= 1./JxW_current[i];
-                // indirect check of consistency between MappingQEulerian in MatrixFree data and
-                // displacement vector stored in this operator.
-                Assert (std::abs(JxW_scale[i] * det_F[i] - 1.) < 1000.*std::numeric_limits<number>::epsilon(),
-                        ExcMessage(std::to_string(i) +
-                                   " out of " + std::to_string(VectorizedArray<number>::n_array_elements) +
-                                   ", filled " + std::to_string(data_current->n_components_filled(cell)) +
-                                   " : " +
-                                   std::to_string(det_F[i]) + "!=" +
-                                   std::to_string(1./JxW_scale[i]) + " " +
-                                   std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))
-                                  ));
-              }
+          const NumberType det_F = determinant(F);
+          Assert(cached_scalar(cell, q) == (mu - 2.0 * lambda * std::log(det_F)),
+                 ExcMessage("Cached scalar and det_F do not match"));
+
+          const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
+          VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
+          for (unsigned int i = 0; i < data_current->n_components_filled(cell);
+               ++i)
+            {
+              Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
+              JxW_scale[i] *= 1. / JxW_current[i];
+              // indirect check of consistency between MappingQEulerian in
+              // MatrixFree data and displacement vector stored in this
+              // operator.
+              Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                       1000. * std::numeric_limits<number>::epsilon(),
+                     ExcMessage(
+                       std::to_string(i) + " out of " +
+                       std::to_string(
+                         VectorizedArray<number>::n_array_elements) +
+                       ", filled " +
+                       std::to_string(data_current->n_components_filled(cell)) +
+                       " : " + std::to_string(det_F[i]) +
+                       "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                       std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+            }
 
           phi_current_s.submit_symmetric_gradient(
             jc_part * JxW_scale,q);
@@ -670,7 +720,7 @@ using namespace dealii;
   NeoHookOperator<dim,fe_degree,n_q_points_1d,number>::
   compute_diagonal()
   {
-    typedef Vector<number> VectorType;
+    typedef LinearAlgebra::distributed::Vector<number> VectorType;
 
     inverse_diagonal_entries.reset(new DiagonalMatrix<VectorType>());
     diagonal_entries.reset(new DiagonalMatrix<VectorType>());
@@ -681,31 +731,34 @@ using namespace dealii;
     data_current->initialize_dof_vector(diagonal_vector);
 
     unsigned int dummy = 0;
+    diagonal_vector = 0.;
     local_diagonal_cell(*data_current, diagonal_vector, dummy,
                      std::make_pair<unsigned int,unsigned int>(0,data_current->n_macro_cells()));
+    diagonal_vector.compress(VectorOperation::add);
 
     // data_current->cell_loop (&NeoHookOperator::local_diagonal_cell,
     //                          this, diagonal_vector, dummy);
 
     // set_constrained_entries_to_one
-    {
-      const std::vector<unsigned int> &
-      constrained_dofs = data_current->get_constrained_dofs();
-      for (unsigned int i=0; i<constrained_dofs.size(); ++i)
-        diagonal_vector(constrained_dofs[i]) = 1.;
-    }
+    Assert (data_current->get_constrained_dofs().size() == data_reference->get_constrained_dofs().size(),
+            ExcInternalError());
+    for (const auto dof : data_current->get_constrained_dofs())
+      diagonal_vector.local_element(dof) = 1.;
 
     // calculate inverse:
     inverse_diagonal_vector = diagonal_vector;
 
-    for (unsigned int i=0; i</*inverse_diagonal_vector.local_size()*/inverse_diagonal_vector.size(); ++i)
-      if (std::abs(inverse_diagonal_vector/*.local_element*/(i)) > std::sqrt(std::numeric_limits<number>::epsilon()))
-        inverse_diagonal_vector/*.local_element*/(i) = 1./inverse_diagonal_vector/*.local_element*/(i);
-      else
-        inverse_diagonal_vector/*.local_element*/(i) = 1.;
+    for (unsigned int i = 0; i < inverse_diagonal_vector.local_size(); ++i)
+      {
+        Assert(inverse_diagonal_vector.local_element(i) > 0.,
+               ExcMessage("No diagonal entry in a positive definite operator "
+                          "should be zero or negative"));
+        inverse_diagonal_vector.local_element(i) =
+          1. / diagonal_vector.local_element(i);
+      }
 
-    // inverse_diagonal_vector.update_ghost_values();
-    // diagonal_vector.update_ghost_values();
+    inverse_diagonal_vector.update_ghost_values();
+    diagonal_vector.update_ghost_values();
 
     diagonal_is_available = true;
   }

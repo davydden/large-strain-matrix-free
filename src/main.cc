@@ -70,11 +70,12 @@ int main (int argc, char *argv[])
                                              "parameters.prm";
       Parameters::AllParameters parameters(parameter_filename);
       {
-        std::cout << "Assembly method: Residual and linearisation are computed manually." << std::endl;
-
         // Allow multi-threading
         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
                                                             dealii::numbers::invalid_unsigned_int);
+
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)==0)
+          std::cout << "Assembly method: Residual and linearisation are computed manually." << std::endl;
 
         typedef double NumberType;
         const unsigned int degree = parameters.poly_degree;
