@@ -66,6 +66,8 @@ subsection Time
   # End time
   set End time       = 0.5
 
+  set Force multiplier = 0.5
+
   # Time step size
   set Time step size = 0.1
 end

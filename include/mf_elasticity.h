@@ -407,6 +407,7 @@ namespace Cook_Membrane
     {
       double delta_t;
       double end_time;
+      double force_multiplier;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -421,6 +422,11 @@ namespace Cook_Membrane
       prm.enter_subsection("Time");
       {
         prm.declare_entry("End time", "1", Patterns::Double(), "End time");
+
+        prm.declare_entry("Force multiplier",
+                          "1",
+                          Patterns::Double(),
+                          "Neumann BC force multiplier");
 
         prm.declare_entry("Time step size",
                           "0.1",
@@ -437,6 +443,7 @@ namespace Cook_Membrane
       {
         end_time = prm.get_double("End time");
         delta_t  = prm.get_double("Time step size");
+        force_multiplier = prm.get_double("Force multiplier");
       }
       prm.leave_subsection();
     }
@@ -1899,7 +1906,7 @@ namespace Cook_Membrane
                     // Note that the contributions to the right hand side vector
                     // we compute here only exist in the displacement components
                     // of the vector.
-                    const double time_ramp = (time.current() / time.end());
+                    const double time_ramp = (time.current() / time.end()) * parameters.force_multiplier;
                     const double magnitude =
                       (1.0 /
                        (16.0 * parameters.scale * 1.0 * parameters.scale)) *
