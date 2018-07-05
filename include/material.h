@@ -9,32 +9,35 @@ using namespace dealii;
  * Action of the geometric part of the 4-th order tangent tensor
  * on the $Grad N(x)$
  *
- * In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
+ * In index notation this tensor is $ [j e^{geo}]_{ijkl} = j \delta_{ik}
+ * \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
  *
  */
 template <int dim, typename NumberType>
-inline
-Tensor<2, dim, NumberType>
-egeo_grad(const Tensor<2, dim, NumberType> &grad_Nx, const Tensor<2,dim,NumberType> &tau_tot)
+inline Tensor<2, dim, NumberType>
+egeo_grad(const Tensor<2, dim, NumberType> &grad_Nx,
+          const Tensor<2, dim, NumberType> &tau_tot)
 {
-  // the product is actually  GradN * tau^T but due to symmetry of tau we can do GradN * tau
+  // the product is actually  GradN * tau^T but due to symmetry of tau we can do
+  // GradN * tau
   return grad_Nx * tau_tot;
 }
 
 
 template <typename number>
-number divide_by_dim(const number &x, const int dim)
+number
+divide_by_dim(const number &x, const int dim)
 {
-  return x/dim;
+  return x / dim;
 }
 
 template <typename number>
-VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
-                                      const int dim)
+VectorizedArray<number>
+divide_by_dim(const VectorizedArray<number> &x, const int dim)
 {
   VectorizedArray<number> res(x);
   for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; i++)
-    res[i]*= 1.0/dim;
+    res[i] *= 1.0 / dim;
 
   return res;
 }
@@ -67,57 +70,56 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
 // store the current state (characterized by the values or measures  of the
 // displacement field) so that we can compute the elastic coefficients
 // linearized around the current state.
-  template <int dim,typename NumberType>
-  class Material_Compressible_Neo_Hook_One_Field
+template <int dim, typename NumberType>
+class Material_Compressible_Neo_Hook_One_Field
+{
+public:
+  Material_Compressible_Neo_Hook_One_Field(const double       mu,
+                                           const double       nu,
+                                           const unsigned int formulation)
+    : kappa((2.0 * mu * (1.0 + nu)) / (3.0 * (1.0 - 2.0 * nu)))
+    , c_1(mu / 2.0)
+    , mu(mu)
+    , lambda((2.0 * mu * nu) / (1.0 - 2.0 * nu))
+    , formulation(formulation)
   {
-  public:
-    Material_Compressible_Neo_Hook_One_Field(const double mu,
-                                             const double nu,
-                                             const unsigned int formulation)
-      :
-      kappa((2.0 * mu * (1.0 + nu)) / (3.0 * (1.0 - 2.0 * nu))),
-      c_1(mu / 2.0),
-      mu (mu),
-      lambda ((2.0*mu*nu)/(1.0-2.0*nu)),
-      formulation (formulation)
-    {
-      Assert(kappa > 0, ExcInternalError());
-      Assert(std::abs((lambda + 2.0*mu/3.0) - kappa)< 1e-6, ExcInternalError());
-    }
+    Assert(kappa > 0, ExcInternalError());
+    Assert(std::abs((lambda + 2.0 * mu / 3.0) - kappa) < 1e-6,
+           ExcInternalError());
+  }
 
-    ~Material_Compressible_Neo_Hook_One_Field()
-    {}
+  ~Material_Compressible_Neo_Hook_One_Field()
+  {}
 
-    // The first function is the total energy
-    // $\Psi = \Psi_{\textrm{iso}} + \Psi_{\textrm{vol}}$.
-    NumberType
-    get_Psi(const NumberType                        &det_F,
-            const SymmetricTensor<2,dim,NumberType> &b_bar,
-            const SymmetricTensor<2,dim,NumberType> &b) const
-    {
-      if (formulation == 0)
-        return get_Psi_vol(det_F) + get_Psi_iso(b_bar);
-      else if (formulation == 1)
+  // The first function is the total energy
+  // $\Psi = \Psi_{\textrm{iso}} + \Psi_{\textrm{vol}}$.
+  NumberType
+  get_Psi(const NumberType &                         det_F,
+          const SymmetricTensor<2, dim, NumberType> &b_bar,
+          const SymmetricTensor<2, dim, NumberType> &b) const
+  {
+    if (formulation == 0)
+      return get_Psi_vol(det_F) + get_Psi_iso(b_bar);
+    else if (formulation == 1)
       {
         const NumberType ln_J = std::log(det_F);
-        return mu/2.0*(trace(b) - dim - 2.0*ln_J) - lambda*ln_J*ln_J;
+        return mu / 2.0 * (trace(b) - dim - 2.0 * ln_J) - lambda * ln_J * ln_J;
       }
-      else
-        AssertThrow(false, ExcMessage("Unknown material formulation"));
-    }
+    else
+      AssertThrow(false, ExcMessage("Unknown material formulation"));
+  }
 
-    // The second function determines the Kirchhoff stress $\boldsymbol{\tau}
-    // = \boldsymbol{\tau}_{\textrm{iso}} + \boldsymbol{\tau}_{\textrm{vol}}$
-    template <typename OutputType>
-    void
-    get_tau(SymmetricTensor<2,dim,OutputType>       &tau,
-            const OutputType                        &det_F,
-            const SymmetricTensor<2,dim,OutputType> &b_bar,
-            const SymmetricTensor<2,dim,OutputType> &b)
-    {
-      tau = OutputType();
+  // The second function determines the Kirchhoff stress $\boldsymbol{\tau}
+  // = \boldsymbol{\tau}_{\textrm{iso}} + \boldsymbol{\tau}_{\textrm{vol}}$
+  template <typename OutputType>
+  void get_tau(SymmetricTensor<2, dim, OutputType> &      tau,
+               const OutputType &                         det_F,
+               const SymmetricTensor<2, dim, OutputType> &b_bar,
+               const SymmetricTensor<2, dim, OutputType> &b)
+  {
+    tau = OutputType();
 
-      if (formulation == 0)
+    if (formulation == 0)
       {
         // FIXME: combine with the act_Jc where we need tau_bar etc:
 
@@ -133,49 +135,49 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
         // $\boldsymbol{\tau}_{\textrm{iso}} =
         // \mathcal{P}:\overline{\boldsymbol{\tau}}$
 
-        SymmetricTensor<2,dim,OutputType> tau_bar = b_bar * (2.0 * c_1);
-        OutputType tr = trace(tau_bar);
+        SymmetricTensor<2, dim, OutputType> tau_bar = b_bar * (2.0 * c_1);
+        OutputType                          tr      = trace(tau_bar);
         for (unsigned int d = 0; d < dim; ++d)
-          tau[d][d] = tmp - divide_by_dim(tr,dim);
+          tau[d][d] = tmp - divide_by_dim(tr, dim);
 
         tau += tau_bar;
       }
-      else if (formulation == 1)
+    else if (formulation == 1)
       {
         // const NumberType tmp_1 = mu - 2.0*lambda*std::log(det_F);
         // tau  = mu*b;
         // tau -= tmp_1*Physics::Elasticity::StandardTensors<dim>::I;
 
-        tau = mu*b;
-        const OutputType tmp = mu - 2.0*lambda*std::log(det_F);
+        tau                  = mu * b;
+        const OutputType tmp = mu - 2.0 * lambda * std::log(det_F);
         for (unsigned int d = 0; d < dim; ++d)
           tau[d][d] -= tmp;
       }
-      else
-        AssertThrow(false, ExcMessage("Unknown material formulation"));
-    }
+    else
+      AssertThrow(false, ExcMessage("Unknown material formulation"));
+  }
 
-    // The action of the fourth-order material elasticity tensor in the spatial setting
-    // on symmetric tensor.
-    // $\mathfrak{c}$ is calculated from the SEF $\Psi$ as $ J
-    // \mathfrak{c}_{ijkl} = F_{iA} F_{jB} \mathfrak{C}_{ABCD} F_{kC} F_{lD}$
-    // where $ \mathfrak{C} = 4 \frac{\partial^2 \Psi(\mathbf{C})}{\partial
-    // \mathbf{C} \partial \mathbf{C}}$
-    SymmetricTensor<2,dim,NumberType>
-    act_Jc(const NumberType                        &det_F,
-           const SymmetricTensor<2,dim,NumberType> &b_bar,
-           const SymmetricTensor<2,dim,NumberType> &/*b*/,
-           const SymmetricTensor<2,dim,NumberType> &src) const
-    {
-      SymmetricTensor<2,dim,NumberType> res;
+  // The action of the fourth-order material elasticity tensor in the spatial
+  // setting on symmetric tensor.
+  // $\mathfrak{c}$ is calculated from the SEF $\Psi$ as $ J
+  // \mathfrak{c}_{ijkl} = F_{iA} F_{jB} \mathfrak{C}_{ABCD} F_{kC} F_{lD}$
+  // where $ \mathfrak{C} = 4 \frac{\partial^2 \Psi(\mathbf{C})}{\partial
+  // \mathbf{C} \partial \mathbf{C}}$
+  SymmetricTensor<2, dim, NumberType>
+  act_Jc(const NumberType &                         det_F,
+         const SymmetricTensor<2, dim, NumberType> &b_bar,
+         const SymmetricTensor<2, dim, NumberType> & /*b*/,
+         const SymmetricTensor<2, dim, NumberType> &src) const
+  {
+    SymmetricTensor<2, dim, NumberType> res;
 
-      if (formulation == 0)
+    if (formulation == 0)
       {
         const NumberType tr = trace(src);
 
-        SymmetricTensor<2,dim,NumberType> dev_src(src);
+        SymmetricTensor<2, dim, NumberType> dev_src(src);
         for (unsigned int i = 0; i < dim; ++i)
-          dev_src[i][i] -= divide_by_dim(tr,dim);
+          dev_src[i][i] -= divide_by_dim(tr, dim);
 
         // 1) The volumetric part of the tangent $J
         // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
@@ -187,10 +189,12 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
         // the term with the 4-th order symmetric tensor which gives symmetric
         // part of the tensor it acts on
         res = src;
-        res*= - det_F*(2.0 * get_dPsi_vol_dJ(det_F));
+        res *= -det_F * (2.0 * get_dPsi_vol_dJ(det_F));
 
         // term with IxI results in trace of the tensor times I
-        const NumberType tmp = det_F * (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F)) * tr;
+        const NumberType tmp =
+          det_F * (get_dPsi_vol_dJ(det_F) + det_F * get_d2Psi_vol_dJ2(det_F)) *
+          tr;
         for (unsigned int i = 0; i < dim; ++i)
           res[i][i] += tmp;
 
@@ -205,10 +209,10 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
         // The isochoric Kirchhoff stress
         // $\boldsymbol{\tau}_{\textrm{iso}} =
         // \mathcal{P}:\overline{\boldsymbol{\tau}}$:
-        SymmetricTensor<2,dim,NumberType> tau_iso(b_bar);
+        SymmetricTensor<2, dim, NumberType> tau_iso(b_bar);
         tau_iso = tau_iso * (2.0 * c_1);
         for (unsigned int i = 0; i < dim; ++i)
-          tau_iso[i][i] -= divide_by_dim(tr_tau_bar,dim);
+          tau_iso[i][i] -= divide_by_dim(tr_tau_bar, dim);
 
         // term with deviatoric part of the tensor
         res += ((2.0 / dim) * tr_tau_bar) * dev_src;
@@ -221,7 +225,7 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
 
         // c_bar==0 so we don't have a term with it.
       }
-      else if (formulation == 1)
+    else if (formulation == 1)
       {
         // SymmetricTensor<4,dim,NumberType> Jc;
         // const NumberType tmp_1 = mu - 2.0*lambda*std::log(det_F);
@@ -229,60 +233,58 @@ VectorizedArray<number> divide_by_dim(const VectorizedArray<number> &x,
         // Jc += 2.0*lambda*Physics::Elasticity::StandardTensors<dim>::IxI;
         // res = Jc*src;
 
-        res = 2.0*(mu - 2.0*lambda*std::log(det_F))*src;
-        const NumberType tmp = 2.0*lambda*trace(src);
+        res = 2.0 * (mu - 2.0 * lambda * std::log(det_F)) * src;
+        const NumberType tmp = 2.0 * lambda * trace(src);
         for (unsigned int i = 0; i < dim; ++i)
           res[i][i] += tmp;
       }
-      else
-        AssertThrow(false, ExcMessage("Unknown material formulation"));
+    else
+      AssertThrow(false, ExcMessage("Unknown material formulation"));
 
-      return res;
-    }
+    return res;
+  }
 
-    // Define constitutive model parameters $\kappa$ (bulk modulus) and the
-    // neo-Hookean model parameter $c_1$:
-    const double kappa;
-    const double c_1;
-    const double mu;
-    const double lambda;
-    const unsigned int formulation;
+  // Define constitutive model parameters $\kappa$ (bulk modulus) and the
+  // neo-Hookean model parameter $c_1$:
+  const double       kappa;
+  const double       c_1;
+  const double       mu;
+  const double       lambda;
+  const unsigned int formulation;
 
-  private:
+private:
+  // Value of the volumetric free energy
+  NumberType
+  get_Psi_vol(const NumberType &det_F) const
+  {
+    return (kappa / 4.0) * (det_F * det_F - 1.0 - 2.0 * std::log(det_F));
+  }
 
-    // Value of the volumetric free energy
-    NumberType
-    get_Psi_vol(const NumberType &det_F) const
-    {
-      return (kappa / 4.0) * (det_F*det_F - 1.0 - 2.0*std::log(det_F));
-    }
+  // Value of the isochoric free energy
+  NumberType
+  get_Psi_iso(const SymmetricTensor<2, dim, NumberType> &b_bar) const
+  {
+    return c_1 * (trace(b_bar) - dim);
+  }
 
-    // Value of the isochoric free energy
-    NumberType
-    get_Psi_iso(const SymmetricTensor<2,dim,NumberType> &b_bar) const
-    {
-      return c_1 * (trace(b_bar) - dim);
-    }
+  // Derivative of the volumetric free energy with respect to
+  // $J$ return $\frac{\partial
+  // \Psi_{\text{vol}}(J)}{\partial J}$
+  template <typename OutputType>
+  OutputType
+  get_dPsi_vol_dJ(const OutputType &det_F) const
+  {
+    return (kappa / 2.0) * (det_F - 1.0 / det_F);
+  }
 
-    // Derivative of the volumetric free energy with respect to
-    // $J$ return $\frac{\partial
-    // \Psi_{\text{vol}}(J)}{\partial J}$
-    template <typename OutputType>
-    OutputType
-    get_dPsi_vol_dJ(const OutputType &det_F) const
-    {
-        return (kappa / 2.0) * (det_F - 1.0 / det_F);
-    }
-
-    // Second derivative of the volumetric free energy wrt $J$. We
-    // need the following computation explicitly in the tangent so we make it
-    // public.  We calculate $\frac{\partial^2
-    // \Psi_{\textrm{vol}}(J)}{\partial J \partial
-    // J}$
-    NumberType
-    get_d2Psi_vol_dJ2(const NumberType &det_F) const
-    {
-        return ( (kappa / 2.0) * (1.0 + 1.0 / (det_F * det_F)));
-    }
-  };
-
+  // Second derivative of the volumetric free energy wrt $J$. We
+  // need the following computation explicitly in the tangent so we make it
+  // public.  We calculate $\frac{\partial^2
+  // \Psi_{\textrm{vol}}(J)}{\partial J \partial
+  // J}$
+  NumberType
+  get_d2Psi_vol_dJ2(const NumberType &det_F) const
+  {
+    return ((kappa / 2.0) * (1.0 + 1.0 / (det_F * det_F)));
+  }
+};
