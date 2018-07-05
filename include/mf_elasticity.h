@@ -1545,7 +1545,7 @@ namespace Cook_Membrane
 
           constraints.set_zero(src_trilinos);
 
-          LinearAlgebra::distributed::Vector src(newton_update),
+          LinearAlgebra::distributed::Vector<double> src(newton_update),
             dst_mf(newton_update), diff(newton_update);
           copy_trilinos(src, src_trilinos);
 
