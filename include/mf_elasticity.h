@@ -12,63 +12,63 @@ static const unsigned int debug_level = 0;
 // We start by including all the necessary deal.II header files and some C++
 // related ones. They have been discussed in detail in previous tutorial
 // programs, so you need only refer to past tutorials for details.
+#include <deal.II/base/config.h>
+
+#include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/quadrature_point_data.h>
+#include <deal.II/base/std_cxx11/shared_ptr.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/base/work_stream.h>
-#include <deal.II/base/quadrature_point_data.h>
-#include <deal.II/base/std_cxx11/shared_ptr.h>
-#include <deal.II/base/conditional_ostream.h>
 
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
-
-#include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/grid_tools.h>
-#include <deal.II/grid/grid_in.h>
-#include <deal.II/grid/grid_out.h>
-#include <deal.II/grid/tria.h>
 
 #include <deal.II/fe/fe_dgp_monomial.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_tools.h>
 #include <deal.II/fe/fe_values.h>
-#include <deal.II/fe/mapping_q_eulerian.h>
 #include <deal.II/fe/mapping_q.h>
+#include <deal.II/fe/mapping_q_eulerian.h>
 
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_in.h>
+#include <deal.II/grid/grid_out.h>
+#include <deal.II/grid/grid_tools.h>
+#include <deal.II/grid/tria.h>
+
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/block_sparse_matrix.h>
 #include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/full_matrix.h>
-#include <deal.II/lac/precondition_selector.h>
 #include <deal.II/lac/precondition.h>
+#include <deal.II/lac/precondition_selector.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_direct.h>
-#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/trilinos_precondition.h>
-#include <deal.II/lac/trilinos_vector.h>
+#include <deal.II/lac/trilinos_solver.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
-#include <deal.II/lac/trilinos_solver.h>
+#include <deal.II/lac/trilinos_vector.h>
 
-#include <deal.II/multigrid/mg_constrained_dofs.h>
-#include <deal.II/multigrid/multigrid.h>
-#include <deal.II/multigrid/mg_transfer.h>
-#include <deal.II/multigrid/mg_tools.h>
 #include <deal.II/multigrid/mg_coarse.h>
-#include <deal.II/multigrid/mg_smoother.h>
+#include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/mg_matrix.h>
+#include <deal.II/multigrid/mg_smoother.h>
+#include <deal.II/multigrid/mg_tools.h>
+#include <deal.II/multigrid/mg_transfer.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
+#include <deal.II/multigrid/multigrid.h>
 
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/vector_tools.h>
-
-#include <deal.II/base/config.h>
 
 // These must be included below the AD headers so that
 // their math functions are available for use in the
@@ -76,12 +76,12 @@ static const unsigned int debug_level = 0;
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
-#include <iostream>
-#include <fstream>
-
+#include <material.h>
 #include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
-#include <material.h>
+
+#include <fstream>
+#include <iostream>
 
 using namespace dealii;
 
@@ -108,17 +108,16 @@ namespace Cook_Membrane
 {
   using namespace dealii;
 
-// @sect3{Run-time parameters}
-//
-// There are several parameters that can be set in the code so we set up a
-// ParameterHandler object to read in the choices at run-time.
+  // @sect3{Run-time parameters}
+  //
+  // There are several parameters that can be set in the code so we set up a
+  // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
+    // @sect4{Finite Element system}
 
-// @sect4{Finite Element system}
-
-// Here we specify the polynomial order used to approximate the solution.
-// The quadrature order should be adjusted accordingly.
+    // Here we specify the polynomial order used to approximate the solution.
+    // The quadrature order should be adjusted accordingly.
     struct FESystem
     {
       unsigned int poly_degree;
@@ -132,34 +131,38 @@ namespace Cook_Membrane
     };
 
 
-    void FESystem::declare_parameters(ParameterHandler &prm)
+    void
+    FESystem::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Finite element system");
       {
-        prm.declare_entry("Polynomial degree", "2",
+        prm.declare_entry("Polynomial degree",
+                          "2",
                           Patterns::Integer(0),
                           "Displacement system polynomial order");
 
-        prm.declare_entry("Quadrature order", "3",
+        prm.declare_entry("Quadrature order",
+                          "3",
                           Patterns::Integer(0),
                           "Gauss quadrature order");
       }
       prm.leave_subsection();
     }
 
-    void FESystem::parse_parameters(ParameterHandler &prm)
+    void
+    FESystem::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Finite element system");
       {
         poly_degree = prm.get_integer("Polynomial degree");
-        quad_order = prm.get_integer("Quadrature order");
+        quad_order  = prm.get_integer("Quadrature order");
       }
       prm.leave_subsection();
     }
 
-// @sect4{Geometry}
+    // @sect4{Geometry}
 
-// Make adjustments to the problem geometry and its discretisation.
+    // Make adjustments to the problem geometry and its discretisation.
     struct Geometry
     {
       unsigned int elements_per_edge;
@@ -174,49 +177,55 @@ namespace Cook_Membrane
       parse_parameters(ParameterHandler &prm);
     };
 
-    void Geometry::declare_parameters(ParameterHandler &prm)
+    void
+    Geometry::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Geometry");
       {
-        prm.declare_entry("Elements per edge", "32",
+        prm.declare_entry("Elements per edge",
+                          "32",
                           Patterns::Integer(0),
                           "Number of elements per long edge of the beam");
 
-        prm.declare_entry("Global refinement", "0",
-                  Patterns::Integer(0),
-                  "Number of global refinements");
+        prm.declare_entry("Global refinement",
+                          "0",
+                          Patterns::Integer(0),
+                          "Number of global refinements");
 
-        prm.declare_entry("Grid scale", "1e-3",
+        prm.declare_entry("Grid scale",
+                          "1e-3",
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
 
-        prm.declare_entry("Dimension", "2",
-                  Patterns::Integer(2,3),
-                  "Dimension of the problem");
+        prm.declare_entry("Dimension",
+                          "2",
+                          Patterns::Integer(2, 3),
+                          "Dimension of the problem");
       }
       prm.leave_subsection();
     }
 
-    void Geometry::parse_parameters(ParameterHandler &prm)
+    void
+    Geometry::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Geometry");
       {
-        elements_per_edge = prm.get_integer("Elements per edge");
-        scale = prm.get_double("Grid scale");
-        dim = prm.get_integer("Dimension");
+        elements_per_edge   = prm.get_integer("Elements per edge");
+        scale               = prm.get_double("Grid scale");
+        dim                 = prm.get_integer("Dimension");
         n_global_refinement = prm.get_integer("Global refinement");
       }
       prm.leave_subsection();
     }
 
-// @sect4{Materials}
+    // @sect4{Materials}
 
-// We also need the shear modulus $ \mu $ and Poisson ration $ \nu $ for the
-// neo-Hookean material.
+    // We also need the shear modulus $ \mu $ and Poisson ration $ \nu $ for the
+    // neo-Hookean material.
     struct Materials
     {
-      double nu;
-      double mu;
+      double       nu;
+      double       mu;
       unsigned int material_formulation;
 
       static void
@@ -226,48 +235,53 @@ namespace Cook_Membrane
       parse_parameters(ParameterHandler &prm);
     };
 
-    void Materials::declare_parameters(ParameterHandler &prm)
+    void
+    Materials::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Material properties");
       {
-        prm.declare_entry("Poisson's ratio", "0.3",
-                          Patterns::Double(-1.0,0.5),
+        prm.declare_entry("Poisson's ratio",
+                          "0.3",
+                          Patterns::Double(-1.0, 0.5),
                           "Poisson's ratio");
 
-        prm.declare_entry("Shear modulus", "0.4225e6",
+        prm.declare_entry("Shear modulus",
+                          "0.4225e6",
                           Patterns::Double(),
                           "Shear modulus");
 
-        prm.declare_entry("Formulation", "0",
-                          Patterns::Integer(0,1),
+        prm.declare_entry("Formulation",
+                          "0",
+                          Patterns::Integer(0, 1),
                           "Formulation of the energy function");
       }
       prm.leave_subsection();
     }
 
-    void Materials::parse_parameters(ParameterHandler &prm)
+    void
+    Materials::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Material properties");
       {
-        nu = prm.get_double("Poisson's ratio");
-        mu = prm.get_double("Shear modulus");
+        nu                   = prm.get_double("Poisson's ratio");
+        mu                   = prm.get_double("Shear modulus");
         material_formulation = prm.get_integer("Formulation");
       }
       prm.leave_subsection();
     }
 
-// @sect4{Linear solver}
+    // @sect4{Linear solver}
 
-// Next, we choose both solver and preconditioner settings.  The use of an
-// effective preconditioner is critical to ensure convergence when a large
-// nonlinear motion occurs within a Newton increment.
+    // Next, we choose both solver and preconditioner settings.  The use of an
+    // effective preconditioner is critical to ensure convergence when a large
+    // nonlinear motion occurs within a Newton increment.
     struct LinearSolver
     {
-      std::string type_lin;
-      double      tol_lin;
-      double      max_iterations_lin;
-      std::string preconditioner_type;
-      double      preconditioner_relaxation;
+      std::string  type_lin;
+      double       tol_lin;
+      double       max_iterations_lin;
+      std::string  preconditioner_type;
+      double       preconditioner_relaxation;
       unsigned int cond_number_cg_iterations;
 
       static void
@@ -277,57 +291,67 @@ namespace Cook_Membrane
       parse_parameters(ParameterHandler &prm);
     };
 
-    void LinearSolver::declare_parameters(ParameterHandler &prm)
+    void
+    LinearSolver::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Linear solver");
       {
-        prm.declare_entry("Solver type", "CG",
+        prm.declare_entry("Solver type",
+                          "CG",
                           Patterns::Selection("CG|Direct|MF_CG|MF_AD_CG"),
                           "Type of solver used to solve the linear system");
 
-        prm.declare_entry("Residual", "1e-6",
+        prm.declare_entry("Residual",
+                          "1e-6",
                           Patterns::Double(0.0),
                           "Linear solver residual (scaled by residual norm)");
 
-        prm.declare_entry("Max iteration multiplier", "1",
-                          Patterns::Double(0.0),
-                          "Linear solver iterations (multiples of the system matrix size)");
+        prm.declare_entry(
+          "Max iteration multiplier",
+          "1",
+          Patterns::Double(0.0),
+          "Linear solver iterations (multiples of the system matrix size)");
 
-        prm.declare_entry("Preconditioner type", "jacobi",
+        prm.declare_entry("Preconditioner type",
+                          "jacobi",
                           Patterns::Selection("jacobi|ssor|gmg|none"),
                           "Type of preconditioner");
 
-        prm.declare_entry("Preconditioner relaxation", "0.65",
+        prm.declare_entry("Preconditioner relaxation",
+                          "0.65",
                           Patterns::Double(0.0),
                           "Preconditioner relaxation value");
 
-        prm.declare_entry("Condition number CG iterations", "20",
-                          Patterns::Integer(1),
-                          "Number of CG iterations to estimate condition number");
-
+        prm.declare_entry(
+          "Condition number CG iterations",
+          "20",
+          Patterns::Integer(1),
+          "Number of CG iterations to estimate condition number");
       }
       prm.leave_subsection();
     }
 
-    void LinearSolver::parse_parameters(ParameterHandler &prm)
+    void
+    LinearSolver::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Linear solver");
       {
-        type_lin = prm.get("Solver type");
-        tol_lin = prm.get_double("Residual");
-        max_iterations_lin = prm.get_double("Max iteration multiplier");
-        preconditioner_type = prm.get("Preconditioner type");
+        type_lin                  = prm.get("Solver type");
+        tol_lin                   = prm.get_double("Residual");
+        max_iterations_lin        = prm.get_double("Max iteration multiplier");
+        preconditioner_type       = prm.get("Preconditioner type");
         preconditioner_relaxation = prm.get_double("Preconditioner relaxation");
-        cond_number_cg_iterations = prm.get_integer("Condition number CG iterations");
+        cond_number_cg_iterations =
+          prm.get_integer("Condition number CG iterations");
       }
       prm.leave_subsection();
     }
 
-// @sect4{Nonlinear solver}
+    // @sect4{Nonlinear solver}
 
-// A Newton-Raphson scheme is used to solve the nonlinear system of governing
-// equations.  We now define the tolerances and the maximum number of
-// iterations for the Newton-Raphson nonlinear solver.
+    // A Newton-Raphson scheme is used to solve the nonlinear system of
+    // governing equations.  We now define the tolerances and the maximum number
+    // of iterations for the Newton-Raphson nonlinear solver.
     struct NonlinearSolver
     {
       unsigned int max_iterations_NR;
@@ -341,39 +365,44 @@ namespace Cook_Membrane
       parse_parameters(ParameterHandler &prm);
     };
 
-    void NonlinearSolver::declare_parameters(ParameterHandler &prm)
+    void
+    NonlinearSolver::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Nonlinear solver");
       {
-        prm.declare_entry("Max iterations Newton-Raphson", "10",
+        prm.declare_entry("Max iterations Newton-Raphson",
+                          "10",
                           Patterns::Integer(0),
                           "Number of Newton-Raphson iterations allowed");
 
-        prm.declare_entry("Tolerance force", "1.0e-9",
+        prm.declare_entry("Tolerance force",
+                          "1.0e-9",
                           Patterns::Double(0.0),
                           "Force residual tolerance");
 
-        prm.declare_entry("Tolerance displacement", "1.0e-6",
+        prm.declare_entry("Tolerance displacement",
+                          "1.0e-6",
                           Patterns::Double(0.0),
                           "Displacement error tolerance");
       }
       prm.leave_subsection();
     }
 
-    void NonlinearSolver::parse_parameters(ParameterHandler &prm)
+    void
+    NonlinearSolver::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Nonlinear solver");
       {
         max_iterations_NR = prm.get_integer("Max iterations Newton-Raphson");
-        tol_f = prm.get_double("Tolerance force");
-        tol_u = prm.get_double("Tolerance displacement");
+        tol_f             = prm.get_double("Tolerance force");
+        tol_u             = prm.get_double("Tolerance displacement");
       }
       prm.leave_subsection();
     }
 
-// @sect4{Time}
+    // @sect4{Time}
 
-// Set the timestep size $ \varDelta t $ and the simulation end-time.
+    // Set the timestep size $ \varDelta t $ and the simulation end-time.
     struct Time
     {
       double delta_t;
@@ -386,42 +415,42 @@ namespace Cook_Membrane
       parse_parameters(ParameterHandler &prm);
     };
 
-    void Time::declare_parameters(ParameterHandler &prm)
+    void
+    Time::declare_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Time");
       {
-        prm.declare_entry("End time", "1",
-                          Patterns::Double(),
-                          "End time");
+        prm.declare_entry("End time", "1", Patterns::Double(), "End time");
 
-        prm.declare_entry("Time step size", "0.1",
+        prm.declare_entry("Time step size",
+                          "0.1",
                           Patterns::Double(),
                           "Time step size");
       }
       prm.leave_subsection();
     }
 
-    void Time::parse_parameters(ParameterHandler &prm)
+    void
+    Time::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Time");
       {
         end_time = prm.get_double("End time");
-        delta_t = prm.get_double("Time step size");
+        delta_t  = prm.get_double("Time step size");
       }
       prm.leave_subsection();
     }
 
-// @sect4{All parameters}
+    // @sect4{All parameters}
 
-// Finally we consolidate all of the above structures into a single container
-// that holds all of our run-time selections.
-    struct AllParameters :
-      public FESystem,
-      public Geometry,
-      public Materials,
-      public LinearSolver,
-      public NonlinearSolver,
-      public Time
+    // Finally we consolidate all of the above structures into a single
+    // container that holds all of our run-time selections.
+    struct AllParameters : public FESystem,
+                           public Geometry,
+                           public Materials,
+                           public LinearSolver,
+                           public NonlinearSolver,
+                           public Time
 
     {
       AllParameters(const std::string &input_file);
@@ -441,7 +470,8 @@ namespace Cook_Membrane
       parse_parameters(prm);
     }
 
-    void AllParameters::declare_parameters(ParameterHandler &prm)
+    void
+    AllParameters::declare_parameters(ParameterHandler &prm)
     {
       FESystem::declare_parameters(prm);
       Geometry::declare_parameters(prm);
@@ -451,7 +481,8 @@ namespace Cook_Membrane
       Time::declare_parameters(prm);
     }
 
-    void AllParameters::parse_parameters(ParameterHandler &prm)
+    void
+    AllParameters::parse_parameters(ParameterHandler &prm)
     {
       FESystem::parse_parameters(prm);
       Geometry::parse_parameters(prm);
@@ -460,45 +491,48 @@ namespace Cook_Membrane
       NonlinearSolver::parse_parameters(prm);
       Time::parse_parameters(prm);
     }
-  } // Parameters namespace
+  } // namespace Parameters
 
-// @sect3{Time class}
+  // @sect3{Time class}
 
-// A simple class to store time data. Its functioning is transparent so no
-// discussion is necessary. For simplicity we assume a constant time step
-// size.
+  // A simple class to store time data. Its functioning is transparent so no
+  // discussion is necessary. For simplicity we assume a constant time step
+  // size.
   class Time
   {
   public:
-    Time (const double time_end,
-          const double delta_t)
-      :
-      timestep(0),
-      time_current(0.0),
-      time_end(time_end),
-      delta_t(delta_t)
+    Time(const double time_end, const double delta_t)
+      : timestep(0)
+      , time_current(0.0)
+      , time_end(time_end)
+      , delta_t(delta_t)
     {}
 
     virtual ~Time()
     {}
 
-    double current() const
+    double
+    current() const
     {
       return time_current;
     }
-    double end() const
+    double
+    end() const
     {
       return time_end;
     }
-    double get_delta_t() const
+    double
+    get_delta_t() const
     {
       return delta_t;
     }
-    unsigned int get_timestep() const
+    unsigned int
+    get_timestep() const
     {
       return timestep;
     }
-    void increment()
+    void
+    increment()
     {
       time_current += delta_t;
       ++timestep;
@@ -511,32 +545,30 @@ namespace Cook_Membrane
     const double delta_t;
   };
 
-// @sect3{Compressible neo-Hookean material within a one-field formulation}
+  // @sect3{Compressible neo-Hookean material within a one-field formulation}
 
-// @sect3{Quasi-static compressible finite-strain solid}
+  // @sect3{Quasi-static compressible finite-strain solid}
 
-// The Solid class is the central class in that it represents the problem at
-// hand. It follows the usual scheme in that all it really has is a
-// constructor, destructor and a <code>run()</code> function that dispatches
-// all the work to private functions of this class:
+  // The Solid class is the central class in that it represents the problem at
+  // hand. It follows the usual scheme in that all it really has is a
+  // constructor, destructor and a <code>run()</code> function that dispatches
+  // all the work to private functions of this class:
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   class Solid
   {
   public:
     using LevelNumberType = float;
     using LevelVectorType = LinearAlgebra::distributed::Vector<LevelNumberType>;
-    using VectorType = LinearAlgebra::distributed::Vector<double>;
+    using VectorType      = LinearAlgebra::distributed::Vector<double>;
 
     Solid(const Parameters::AllParameters &parameters);
 
-    virtual
-    ~Solid();
+    virtual ~Solid();
 
     void
     run();
 
   private:
-
     // We start the collection of member functions with one that builds the
     // grid:
     void
@@ -569,11 +601,14 @@ namespace Cook_Membrane
      * number of iterations, residual and condition number estiamte.
      */
     std::tuple<unsigned int, double, double>
-    solve_linear_system(LinearAlgebra::distributed::Vector<double> &newton_update,
-                        TrilinosWrappers::MPI::Vector &newton_update_trilinos) const;
+    solve_linear_system(
+      LinearAlgebra::distributed::Vector<double> &newton_update,
+      TrilinosWrappers::MPI::Vector &             newton_update_trilinos) const;
 
-    // Set total solution based on the current values of solution_n and solution_delta:
-    void set_total_solution();
+    // Set total solution based on the current values of solution_n and
+    // solution_delta:
+    void
+    set_total_solution();
 
     void
     output_results() const;
@@ -593,19 +628,19 @@ namespace Cook_Membrane
     const Parameters::AllParameters &parameters;
 
     // ...the volume of the reference and current configurations...
-    double                           vol_reference;
-    double                           vol_current;
+    double vol_reference;
+    double vol_current;
 
     // ...and description of the geometry on which the problem is solved:
-    parallel::distributed::Triangulation<dim>               triangulation;
+    parallel::distributed::Triangulation<dim> triangulation;
 
     // Also, keep track of the current time and the time spent evaluating
     // certain functions
-    Time                             time;
-    std::ofstream                    timer_output_file;
-    ConditionalOStream               timer_out;
-    mutable TimerOutput              timer;
-    std::ofstream                    deallogfile;
+    Time                time;
+    std::ofstream       timer_output_file;
+    ConditionalOStream  timer_out;
+    mutable TimerOutput timer;
+    std::ofstream       deallogfile;
 
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
@@ -619,12 +654,18 @@ namespace Cook_Membrane
     IndexSet locally_owned_dofs, locally_relevant_dofs;
 
     // homogeneous material
-    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>> material;
-    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>> material_vec;
-    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<float>>> material_level;
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
+      material;
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim,
+                                               VectorizedArray<NumberType>>>
+      material_vec;
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<float>>>
+      material_level;
 
-    static const unsigned int        n_components = dim;
-    static const unsigned int        first_u_component = 0;
+    static const unsigned int n_components      = dim;
+    static const unsigned int first_u_component = 0;
 
     enum
     {
@@ -633,18 +674,18 @@ namespace Cook_Membrane
 
     // Rules for Gauss-quadrature on both the cell and faces. The number of
     // quadrature points on both cells and faces is recorded.
-    const QGauss<dim>                qf_cell;
-    const QGauss<dim - 1>            qf_face;
-    const unsigned int               n_q_points;
-    const unsigned int               n_q_points_f;
+    const QGauss<dim>     qf_cell;
+    const QGauss<dim - 1> qf_face;
+    const unsigned int    n_q_points;
+    const unsigned int    n_q_points_f;
 
     // Objects that store the converged solution and right-hand side vectors,
     // as well as the tangent matrix. There is a AffineConstraints object used
     // to keep track of constraints.
-    AffineConstraints<double>        constraints;
-    TrilinosWrappers::SparseMatrix   tangent_matrix;
-    TrilinosWrappers::MPI::Vector    system_rhs_trilinos;
-    TrilinosWrappers::MPI::Vector    newton_update_trilinos;
+    AffineConstraints<double>      constraints;
+    TrilinosWrappers::SparseMatrix tangent_matrix;
+    TrilinosWrappers::MPI::Vector  system_rhs_trilinos;
+    TrilinosWrappers::MPI::Vector  newton_update_trilinos;
 
     LinearAlgebra::distributed::Vector<double> system_rhs;
 
@@ -660,7 +701,7 @@ namespace Cook_Membrane
     LinearAlgebra::distributed::Vector<double> newton_update;
 
 
-    MGLevelObject<LevelVectorType>   mg_solution_total;
+    MGLevelObject<LevelVectorType> mg_solution_total;
 
 
     // Then define a number of variables to store norms and update norms and
@@ -668,16 +709,18 @@ namespace Cook_Membrane
     struct Errors
     {
       Errors()
-        :
-        norm(1.0), u(1.0)
+        : norm(1.0)
+        , u(1.0)
       {}
 
-      void reset()
+      void
+      reset()
       {
         norm = 1.0;
-        u = 1.0;
+        u    = 1.0;
       }
-      void normalise(const Errors &rhs)
+      void
+      normalise(const Errors &rhs)
       {
         if (rhs.norm != 0.0)
           norm /= rhs.norm;
@@ -688,8 +731,8 @@ namespace Cook_Membrane
       double norm, u;
     };
 
-    mutable Errors error_residual, error_residual_0, error_residual_norm, error_update,
-           error_update_0, error_update_norm;
+    mutable Errors error_residual, error_residual_0, error_residual_norm,
+      error_update, error_update_0, error_update_norm;
 
     // Print information to screen in a pleasing way...
     void
@@ -701,93 +744,119 @@ namespace Cook_Membrane
     void
     print_vertical_tip_displacement();
 
-    std::shared_ptr<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<double>>> eulerian_mapping;
-    std::shared_ptr<MatrixFree<dim,double>> mf_data_current;
-    std::shared_ptr<MatrixFree<dim,double>> mf_data_reference;
+    std::shared_ptr<
+      MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>
+                                             eulerian_mapping;
+    std::shared_ptr<MatrixFree<dim, double>> mf_data_current;
+    std::shared_ptr<MatrixFree<dim, double>> mf_data_reference;
 
 
-    std::vector<std::shared_ptr<MappingQEulerian<dim,LevelVectorType>>> mg_eulerian_mapping;
-    std::vector<std::shared_ptr<MatrixFree<dim,float>>> mg_mf_data_current;
-    std::vector<std::shared_ptr<MatrixFree<dim,float>>> mg_mf_data_reference;
+    std::vector<std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>>
+                                                         mg_eulerian_mapping;
+    std::vector<std::shared_ptr<MatrixFree<dim, float>>> mg_mf_data_current;
+    std::vector<std::shared_ptr<MatrixFree<dim, float>>> mg_mf_data_reference;
 
-    NeoHookOperator<dim,degree,n_q_points_1d,double> mf_nh_operator;
-    NeoHookOperatorAD<dim,degree,n_q_points_1d,double> mf_ad_nh_operator;
+    NeoHookOperator<dim, degree, n_q_points_1d, double>   mf_nh_operator;
+    NeoHookOperatorAD<dim, degree, n_q_points_1d, double> mf_ad_nh_operator;
 
-    typedef NeoHookOperator<dim,degree,n_q_points_1d,float> LevelMatrixType;
+    typedef NeoHookOperator<dim, degree, n_q_points_1d, float> LevelMatrixType;
 
     MGLevelObject<LevelMatrixType> mg_mf_nh_operator;
 
-    std::shared_ptr<MGTransferMatrixFree<dim,float>> mg_transfer;
+    std::shared_ptr<MGTransferMatrixFree<dim, float>> mg_transfer;
 
-    typedef PreconditionChebyshev<LevelMatrixType,LevelVectorType> SmootherChebyshev;
+    typedef PreconditionChebyshev<LevelMatrixType, LevelVectorType>
+      SmootherChebyshev;
 
-    // MGSmootherPrecondition<LevelMatrixType, SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
-    mg::SmootherRelaxation<SmootherChebyshev, LevelVectorType> mg_smoother_chebyshev;
+    // MGSmootherPrecondition<LevelMatrixType, SmootherChebyshev,
+    // LevelVectorType> mg_smoother_chebyshev;
+    mg::SmootherRelaxation<SmootherChebyshev, LevelVectorType>
+      mg_smoother_chebyshev;
 
     MGCoarseGridApplySmoother<LevelVectorType> mg_coarse_chebyshev;
 
-    std::shared_ptr<SolverControl> coarse_solver_control;
+    std::shared_ptr<SolverControl>             coarse_solver_control;
     std::shared_ptr<SolverCG<LevelVectorType>> coarse_solver;
 
     MGCoarseGridIterativeSolver<LevelVectorType,
                                 SolverCG<LevelVectorType>,
                                 LevelMatrixType,
-                                SmootherChebyshev> mg_coarse_iterative;
+                                SmootherChebyshev>
+      mg_coarse_iterative;
 
     mg::Matrix<LevelVectorType> mg_operator_wrapper;
 
     std::shared_ptr<Multigrid<LevelVectorType>> multigrid;
 
-    std::shared_ptr<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>> multigrid_preconditioner;
+    std::shared_ptr<
+      PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>
+      multigrid_preconditioner;
 
-    MGConstrainedDoFs       mg_constrained_dofs;
+    MGConstrainedDoFs mg_constrained_dofs;
   };
 
-// @sect3{Implementation of the <code>Solid</code> class}
+  // @sect3{Implementation of the <code>Solid</code> class}
 
-// @sect4{Public interface}
+  // @sect4{Public interface}
 
-// We initialise the Solid class using data extracted from the parameter file.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  Solid<dim,degree,n_q_points_1d,NumberType>::Solid(const Parameters::AllParameters &parameters)
-    :
-    mpi_communicator(MPI_COMM_WORLD),
-    pcout(std::cout, Utilities::MPI::this_mpi_process(mpi_communicator)==0),
-    parameters(parameters),
-    vol_reference (0.0),
-    vol_current (0.0),
-    triangulation(mpi_communicator,
-                  typename Triangulation<dim>::MeshSmoothing(
-                    // guarantee that the mesh also does not change by more than refinement level across vertices that might connect two cells:
-                    Triangulation<dim>::limit_level_difference_at_vertices),
-                  typename parallel::distributed::Triangulation<dim>::Settings(
-                    // needed for GMG:
-                    parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy)
-                 ),
-    time(parameters.end_time, parameters.delta_t),
-    timer_out(timer_output_file, Utilities::MPI::this_mpi_process(mpi_communicator)==0),
-    timer(mpi_communicator,
-          timer_out,
-          TimerOutput::summary,
-          TimerOutput::wall_times),
+  // We initialise the Solid class using data extracted from the parameter file.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  Solid<dim, degree, n_q_points_1d, NumberType>::Solid(
+    const Parameters::AllParameters &parameters)
+    : mpi_communicator(MPI_COMM_WORLD)
+    , pcout(std::cout, Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+    , parameters(parameters)
+    , vol_reference(0.0)
+    , vol_current(0.0)
+    , triangulation(
+        mpi_communicator,
+        typename Triangulation<dim>::MeshSmoothing(
+          // guarantee that the mesh also does not change by more than
+          // refinement level across vertices that might connect two cells:
+          Triangulation<dim>::limit_level_difference_at_vertices),
+        typename parallel::distributed::Triangulation<dim>::Settings(
+          // needed for GMG:
+          parallel::distributed::Triangulation<
+            dim>::construct_multigrid_hierarchy))
+    , time(parameters.end_time, parameters.delta_t)
+    , timer_out(timer_output_file,
+                Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+    , timer(mpi_communicator,
+            timer_out,
+            TimerOutput::summary,
+            TimerOutput::wall_times)
+    ,
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
-    fe(FE_Q<dim>(degree), dim), // displacement
-    dof_handler_ref(triangulation),
-    dofs_per_cell (fe.dofs_per_cell),
-    u_fe(first_u_component),
-    material(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,NumberType>>(
-      parameters.mu,parameters.nu,parameters.material_formulation)),
-    material_vec(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<NumberType>>>(
-      parameters.mu,parameters.nu,parameters.material_formulation)),
-    material_level(std::make_shared<Material_Compressible_Neo_Hook_One_Field<dim,VectorizedArray<float>>>(
-      parameters.mu,parameters.nu,parameters.material_formulation)),
-    qf_cell(n_q_points_1d),
-    qf_face(n_q_points_1d),
-    n_q_points (qf_cell.size()),
-    n_q_points_f (qf_face.size())
+    fe(FE_Q<dim>(degree), dim)
+    , // displacement
+    dof_handler_ref(triangulation)
+    , dofs_per_cell(fe.dofs_per_cell)
+    , u_fe(first_u_component)
+    , material(std::make_shared<
+               Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>(
+        parameters.mu,
+        parameters.nu,
+        parameters.material_formulation))
+    , material_vec(
+        std::make_shared<Material_Compressible_Neo_Hook_One_Field<
+          dim,
+          VectorizedArray<NumberType>>>(parameters.mu,
+                                        parameters.nu,
+                                        parameters.material_formulation))
+    , material_level(
+        std::make_shared<
+          Material_Compressible_Neo_Hook_One_Field<dim,
+                                                   VectorizedArray<float>>>(
+          parameters.mu,
+          parameters.nu,
+          parameters.material_formulation))
+    , qf_cell(n_q_points_1d)
+    , qf_face(n_q_points_1d)
+    , n_q_points(qf_cell.size())
+    , n_q_points_f(qf_face.size())
   {
-    if (Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+    if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
         deallogfile.open("deallog.txt");
         deallog.attach(deallogfile);
@@ -799,9 +868,9 @@ namespace Cook_Membrane
     mf_ad_nh_operator.set_material(material_vec);
   }
 
-// The class destructor simply clears the data held by the DOFHandler
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  Solid<dim,degree,n_q_points_1d,NumberType>::~Solid()
+  // The class destructor simply clears the data held by the DOFHandler
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  Solid<dim, degree, n_q_points_1d, NumberType>::~Solid()
   {
     mf_nh_operator.clear();
     mf_ad_nh_operator.clear();
@@ -822,17 +891,18 @@ namespace Cook_Membrane
   }
 
 
-// In solving the quasi-static problem, the time becomes a loading parameter,
-// i.e. we increasing the loading linearly with time, making the two concepts
-// interchangeable. We choose to increment time linearly using a constant time
-// step size.
-//
-// We start the function with preprocessing, and then output the initial grid
-// before starting the simulation proper with the first time (and loading)
-// increment.
-//
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::run()
+  // In solving the quasi-static problem, the time becomes a loading parameter,
+  // i.e. we increasing the loading linearly with time, making the two concepts
+  // interchangeable. We choose to increment time linearly using a constant time
+  // step size.
+  //
+  // We start the function with preprocessing, and then output the initial grid
+  // before starting the simulation proper with the first time (and loading)
+  // increment.
+  //
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::run()
   {
     make_grid();
     system_setup();
@@ -866,77 +936,86 @@ namespace Cook_Membrane
   }
 
 
-// @sect3{Private interface}
+  // @sect3{Private interface}
 
-// @sect4{Solid::make_grid}
+  // @sect4{Solid::make_grid}
 
-// On to the first of the private member functions. Here we create the
-// triangulation of the domain, for which we choose a scaled an anisotripically
-// discretised rectangle which is subsequently transformed into the correct
-// of the Cook cantilever. Each relevant boundary face is then given a boundary
-// ID number.
-//
-// We then determine the volume of the reference configuration and print it
-// for comparison.
+  // On to the first of the private member functions. Here we create the
+  // triangulation of the domain, for which we choose a scaled an
+  // anisotripically discretised rectangle which is subsequently transformed
+  // into the correct of the Cook cantilever. Each relevant boundary face is
+  // then given a boundary ID number.
+  //
+  // We then determine the volume of the reference configuration and print it
+  // for comparison.
 
-template <int dim>
-Point<dim> grid_y_transform (const Point<dim> &pt_in)
-{
-  const double &x = pt_in[0];
-  const double &y = pt_in[1];
+  template <int dim>
+  Point<dim>
+  grid_y_transform(const Point<dim> &pt_in)
+  {
+    const double &x = pt_in[0];
+    const double &y = pt_in[1];
 
-  const double y_upper = 44.0 + (16.0/48.0)*x; // Line defining upper edge of beam
-  const double y_lower =  0.0 + (44.0/48.0)*x; // Line defining lower edge of beam
-  const double theta = y/44.0; // Fraction of height along left side of beam
-  const double y_transform = (1-theta)*y_lower + theta*y_upper; // Final transformation
+    const double y_upper =
+      44.0 + (16.0 / 48.0) * x; // Line defining upper edge of beam
+    const double y_lower =
+      0.0 + (44.0 / 48.0) * x;     // Line defining lower edge of beam
+    const double theta = y / 44.0; // Fraction of height along left side of beam
+    const double y_transform =
+      (1 - theta) * y_lower + theta * y_upper; // Final transformation
 
-  Point<dim> pt_out = pt_in;
-  pt_out[1] = y_transform;
+    Point<dim> pt_out = pt_in;
+    pt_out[1]         = y_transform;
 
-  return pt_out;
-}
+    return pt_out;
+  }
 
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::make_grid()
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::make_grid()
   {
     // Divide the beam, but only along the x- and y-coordinate directions
     std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
     // Only allow one element through the thickness
     // (modelling a plane strain condition)
     if (dim == 3)
-      repetitions[dim-1] = 1;
+      repetitions[dim - 1] = 1;
 
-    const Point<dim> bottom_left = (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
-    const Point<dim> top_right = (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
+    const Point<dim> bottom_left =
+      (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
+    const Point<dim> top_right =
+      (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
 
     GridGenerator::subdivided_hyper_rectangle(triangulation,
                                               repetitions,
                                               bottom_left,
                                               top_right);
 
-   // Since we wish to apply a Neumann BC to the right-hand surface, we
-   // must find the cell faces in this part of the domain and mark them with
-   // a distinct boundary ID number.  The faces we are looking for are on the
-   // +x surface and will get boundary ID 11.
-   // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
-   // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
-   // ID 2 and we will use to impose the plane strain condition)
-   const double tol_boundary = 1e-6;
-   // NOTE: we need to set IDs regardless of cell being locally owned or not
-   // as in the global refinement cells will be repartitioned and faces of their
-   // parents should have right IDs
-   for (auto cell : triangulation.active_cell_iterators())
-     for (unsigned int face = 0;
-          face < GeometryInfo<dim>::faces_per_cell; ++face)
-       if (cell->face(face)->at_boundary() == true)
-       {
-         if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
-           cell->face(face)->set_boundary_id(1); // -X faces
-         else if (std::abs(cell->face(face)->center()[0] - 48.0) < tol_boundary)
-           cell->face(face)->set_boundary_id(11); // +X faces
-         else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) < tol_boundary)
-           cell->face(face)->set_boundary_id(2); // +Z and -Z faces
-       }
+    // Since we wish to apply a Neumann BC to the right-hand surface, we
+    // must find the cell faces in this part of the domain and mark them with
+    // a distinct boundary ID number.  The faces we are looking for are on the
+    // +x surface and will get boundary ID 11.
+    // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
+    // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
+    // ID 2 and we will use to impose the plane strain condition)
+    const double tol_boundary = 1e-6;
+    // NOTE: we need to set IDs regardless of cell being locally owned or not
+    // as in the global refinement cells will be repartitioned and faces of
+    // their parents should have right IDs
+    for (auto cell : triangulation.active_cell_iterators())
+      for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+           ++face)
+        if (cell->face(face)->at_boundary() == true)
+          {
+            if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
+              cell->face(face)->set_boundary_id(1); // -X faces
+            else if (std::abs(cell->face(face)->center()[0] - 48.0) <
+                     tol_boundary)
+              cell->face(face)->set_boundary_id(11); // +X faces
+            else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
+                     tol_boundary)
+              cell->face(face)->set_boundary_id(2); // +Z and -Z faces
+          }
 
     // Transform the hyper-rectangle into the beam shape
     GridTools::transform(&grid_y_transform<dim>, triangulation);
@@ -946,18 +1025,19 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     triangulation.refine_global(parameters.n_global_refinement);
 
     vol_reference = GridTools::volume(triangulation);
-    vol_current = vol_reference;
+    vol_current   = vol_reference;
     pcout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
   }
 
 
-// @sect4{Solid::system_setup}
+  // @sect4{Solid::system_setup}
 
-// Next we describe how the FE system is setup.  We first determine the number
-// of components per block. Since the displacement is a vector component, the
-// first dim components belong to it.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::system_setup()
+  // Next we describe how the FE system is setup.  We first determine the number
+  // of components per block. Since the displacement is a vector component, the
+  // first dim components belong to it.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::system_setup()
   {
     timer.enter_subsection("Setup system");
 
@@ -968,7 +1048,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     DoFRenumbering::Cuthill_McKee(dof_handler_ref);
 
     pcout << "Triangulation:"
-          << "\n\t Number of active cells: " << triangulation.n_global_active_cells()
+          << "\n\t Number of active cells: "
+          << triangulation.n_global_active_cells()
           << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
           << std::endl;
 
@@ -987,18 +1068,29 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                       sp,
                                       constraints,
                                       /* keep_constrained_dofs */ false,
-                                      Utilities::MPI::this_mpi_process(mpi_communicator));
+                                      Utilities::MPI::this_mpi_process(
+                                        mpi_communicator));
 
       sp.compress();
       tangent_matrix.reinit(sp);
     }
 
     // We then set up storage vectors
-    system_rhs.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    solution_n.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    solution_delta.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    solution_total.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    newton_update.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    system_rhs.reinit(locally_owned_dofs,
+                      locally_relevant_dofs,
+                      mpi_communicator);
+    solution_n.reinit(locally_owned_dofs,
+                      locally_relevant_dofs,
+                      mpi_communicator);
+    solution_delta.reinit(locally_owned_dofs,
+                          locally_relevant_dofs,
+                          mpi_communicator);
+    solution_total.reinit(locally_owned_dofs,
+                          locally_relevant_dofs,
+                          mpi_communicator);
+    newton_update.reinit(locally_owned_dofs,
+                         locally_relevant_dofs,
+                         mpi_communicator);
 
     newton_update_trilinos.reinit(locally_owned_dofs, mpi_communicator);
     system_rhs_trilinos.reinit(locally_owned_dofs, mpi_communicator);
@@ -1013,12 +1105,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 
 
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::setup_matrix_free(const int &it_nr)
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::setup_matrix_free(
+    const int &it_nr)
   {
     timer.enter_subsection("Setup matrix-free");
 
-    const unsigned int max_level = triangulation.n_global_levels()-1;
+    const unsigned int max_level = triangulation.n_global_levels() - 1;
 
     mg_coarse_iterative.clear();
     coarse_solver.reset();
@@ -1045,19 +1139,23 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // The constraints in Newton-Raphson are different for it_nr=0 and 1,
     // and then they are the same so we only need to re-init the data
     // according to the updated displacement/mapping
-    const QGauss<1> quad (n_q_points_1d);
+    const QGauss<1> quad(n_q_points_1d);
 
-    typename MatrixFree<dim,double>::AdditionalData data;
-    data.tasks_parallel_scheme = MatrixFree<dim,double>::AdditionalData::none;
-    data.mapping_update_flags = update_gradients | update_JxW_values;
+    typename MatrixFree<dim, double>::AdditionalData data;
+    data.tasks_parallel_scheme = MatrixFree<dim, double>::AdditionalData::none;
+    data.mapping_update_flags  = update_gradients | update_JxW_values;
 
-    typename MatrixFree<dim,float>::AdditionalData mg_additional_data;
-    mg_additional_data.tasks_parallel_scheme = MatrixFree<dim,float>::AdditionalData::none;//partition_color;
-    mg_additional_data.mapping_update_flags = update_gradients | update_JxW_values;
+    typename MatrixFree<dim, float>::AdditionalData mg_additional_data;
+    mg_additional_data.tasks_parallel_scheme =
+      MatrixFree<dim, float>::AdditionalData::none; // partition_color;
+    mg_additional_data.mapping_update_flags =
+      update_gradients | update_JxW_values;
 
     if (it_nr <= 1)
       {
-        mg_transfer = std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(mg_constrained_dofs);
+        mg_transfer =
+          std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
+            mg_constrained_dofs);
         mg_transfer->build(dof_handler_ref);
 
         mg_mf_data_current.resize(triangulation.n_global_levels());
@@ -1068,79 +1166,112 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
     solution_total_transfer = solution_total;
-    mg_transfer->interpolate_to_mg(dof_handler_ref,mg_solution_total, solution_total_transfer);
+    mg_transfer->interpolate_to_mg(dof_handler_ref,
+                                   mg_solution_total,
+                                   solution_total_transfer);
 
     if (it_nr <= 1)
       {
         // solution_total is the point around which we linearize
-        eulerian_mapping = std::make_shared<MappingQEulerian<dim,LinearAlgebra::distributed::Vector<double>>>(degree,dof_handler_ref,solution_total);
+        eulerian_mapping = std::make_shared<
+          MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>(
+          degree, dof_handler_ref, solution_total);
 
-        mf_data_current = std::make_shared<MatrixFree<dim,double>>();
-        mf_data_reference = std::make_shared<MatrixFree<dim,double>>();
+        mf_data_current   = std::make_shared<MatrixFree<dim, double>>();
+        mf_data_reference = std::make_shared<MatrixFree<dim, double>>();
 
-        mf_data_reference->reinit (                  dof_handler_ref, constraints, quad, data);
-        mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+        mf_data_reference->reinit(dof_handler_ref, constraints, quad, data);
+        mf_data_current->reinit(
+          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
 
-        mf_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
-        mf_ad_nh_operator.initialize(mf_data_current,mf_data_reference,solution_total);
+        mf_nh_operator.initialize(mf_data_current,
+                                  mf_data_reference,
+                                  solution_total);
+        mf_ad_nh_operator.initialize(mf_data_current,
+                                     mf_data_reference,
+                                     solution_total);
 
         mg_eulerian_mapping.resize(0);
-        for (unsigned int level = 0; level<=max_level; ++level)
+        for (unsigned int level = 0; level <= max_level; ++level)
           {
             mg_additional_data.level_mg_handler = level;
 
             AffineConstraints<double> level_constraints;
-            IndexSet relevant_dofs;
+            IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
-            level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
+            level_constraints.add_lines(
+              mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
             // GMG MF operators do not support edge indices yet
-            Assert (mg_constrained_dofs.get_refinement_edge_indices(level).is_empty(),
-                    ExcNotImplemented());
+            Assert(
+              mg_constrained_dofs.get_refinement_edge_indices(level).is_empty(),
+              ExcNotImplemented());
 
-            mg_mf_data_current[level]   = std::make_shared<MatrixFree<dim,float>>();
-            mg_mf_data_reference[level] = std::make_shared<MatrixFree<dim,float>>();
+            mg_mf_data_current[level] =
+              std::make_shared<MatrixFree<dim, float>>();
+            mg_mf_data_reference[level] =
+              std::make_shared<MatrixFree<dim, float>>();
 
-            std::shared_ptr<MappingQEulerian<dim,LevelVectorType>> euler_level = std::make_shared<MappingQEulerian<dim,LevelVectorType>>
-              (degree,dof_handler_ref,mg_solution_total[level], level);
+            std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
+              euler_level =
+                std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
+                  degree, dof_handler_ref, mg_solution_total[level], level);
 
-            mg_mf_data_reference[level]->reinit (              dof_handler_ref, level_constraints, quad, mg_additional_data);
-            mg_mf_data_current[level]->reinit   (*euler_level, dof_handler_ref, level_constraints, quad, mg_additional_data);
+            mg_mf_data_reference[level]->reinit(dof_handler_ref,
+                                                level_constraints,
+                                                quad,
+                                                mg_additional_data);
+            mg_mf_data_current[level]->reinit(*euler_level,
+                                              dof_handler_ref,
+                                              level_constraints,
+                                              quad,
+                                              mg_additional_data);
 
             mg_eulerian_mapping.push_back(euler_level);
 
-            mg_mf_nh_operator[level].initialize(mg_mf_data_current[level],
-                                                mg_mf_data_reference[level],
-                                                mg_solution_total[level]); // (mg_level_data, mg_constrained_dofs, level);
+            mg_mf_nh_operator[level].initialize(
+              mg_mf_data_current[level],
+              mg_mf_data_reference[level],
+              mg_solution_total[level]); // (mg_level_data, mg_constrained_dofs,
+                                         // level);
           }
       }
     else
       {
         // here reinitialize MatrixFree with initialize_indices=false
-        // as the mapping has to be recomputed but the topology of cells is the same
+        // as the mapping has to be recomputed but the topology of cells is the
+        // same
         data.initialize_indices = false;
-        mf_data_current->reinit   (*eulerian_mapping,dof_handler_ref, constraints, quad, data);
+        mf_data_current->reinit(
+          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
 
         mg_additional_data.initialize_indices = false;
-        for (unsigned int level = 0; level<=max_level; ++level)
+        for (unsigned int level = 0; level <= max_level; ++level)
           {
             AffineConstraints<double> level_constraints;
-            IndexSet relevant_dofs;
+            IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
-            level_constraints.add_lines(mg_constrained_dofs.get_boundary_indices(level));
+            level_constraints.add_lines(
+              mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
             mg_additional_data.level_mg_handler = level;
-            std::shared_ptr<MappingQEulerian<dim,LevelVectorType>> euler_level = std::make_shared<MappingQEulerian<dim,LevelVectorType>>
-              (degree,dof_handler_ref,mg_solution_total[level], level);
-            mg_mf_data_current[level]->reinit(*euler_level, dof_handler_ref, level_constraints, quad, mg_additional_data);
+            std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
+              euler_level =
+                std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
+                  degree, dof_handler_ref, mg_solution_total[level], level);
+            mg_mf_data_current[level]->reinit(*euler_level,
+                                              dof_handler_ref,
+                                              level_constraints,
+                                              quad,
+                                              mg_additional_data);
           }
       }
 
@@ -1181,17 +1312,25 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     if (debug_level > 0)
       {
         deallog << "GMG setup Newton iteration " << it_nr << std::endl;
-        deallog << "Number of constrained DoFs " << Utilities::MPI::sum(mf_data_current->get_constrained_dofs().size(), mpi_communicator) << std::endl;
-        deallog << "Diagonal:       " << mf_nh_operator.get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
+        deallog
+          << "Number of constrained DoFs "
+          << Utilities::MPI::sum(mf_data_current->get_constrained_dofs().size(),
+                                 mpi_communicator)
+          << std::endl;
+        deallog << "Diagonal:       "
+                << mf_nh_operator.get_matrix_diagonal_inverse()
+                     ->get_vector()
+                     .l2_norm()
+                << std::endl;
         deallog << "Solution total: " << solution_total.l2_norm() << std::endl;
       }
-    if (parameters.type_lin =="MF_AD_CG")
+    if (parameters.type_lin == "MF_AD_CG")
       {
         mf_ad_nh_operator.cache();
         mf_ad_nh_operator.compute_diagonal();
       }
 
-    for (unsigned int level = 0; level<=max_level; ++level)
+    for (unsigned int level = 0; level <= max_level; ++level)
       {
         mg_mf_nh_operator[level].set_material(material_level);
         mg_mf_nh_operator[level].cache();
@@ -1199,8 +1338,14 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
         if (debug_level > 0)
           {
-            deallog << "Diagonal on level       " << level << ": " << mg_mf_nh_operator[level].get_matrix_diagonal_inverse()->get_vector().l2_norm() << std::endl;
-            deallog << "Solution total on level " << level << ": " << mg_solution_total[level].l2_norm() << std::endl;
+            deallog << "Diagonal on level       " << level << ": "
+                    << mg_mf_nh_operator[level]
+                         .get_matrix_diagonal_inverse()
+                         ->get_vector()
+                         .l2_norm()
+                    << std::endl;
+            deallog << "Solution total on level " << level << ": "
+                    << mg_solution_total[level].l2_norm() << std::endl;
           }
       }
 
@@ -1208,119 +1353,139 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     const bool cheb_coarse = true;
     {
       MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
-      smoother_data.resize(0, triangulation.n_global_levels()-1);
-      for (unsigned int level = 0; level<triangulation.n_global_levels(); ++level)
+      smoother_data.resize(0, triangulation.n_global_levels() - 1);
+      for (unsigned int level = 0; level < triangulation.n_global_levels();
+           ++level)
         {
-          if (cheb_coarse && level==0)
+          if (cheb_coarse && level == 0)
             {
-              smoother_data[level].smoothing_range = 1e-3; // reduce residual by this relative tolerance
-              smoother_data[level].degree = numbers::invalid_unsigned_int; // use as a solver
-              smoother_data[level].eig_cg_n_iterations = mg_mf_nh_operator[level].m();
+              smoother_data[level].smoothing_range =
+                1e-3; // reduce residual by this relative tolerance
+              smoother_data[level].degree =
+                numbers::invalid_unsigned_int; // use as a solver
+              smoother_data[level].eig_cg_n_iterations =
+                mg_mf_nh_operator[level].m();
             }
           else
             {
               // [1.2 \lambda_{max}/range, 1.2 \lambda_{max}]
               smoother_data[level].smoothing_range = 2;
-              // With degree zero, the Jacobi method with optimal damping parameter is retrieved
+              // With degree zero, the Jacobi method with optimal damping
+              // parameter is retrieved
               smoother_data[level].degree = 4;
               // number of CG iterataions to estimate the largest eigenvalue:
               smoother_data[level].eig_cg_n_iterations = 30;
             }
-          smoother_data[level].preconditioner = mg_mf_nh_operator[level].get_matrix_diagonal_inverse();
+          smoother_data[level].preconditioner =
+            mg_mf_nh_operator[level].get_matrix_diagonal_inverse();
         }
       mg_smoother_chebyshev.initialize(mg_mf_nh_operator, smoother_data);
       mg_coarse_chebyshev.initialize(mg_smoother_chebyshev);
     }
 
-    coarse_solver_control = std::make_shared<ReductionControl>(std::max(mg_mf_nh_operator[0].m(),(unsigned int)100),
-                                                               1e-10,
-                                                               1e-3,
-                                                               false,
-                                                               false);
-    coarse_solver = std::make_shared<SolverCG<LevelVectorType>>(*coarse_solver_control);
-    mg_coarse_iterative.initialize(*coarse_solver,mg_mf_nh_operator[0],mg_smoother_chebyshev[0]);
+    coarse_solver_control =
+      std::make_shared<ReductionControl>(std::max(mg_mf_nh_operator[0].m(),
+                                                  (unsigned int)100),
+                                         1e-10,
+                                         1e-3,
+                                         false,
+                                         false);
+    coarse_solver =
+      std::make_shared<SolverCG<LevelVectorType>>(*coarse_solver_control);
+    mg_coarse_iterative.initialize(*coarse_solver,
+                                   mg_mf_nh_operator[0],
+                                   mg_smoother_chebyshev[0]);
 
-    // wrap our level and interface matrices in an object having the required multiplication functions.
+    // wrap our level and interface matrices in an object having the required
+    // multiplication functions.
     mg_operator_wrapper.initialize(mg_mf_nh_operator);
 
     multigrid_preconditioner.reset();
     if (cheb_coarse)
-      multigrid = std::make_shared<Multigrid<LevelVectorType>>(
-                    mg_operator_wrapper,
-                    mg_coarse_chebyshev,
-                    *mg_transfer,
-                    mg_smoother_chebyshev,
-                    mg_smoother_chebyshev,
-                    /*min_level*/0);
+      multigrid =
+        std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                     mg_coarse_chebyshev,
+                                                     *mg_transfer,
+                                                     mg_smoother_chebyshev,
+                                                     mg_smoother_chebyshev,
+                                                     /*min_level*/ 0);
     else
-      multigrid = std::make_shared<Multigrid<LevelVectorType>>(
-                mg_operator_wrapper,
-                mg_coarse_iterative,
-                *mg_transfer,
-                mg_smoother_chebyshev,
-                mg_smoother_chebyshev,
-                /*min_level*/0);
+      multigrid =
+        std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                     mg_coarse_iterative,
+                                                     *mg_transfer,
+                                                     mg_smoother_chebyshev,
+                                                     mg_smoother_chebyshev,
+                                                     /*min_level*/ 0);
 
     // set_debug() is deprecated, keep this commented for now
     // if (debug_level > 2)
     //   multigrid->set_debug(5);
 
 
-    multigrid->connect_coarse_solve([&](const bool start, const unsigned int level)
-            {
-              if (start)
-                timer.enter_subsection("Coarse solve level " + Utilities::int_to_string(level));
-              else
-                timer.leave_subsection();
-            });
+    multigrid->connect_coarse_solve(
+      [&](const bool start, const unsigned int level) {
+        if (start)
+          timer.enter_subsection("Coarse solve level " +
+                                 Utilities::int_to_string(level));
+        else
+          timer.leave_subsection();
+      });
 
-    multigrid->connect_restriction([&](const bool start, const unsigned int level)
-             {
-               if (start)
-                 timer.enter_subsection("Coarse solve level " + Utilities::int_to_string(level));
-               else
-                 timer.leave_subsection();
-             });
-    multigrid->connect_prolongation([&](const bool start, const unsigned int level)
-             {
-               if (start)
-                 timer.enter_subsection("Prolongation level " + Utilities::int_to_string(level));
-               else
-                 timer.leave_subsection();
-             });
-    multigrid->connect_pre_smoother_step([&](const bool start, const unsigned int level)
-             {
-               if (start)
-                 timer.enter_subsection("Pre-smoothing level " + Utilities::int_to_string(level));
-               else
-                 timer.leave_subsection();
-             });
+    multigrid->connect_restriction(
+      [&](const bool start, const unsigned int level) {
+        if (start)
+          timer.enter_subsection("Coarse solve level " +
+                                 Utilities::int_to_string(level));
+        else
+          timer.leave_subsection();
+      });
+    multigrid->connect_prolongation(
+      [&](const bool start, const unsigned int level) {
+        if (start)
+          timer.enter_subsection("Prolongation level " +
+                                 Utilities::int_to_string(level));
+        else
+          timer.leave_subsection();
+      });
+    multigrid->connect_pre_smoother_step(
+      [&](const bool start, const unsigned int level) {
+        if (start)
+          timer.enter_subsection("Pre-smoothing level " +
+                                 Utilities::int_to_string(level));
+        else
+          timer.leave_subsection();
+      });
 
-    multigrid->connect_post_smoother_step([&](const bool start, const unsigned int level)
-             {
-               if (start)
-                 timer.enter_subsection("Post-smoothing level " + Utilities::int_to_string(level));
-               else
-                 timer.leave_subsection();
-             });
+    multigrid->connect_post_smoother_step(
+      [&](const bool start, const unsigned int level) {
+        if (start)
+          timer.enter_subsection("Post-smoothing level " +
+                                 Utilities::int_to_string(level));
+        else
+          timer.leave_subsection();
+      });
 
     // and a preconditioner object which uses GMG
-    multigrid_preconditioner = std::make_shared<PreconditionMG<dim,LevelVectorType,MGTransferMatrixFree<dim,float>>>(dof_handler_ref,*multigrid,*mg_transfer);
+    multigrid_preconditioner = std::make_shared<
+      PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>(
+      dof_handler_ref, *multigrid, *mg_transfer);
 
     timer.leave_subsection();
   }
 
-// @sect4{Solid::solve_nonlinear_timestep}
+  // @sect4{Solid::solve_nonlinear_timestep}
 
-// The next function is the driver method for the Newton-Raphson scheme. At
-// its top we create a new vector to store the current Newton update step,
-// reset the error storage objects and print solver header.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  // The next function is the driver method for the Newton-Raphson scheme. At
+  // its top we create a new vector to store the current Newton update step,
+  // reset the error storage objects and print solver header.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
-  Solid<dim,degree,n_q_points_1d,NumberType>::solve_nonlinear_timestep()
+  Solid<dim, degree, n_q_points_1d, NumberType>::solve_nonlinear_timestep()
   {
-    pcout << std::endl << "Timestep " << time.get_timestep() << " @ "
-          << time.current() << "s" << std::endl;
+    pcout << std::endl
+          << "Timestep " << time.get_timestep() << " @ " << time.current()
+          << "s" << std::endl;
 
     error_residual.reset();
     error_residual_0.reset();
@@ -1343,8 +1508,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // assembly process by not assembling the tangent matrix when convergence
     // is attained.
     unsigned int newton_iteration = 0;
-    for (; newton_iteration < parameters.max_iterations_NR;
-         ++newton_iteration)
+    for (; newton_iteration < parameters.max_iterations_NR; ++newton_iteration)
       {
         pcout << " " << std::setw(2) << newton_iteration << " " << std::flush;
 
@@ -1359,19 +1523,23 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         // setup matrix-free part:
         setup_matrix_free(newton_iteration);
 
-        // now ready to go-on and assmble linearized problem around solution_n + solution_delta for this iteration.
+        // now ready to go-on and assmble linearized problem around solution_n +
+        // solution_delta for this iteration.
         assemble_system();
 
 #ifdef DEBUG
         // check vmult of matrix-based and matrix-free for a random vector:
         {
-          TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos), dst_mb(newton_update_trilinos);
-          for (unsigned int i=0; i<locally_owned_dofs.n_elements(); ++i)
-            src_trilinos(locally_owned_dofs.nth_index_in_set(i)) = ((double)std::rand())/RAND_MAX;
+          TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
+            dst_mb(newton_update_trilinos);
+          for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
+            src_trilinos(locally_owned_dofs.nth_index_in_set(i)) =
+              ((double)std::rand()) / RAND_MAX;
 
           constraints.set_zero(src_trilinos);
 
-          LinearAlgebra::distributed::Vector src(newton_update), dst_mf(newton_update), diff(newton_update);
+          LinearAlgebra::distributed::Vector src(newton_update),
+            dst_mf(newton_update), diff(newton_update);
           copy_trilinos(src, src_trilinos);
 
           tangent_matrix.vmult(dst_mb, src_trilinos);
@@ -1381,33 +1549,38 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           diff.add(-1, dst_mf);
 
           // FIXME: looks like there are some severe round-off errors.
-          const unsigned int ulp = std::pow(10,9);
+          const unsigned int ulp = std::pow(10, 9);
 
           for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert (std::abs(diff.local_element(i)) <= std::numeric_limits<double>::epsilon() * ulp * std::abs(dst_mf.local_element(i)),
-                    ExcMessage("MF and MB are different on local element " + std::to_string(i) + ": " +
-                               std::to_string(dst_mf.local_element(i)) + " diff " +
-                               std::to_string(diff.local_element(i)) +
-                               " at Newton iteration " +
-                               std::to_string(newton_iteration)
-                               ));
+            Assert(std::abs(diff.local_element(i)) <=
+                     std::numeric_limits<double>::epsilon() * ulp *
+                       std::abs(dst_mf.local_element(i)),
+                   ExcMessage("MF and MB are different on local element " +
+                              std::to_string(i) + ": " +
+                              std::to_string(dst_mf.local_element(i)) +
+                              " diff " + std::to_string(diff.local_element(i)) +
+                              " at Newton iteration " +
+                              std::to_string(newton_iteration)));
 
           // now check Jacobi preconditioner
           TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
-          trilinos_jacobi.initialize(tangent_matrix,0.8);
-          trilinos_jacobi.vmult(dst_mb,src_trilinos);
-          mf_nh_operator.precondition_Jacobi(dst_mf,src,0.8);
+          trilinos_jacobi.initialize(tangent_matrix, 0.8);
+          trilinos_jacobi.vmult(dst_mb, src_trilinos);
+          mf_nh_operator.precondition_Jacobi(dst_mf, src, 0.8);
 
           copy_trilinos(diff, dst_mb);
           diff.add(-1, dst_mf);
           for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert (std::abs(diff.local_element(i)) <= 10000. * std::numeric_limits<double>::epsilon() * std::abs(dst_mf.local_element(i)),
-                    ExcMessage("MF and MB Jacobi are different on local element " + std::to_string(i) + ": " +
-                               std::to_string(dst_mf.local_element(i)) + " diff " +
-                               std::to_string(diff.local_element(i)) +
-                               " at Newton iteration " +
-                               std::to_string(newton_iteration)
-                               ));
+            Assert(std::abs(diff.local_element(i)) <=
+                     10000. * std::numeric_limits<double>::epsilon() *
+                       std::abs(dst_mf.local_element(i)),
+                   ExcMessage(
+                     "MF and MB Jacobi are different on local element " +
+                     std::to_string(i) + ": " +
+                     std::to_string(dst_mf.local_element(i)) + " diff " +
+                     std::to_string(diff.local_element(i)) +
+                     " at Newton iteration " +
+                     std::to_string(newton_iteration)));
         }
 #endif
 
@@ -1419,8 +1592,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         error_residual_norm = error_residual;
         error_residual_norm.normalise(error_residual_0);
 
-        if (newton_iteration > 0 && error_update_norm.u <= parameters.tol_u
-            && error_residual_norm.u <= parameters.tol_f)
+        if (newton_iteration > 0 && error_update_norm.u <= parameters.tol_u &&
+            error_residual_norm.u <= parameters.tol_f)
           {
             pcout << " CONVERGED! " << std::endl;
             print_conv_footer();
@@ -1428,8 +1601,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
             break;
           }
 
-        const std::tuple<unsigned int, double, double>
-        lin_solver_output = solve_linear_system(newton_update,newton_update_trilinos);
+        const std::tuple<unsigned int, double, double> lin_solver_output =
+          solve_linear_system(newton_update, newton_update_trilinos);
 
         if (newton_iteration == 0)
           error_update_0 = error_update;
@@ -1447,8 +1620,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
               << std::scientific << std::get<0>(lin_solver_output) << "  "
               << std::get<1>(lin_solver_output) << "  "
               << std::get<2>(lin_solver_output) << "  "
-              << error_residual_norm.norm
-              << "  " << error_residual_norm.u << "  "
+              << error_residual_norm.norm << "  " << error_residual_norm.u
+              << "  "
               << "  " << error_update_norm.norm << "  " << error_update_norm.u
               << "  " << std::endl;
       }
@@ -1461,18 +1634,20 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // exception object that identify the location (filename and line number)
     // where the exception was raised to make it simpler to identify where the
     // problem happened.
-    AssertThrow (newton_iteration <= parameters.max_iterations_NR,
-                 ExcMessage("No convergence in nonlinear solver!"));
+    AssertThrow(newton_iteration <= parameters.max_iterations_NR,
+                ExcMessage("No convergence in nonlinear solver!"));
   }
 
 
-// @sect4{Solid::print_conv_header, Solid::print_conv_footer and Solid::print_vertical_tip_displacement}
+  // @sect4{Solid::print_conv_header, Solid::print_conv_footer and
+  // Solid::print_vertical_tip_displacement}
 
-// This program prints out data in a nice table that is updated
-// on a per-iteration basis. The next two functions set up the table
-// header and footer:
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_header()
+  // This program prints out data in a nice table that is updated
+  // on a per-iteration basis. The next two functions set up the table
+  // header and footer:
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::print_conv_header()
   {
     static const unsigned int l_width = 98;
 
@@ -1492,8 +1667,9 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
 
 
-  template <int dim,int degree,int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::print_conv_footer()
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::print_conv_footer()
   {
     static const unsigned int l_width = 98;
 
@@ -1504,15 +1680,16 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     pcout << "Relative errors:" << std::endl
           << "Displacement:\t" << error_update.u / error_update_0.u << std::endl
           << "Force: \t\t" << error_residual.u / error_residual_0.u << std::endl
-          << "v / V_0:\t" << vol_current << " / " << vol_reference
-          << std::endl;
+          << "v / V_0:\t" << vol_current << " / " << vol_reference << std::endl;
   }
 
-// At the end we also output the result that can be compared to that found in
-// the literature, namely the displacement at the upper right corner of the
-// beam.
-  template <int dim,int degree,int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::print_vertical_tip_displacement()
+  // At the end we also output the result that can be compared to that found in
+  // the literature, namely the displacement at the upper right corner of the
+  // beam.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::
+    print_vertical_tip_displacement()
   {
     static const unsigned int l_width = 87;
 
@@ -1521,11 +1698,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     pcout << std::endl;
 
     Point<dim> soln_pt;
-    soln_pt[0] = 48.0*parameters.scale;
-    soln_pt[1] = 60.0*parameters.scale;
+    soln_pt[0] = 48.0 * parameters.scale;
+    soln_pt[1] = 60.0 * parameters.scale;
     if (dim == 3)
-      soln_pt[2] = 0.5*parameters.scale;
-    double vertical_tip_displacement = 0.0;
+      soln_pt[2] = 0.5 * parameters.scale;
+    double vertical_tip_displacement       = 0.0;
     double vertical_tip_displacement_check = 0.0;
 
     for (const auto &cell : dof_handler_ref.active_cell_iterators())
@@ -1563,83 +1740,99 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                 break;
               }
         }
-    vertical_tip_displacement = Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
-    vertical_tip_displacement_check = Utilities::MPI::max(vertical_tip_displacement_check, mpi_communicator);
+    vertical_tip_displacement =
+      Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
+    vertical_tip_displacement_check =
+      Utilities::MPI::max(vertical_tip_displacement_check, mpi_communicator);
     AssertThrow(vertical_tip_displacement > 0.0,
                 ExcMessage("Found no cell with point inside!"))
 
-    pcout << "Vertical tip displacement: " << vertical_tip_displacement
-          << "\t Check: " << vertical_tip_displacement_check
-          << std::endl;
+        pcout
+      << "Vertical tip displacement: " << vertical_tip_displacement
+      << "\t Check: " << vertical_tip_displacement_check << std::endl;
   }
 
 
-// @sect4{Solid::set_total_solution}
+  // @sect4{Solid::set_total_solution}
 
-// This function sets the total solution, which is valid at any Newton step.
-// This is required as, to reduce computational error, the total solution is
-// only updated at the end of the timestep.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  // This function sets the total solution, which is valid at any Newton step.
+  // This is required as, to reduce computational error, the total solution is
+  // only updated at the end of the timestep.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
-  Solid<dim,degree,n_q_points_1d,NumberType>::set_total_solution()
+  Solid<dim, degree, n_q_points_1d, NumberType>::set_total_solution()
   {
     solution_total.equ(1, solution_n);
     solution_total += solution_delta;
   }
 
-// Note that we must ensure that
-// the matrix is reset before any assembly operations can occur.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::assemble_system()
+  // Note that we must ensure that
+  // the matrix is reset before any assembly operations can occur.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::assemble_system()
   {
-    TimerOutput::Scope t (timer, "Assemble linear system");
+    TimerOutput::Scope t(timer, "Assemble linear system");
     pcout << " ASM " << std::flush;
 
-    tangent_matrix = 0.0;
+    tangent_matrix      = 0.0;
     system_rhs_trilinos = 0.0;
 
-    FullMatrix<double> cell_matrix(dofs_per_cell,dofs_per_cell);
-    Vector<double> cell_rhs(dofs_per_cell);
+    FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+    Vector<double>     cell_rhs(dofs_per_cell);
     std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
-    std::vector<Tensor<2,dim,NumberType> >  solution_grads_u_total(qf_cell.size());
+    std::vector<Tensor<2, dim, NumberType>> solution_grads_u_total(
+      qf_cell.size());
 
     // values at quadrature points:
-    std::vector<Tensor<2, dim,NumberType>>         grad_Nx(dofs_per_cell);
-    std::vector<SymmetricTensor<2,dim,NumberType>> symm_grad_Nx(dofs_per_cell);
+    std::vector<Tensor<2, dim, NumberType>>          grad_Nx(dofs_per_cell);
+    std::vector<SymmetricTensor<2, dim, NumberType>> symm_grad_Nx(
+      dofs_per_cell);
 
-    FEValues<dim>      fe_values_ref(fe, qf_cell, update_gradients | update_JxW_values);
-    FEFaceValues<dim>  fe_face_values_ref(fe, qf_face, update_values | update_JxW_values);
+    FEValues<dim>     fe_values_ref(fe,
+                                qf_cell,
+                                update_gradients | update_JxW_values);
+    FEFaceValues<dim> fe_face_values_ref(fe,
+                                         qf_face,
+                                         update_values | update_JxW_values);
 
-    for (const auto &cell: dof_handler_ref.active_cell_iterators())
+    for (const auto &cell : dof_handler_ref.active_cell_iterators())
       if (cell->is_locally_owned())
         {
           fe_values_ref.reinit(cell);
-          cell_rhs = 0.;
+          cell_rhs    = 0.;
           cell_matrix = 0.;
           cell->get_dof_indices(local_dof_indices);
 
           // We first need to find the solution gradients at quadrature points
           // inside the current cell and then we update each local QP using the
           // displacement gradient:
-          fe_values_ref[u_fe].get_function_gradients(solution_total, solution_grads_u_total);
+          fe_values_ref[u_fe].get_function_gradients(solution_total,
+                                                     solution_grads_u_total);
 
           // Now we build the local cell stiffness matrix. Since the global and
-          // local system matrices are symmetric, we can exploit this property by
-          // building only the lower half of the local matrix and copying the values
-          // to the upper half.
+          // local system matrices are symmetric, we can exploit this property
+          // by building only the lower half of the local matrix and copying the
+          // values to the upper half.
           //
-          // In doing so, we first extract some configuration dependent variables
-          // from our QPH history objects for the current quadrature point.
+          // In doing so, we first extract some configuration dependent
+          // variables from our QPH history objects for the current quadrature
+          // point.
           for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
             {
-              const Tensor<2,dim,NumberType> &grad_u = solution_grads_u_total[q_point];
-              const Tensor<2,dim,NumberType> F = Physics::Elasticity::Kinematics::F(grad_u);
-              const SymmetricTensor<2,dim,NumberType> b = Physics::Elasticity::Kinematics::b(F);
-              const NumberType               det_F = determinant(F);
-              const Tensor<2,dim,NumberType> F_bar = Physics::Elasticity::Kinematics::F_iso(F);
-              const SymmetricTensor<2,dim,NumberType> b_bar = Physics::Elasticity::Kinematics::b(F_bar);
-              const Tensor<2,dim,NumberType> F_inv = invert(F);
+              const Tensor<2, dim, NumberType> &grad_u =
+                solution_grads_u_total[q_point];
+              const Tensor<2, dim, NumberType> F =
+                Physics::Elasticity::Kinematics::F(grad_u);
+              const SymmetricTensor<2, dim, NumberType> b =
+                Physics::Elasticity::Kinematics::b(F);
+              const NumberType                 det_F = determinant(F);
+              const Tensor<2, dim, NumberType> F_bar =
+                Physics::Elasticity::Kinematics::F_iso(F);
+              const SymmetricTensor<2, dim, NumberType> b_bar =
+                Physics::Elasticity::Kinematics::b(F_bar);
+              const Tensor<2, dim, NumberType> F_inv = invert(F);
               Assert(det_F > NumberType(0.0), ExcInternalError());
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
@@ -1648,10 +1841,10 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                   symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
                 }
 
-              SymmetricTensor<2,dim,NumberType> tau;
-              material->get_tau(tau,det_F,b_bar,b);
-              const Tensor<2,dim,NumberType> tau_ns (tau);
-              const double JxW = fe_values_ref.JxW(q_point);
+              SymmetricTensor<2, dim, NumberType> tau;
+              material->get_tau(tau, det_F, b_bar, b);
+              const Tensor<2, dim, NumberType> tau_ns(tau);
+              const double                     JxW = fe_values_ref.JxW(q_point);
 
               for (unsigned int i = 0; i < dofs_per_cell; ++i)
                 {
@@ -1659,62 +1852,79 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
                   for (unsigned int j = 0; j <= i; ++j)
                     {
-                      // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
-                      // contribution. It comprises a material contribution, and a
-                      // geometrical stress contribution which is only added along
-                      // the local matrix diagonals:
-                      cell_matrix(i, j) += (symm_grad_Nx[i] * material->act_Jc(det_F,b_bar,b,symm_grad_Nx[j])) // The material contribution:
-                                            * JxW;
+                      // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
+                      // \mathbf{u}}$ contribution. It comprises a material
+                      // contribution, and a geometrical stress contribution
+                      // which is only added along the local matrix diagonals:
+                      cell_matrix(i, j) +=
+                        (symm_grad_Nx[i] *
+                         material->act_Jc(
+                           det_F,
+                           b_bar,
+                           b,
+                           symm_grad_Nx[j])) // The material contribution:
+                        * JxW;
                       // geometrical stress contribution
-                      const Tensor<2, dim> geo = egeo_grad(grad_Nx[j],tau_ns);
-                      cell_matrix(i, j) += double_contract<0,0,1,1>(grad_Nx[i],geo) * JxW;
+                      const Tensor<2, dim> geo = egeo_grad(grad_Nx[j], tau_ns);
+                      cell_matrix(i, j) +=
+                        double_contract<0, 0, 1, 1>(grad_Nx[i], geo) * JxW;
                     }
                 }
             } // end loop over quadrature points
 
-          // Finally, we need to copy the lower half of the local matrix into the
-          // upper half:
+          // Finally, we need to copy the lower half of the local matrix into
+          // the upper half:
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
               cell_matrix(i, j) = cell_matrix(j, i);
 
-          // Next we assemble the Neumann contribution. We first check to see it the
-          // cell face exists on a boundary on which a traction is applied and add
-          // the contribution if this is the case.
-          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell; ++face)
-            if (cell->face(face)->at_boundary() == true && cell->face(face)->boundary_id() == 11)
+          // Next we assemble the Neumann contribution. We first check to see it
+          // the cell face exists on a boundary on which a traction is applied
+          // and add the contribution if this is the case.
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+               ++face)
+            if (cell->face(face)->at_boundary() == true &&
+                cell->face(face)->boundary_id() == 11)
               {
                 fe_face_values_ref.reinit(cell, face);
-                for (unsigned int f_q_point = 0; f_q_point < n_q_points_f; ++f_q_point)
+                for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
+                     ++f_q_point)
                   {
                     // We specify the traction in reference configuration.
-                    // For this problem, a defined total vertical force is applied
-                    // in the reference configuration.
-                    // The direction of the applied traction is assumed not to
-                    // evolve with the deformation of the domain.
+                    // For this problem, a defined total vertical force is
+                    // applied in the reference configuration. The direction of
+                    // the applied traction is assumed not to evolve with the
+                    // deformation of the domain.
 
-                    // Note that the contributions to the right hand side vector we
-                    // compute here only exist in the displacement components of the
-                    // vector.
+                    // Note that the contributions to the right hand side vector
+                    // we compute here only exist in the displacement components
+                    // of the vector.
                     const double time_ramp = (time.current() / time.end());
-                    const double magnitude  = (1.0/(16.0*parameters.scale*1.0*parameters.scale))*time_ramp; // (Total force) / (RHS surface area)
-                    Tensor<1,dim> dir;
-                    dir[1] = 1.0;
-                    const Tensor<1, dim> traction  = magnitude*dir;
+                    const double magnitude =
+                      (1.0 /
+                       (16.0 * parameters.scale * 1.0 * parameters.scale)) *
+                      time_ramp; // (Total force) / (RHS surface area)
+                    Tensor<1, dim> dir;
+                    dir[1]                        = 1.0;
+                    const Tensor<1, dim> traction = magnitude * dir;
 
                     for (unsigned int i = 0; i < dofs_per_cell; ++i)
                       {
-                        const unsigned int component_i = fe.system_to_component_index(i).first;
-                        const double Ni = fe_face_values_ref.shape_value(i,f_q_point);
+                        const unsigned int component_i =
+                          fe.system_to_component_index(i).first;
+                        const double Ni =
+                          fe_face_values_ref.shape_value(i, f_q_point);
                         const double JxW = fe_face_values_ref.JxW(f_q_point);
                         cell_rhs(i) += (Ni * traction[component_i]) * JxW;
                       }
                   }
               }
 
-          constraints.distribute_local_to_global(cell_matrix, cell_rhs,
+          constraints.distribute_local_to_global(cell_matrix,
+                                                 cell_rhs,
                                                  local_dof_indices,
-                                                 tangent_matrix, system_rhs_trilinos);
+                                                 tangent_matrix,
+                                                 system_rhs_trilinos);
         }
 
     tangent_matrix.compress(VectorOperation::add);
@@ -1733,15 +1943,17 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
   }
 
 
-// @sect4{Solid::make_constraints}
-// The constraints for this problem are simple to describe.
-// However, since we are dealing with an iterative Newton method,
-// it should be noted that any displacement constraints should only
-// be specified at the zeroth iteration and subsequently no
-// additional contributions are to be made since the constraints
-// are already exactly satisfied.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::make_constraints(const int &it_nr)
+  // @sect4{Solid::make_constraints}
+  // The constraints for this problem are simple to describe.
+  // However, since we are dealing with an iterative Newton method,
+  // it should be noted that any displacement constraints should only
+  // be specified at the zeroth iteration and subsequently no
+  // additional contributions are to be made since the constraints
+  // are already exactly satisfied.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::make_constraints(
+    const int &it_nr)
   {
     pcout << " CST " << std::flush;
 
@@ -1753,7 +1965,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
       return;
 
     constraints.clear();
-    constraints.reinit (locally_relevant_dofs);
+    constraints.reinit(locally_relevant_dofs);
 
     mg_constrained_dofs.clear();
     mg_constrained_dofs.initialize(dof_handler_ref);
@@ -1781,21 +1993,25 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // Fixed left hand side of the beam
     {
-      const int boundary_id = 1;
-      const auto mask = fe.component_mask(u_fe);
+      const int  boundary_id = 1;
+      const auto mask        = fe.component_mask(u_fe);
 
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,{boundary_id},mask);
+      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+                                                         {boundary_id},
+                                                         mask);
 
       if (apply_dirichlet_bc == true)
         VectorTools::interpolate_boundary_values(dof_handler_ref,
                                                  boundary_id,
-                                                 ZeroFunction<dim>(n_components),
+                                                 ZeroFunction<dim>(
+                                                   n_components),
                                                  constraints,
                                                  fe.component_mask(u_fe));
       else
         VectorTools::interpolate_boundary_values(dof_handler_ref,
                                                  boundary_id,
-                                                 ZeroFunction<dim>(n_components),
+                                                 ZeroFunction<dim>(
+                                                   n_components),
                                                  constraints,
                                                  fe.component_mask(u_fe));
     }
@@ -1803,38 +2019,42 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     // Zero Z-displacement through thickness direction
     // This corresponds to a plane strain condition being imposed on the beam
     if (dim == 3)
-    {
-      const int boundary_id = 2;
-      const FEValuesExtractors::Scalar z_displacement(2);
-      const auto mask = fe.component_mask(z_displacement);
+      {
+        const int                        boundary_id = 2;
+        const FEValuesExtractors::Scalar z_displacement(2);
+        const auto mask = fe.component_mask(z_displacement);
 
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,{boundary_id}, mask);
+        mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+                                                           {boundary_id},
+                                                           mask);
 
-      if (apply_dirichlet_bc == true)
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(n_components),
-                                                 constraints,
-                                                 mask);
-      else
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(n_components),
-                                                 constraints,
-                                                 mask);
-    }
+        if (apply_dirichlet_bc == true)
+          VectorTools::interpolate_boundary_values(dof_handler_ref,
+                                                   boundary_id,
+                                                   ZeroFunction<dim>(
+                                                     n_components),
+                                                   constraints,
+                                                   mask);
+        else
+          VectorTools::interpolate_boundary_values(dof_handler_ref,
+                                                   boundary_id,
+                                                   ZeroFunction<dim>(
+                                                     n_components),
+                                                   constraints,
+                                                   mask);
+      }
 
     constraints.close();
   }
 
-// @sect4{Solid::solve_linear_system}
-// As the system is composed of a single block, defining a solution scheme
-// for the linear problem is straight-forward.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
+  // @sect4{Solid::solve_linear_system}
+  // As the system is composed of a single block, defining a solution scheme
+  // for the linear problem is straight-forward.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
   std::tuple<unsigned int, double, double>
-  Solid<dim,degree,n_q_points_1d,NumberType>::solve_linear_system(
+  Solid<dim, degree, n_q_points_1d, NumberType>::solve_linear_system(
     LinearAlgebra::distributed::Vector<double> &newton_update,
-    TrilinosWrappers::MPI::Vector &newton_update_trilinos) const
+    TrilinosWrappers::MPI::Vector &             newton_update_trilinos) const
   {
     unsigned int lin_it      = 0;
     double       lin_res     = 0.0;
@@ -1849,19 +2069,21 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
 
     // estimate condition number of matrix-free operator from dummy CG
     {
-        IterationNumberControl control_condition(parameters.cond_number_cg_iterations, tol_sol,false,false);
-        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_condition(control_condition);
+      IterationNumberControl control_condition(
+        parameters.cond_number_cg_iterations, tol_sol, false, false);
+      SolverCG<LinearAlgebra::distributed::Vector<double>> solver_condition(
+        control_condition);
 
-        solver_condition.connect_condition_number_slot(
-          [&](const double number) { cond_number = number; });
+      solver_condition.connect_condition_number_slot(
+        [&](const double number) { cond_number = number; });
 
-        solver_condition.solve(mf_nh_operator,
-                               newton_update,
-                               system_rhs,
-                               PreconditionIdentity());
+      solver_condition.solve(mf_nh_operator,
+                             newton_update,
+                             system_rhs,
+                             PreconditionIdentity());
 
-        // reset back to zero
-        newton_update = 0.;
+      // reset back to zero
+      newton_update = 0.;
     }
 
     timer.enter_subsection("Linear solver");
@@ -1873,10 +2095,11 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                  (debug_level > 0 ? true : false));
 
     pcout << " SLV " << std::flush;
-    if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" || parameters.type_lin =="MF_AD_CG")
+    if (parameters.type_lin == "CG" || parameters.type_lin == "MF_CG" ||
+        parameters.type_lin == "MF_AD_CG")
       {
-
-        SolverCG<LinearAlgebra::distributed::Vector<double> > solver_CG(solver_control);
+        SolverCG<LinearAlgebra::distributed::Vector<double>> solver_CG(
+          solver_control);
         constraints.set_zero(newton_update);
 
         if (parameters.type_lin == "CG")
@@ -1885,10 +2108,12 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                         ExcNotImplemented());
 
             GrowingVectorMemory<TrilinosWrappers::MPI::Vector> GVM_trilinos;
-            SolverCG<TrilinosWrappers::MPI::Vector> solver_CG_trilinos(solver_control, GVM_trilinos);
+            SolverCG<TrilinosWrappers::MPI::Vector> solver_CG_trilinos(
+              solver_control, GVM_trilinos);
 
             TrilinosWrappers::PreconditionJacobi preconditioner;
-            preconditioner.initialize(tangent_matrix, parameters.preconditioner_relaxation);
+            preconditioner.initialize(tangent_matrix,
+                                      parameters.preconditioner_relaxation);
 
             solver_CG_trilinos.solve(tangent_matrix,
                                      newton_update_trilinos,
@@ -1899,24 +2124,30 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
           }
         else if (parameters.type_lin == "MF_AD_CG")
           {
-              AssertThrow(parameters.preconditioner_type == "jacobi",
-                          ExcNotImplemented());
-              PreconditionJacobi<NeoHookOperatorAD<dim,degree,n_q_points_1d,double>> preconditioner;
-              preconditioner.initialize (mf_ad_nh_operator,parameters.preconditioner_relaxation);
+            AssertThrow(parameters.preconditioner_type == "jacobi",
+                        ExcNotImplemented());
+            PreconditionJacobi<
+              NeoHookOperatorAD<dim, degree, n_q_points_1d, double>>
+              preconditioner;
+            preconditioner.initialize(mf_ad_nh_operator,
+                                      parameters.preconditioner_relaxation);
 
-              solver_CG.solve(mf_ad_nh_operator,
-                              newton_update,
-                              system_rhs,
-                              preconditioner);
+            solver_CG.solve(mf_ad_nh_operator,
+                            newton_update,
+                            system_rhs,
+                            preconditioner);
           }
         else
           {
-            Assert (parameters.type_lin == "MF_CG", ExcInternalError());
+            Assert(parameters.type_lin == "MF_CG", ExcInternalError());
 
             if (parameters.preconditioner_type == "jacobi")
               {
-                PreconditionJacobi<NeoHookOperator<dim,degree,n_q_points_1d,double>> preconditioner;
-                preconditioner.initialize (mf_nh_operator,parameters.preconditioner_relaxation);
+                PreconditionJacobi<
+                  NeoHookOperator<dim, degree, n_q_points_1d, double>>
+                  preconditioner;
+                preconditioner.initialize(mf_nh_operator,
+                                          parameters.preconditioner_relaxation);
 
                 solver_CG.solve(mf_nh_operator,
                                 newton_update,
@@ -1932,7 +2163,8 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
               }
             else
               {
-                Assert (parameters.preconditioner_type == "gmg", ExcInternalError());
+                Assert(parameters.preconditioner_type == "gmg",
+                       ExcInternalError());
                 solver_CG.solve(mf_nh_operator,
                                 newton_update,
                                 system_rhs,
@@ -1956,7 +2188,7 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
         lin_res = 0.0;
       }
     else
-      Assert (false, ExcMessage("Linear solver type not implemented"));
+      Assert(false, ExcMessage("Linear solver type not implemented"));
 
     timer.leave_subsection();
 
@@ -1972,12 +2204,13 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
     return std::make_tuple(lin_it, lin_res, cond_number);
   }
 
-// @sect4{Solid::output_results}
-// Here we present how the results are written to file to be viewed
-// using ParaView or Visit. The method is similar to that shown in the
-// tutorials so will not be discussed in detail.
-  template <int dim,int degree, int n_q_points_1d,typename NumberType>
-  void Solid<dim,degree,n_q_points_1d,NumberType>::output_results() const
+  // @sect4{Solid::output_results}
+  // Here we present how the results are written to file to be viewed
+  // using ParaView or Visit. The method is similar to that shown in the
+  // tutorials so will not be discussed in detail.
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  void
+  Solid<dim, degree, n_q_points_1d, NumberType>::output_results() const
   {
     DataOut<dim> data_out;
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
@@ -2044,4 +2277,4 @@ Point<dim> grid_y_transform (const Point<dim> &pt_in)
                                              /*artificial*/ false);
   }
 
-}
+} // namespace Cook_Membrane
