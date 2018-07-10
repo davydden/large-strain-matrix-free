@@ -674,6 +674,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
             // c_bar==0 so we don't have a term with it.
           }
 
+#ifdef DEBUG
           const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
           VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
           for (unsigned int i = 0; i < data_current->n_components_filled(cell);
@@ -696,15 +697,17 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                        "!=" + std::to_string(1. / JxW_scale[i]) + " " +
                        std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
             }
+#endif
 
           // This is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
           // contribution. It comprises a material contribution, and a
           // geometrical stress contribution which is only added along
           // the local matrix diagonals:
           phi_current_s.submit_symmetric_gradient(
-            jc_part * JxW_scale
-            // Note: We need to integrate over the reference element, so the
-            // weights have to be adjusted
+            jc_part / det_F
+            // Note: We need to integrate over the reference element,
+            // thus we divide by det_F so that FEEvaluation with
+            // mapping does the right thing.
             ,
             q);
 
@@ -717,10 +720,10 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
           const Tensor<2, dim, VectorizedArray<number>> geo =
             grad_Nx_v * tau_ns;
           phi_current.submit_gradient(
-            geo * JxW_scale
-            // Note: We need to integrate over the reference element, so the
-            // weights have to be adjusted phi_reference.JxW(q) /
-            // phi_current.JxW(q)
+            geo / det_F
+            // Note: We need to integrate over the reference element,
+            // thus we divide by det_F so that FEEvaluation with
+            // mapping does the right thing.
             ,
             q);
 
@@ -763,6 +766,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                    (mu - 2.0 * lambda * std::log(det_F)),
                  ExcMessage("Cached scalar and det_F do not match"));
 
+#ifdef DEBUG
           const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
           VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
           for (unsigned int i = 0; i < data_current->n_components_filled(cell);
@@ -785,13 +789,14 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                        "!=" + std::to_string(1. / JxW_scale[i]) + " " +
                        std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
             }
+#endif
 
-          phi_current_s.submit_symmetric_gradient(jc_part * JxW_scale, q);
+          phi_current_s.submit_symmetric_gradient(jc_part / det_F, q);
 
           const Tensor<2, dim, VectorizedArray<number>> tau_ns(tau);
           const Tensor<2, dim, VectorizedArray<number>> geo =
             grad_Nx_v * tau_ns;
-          phi_current.submit_gradient(geo * JxW_scale, q);
+          phi_current.submit_gradient(geo / det_F, q);
         }
     }
   else
