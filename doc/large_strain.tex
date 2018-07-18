@@ -98,7 +98,7 @@ Neo-Hookean model
 \begin{gather}
 \psi \left( \mathbf{C} \right)
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
-  - \lambda \ln^{2}\left( J \right)
+  + \lambda \ln^{2}\left( J \right)
 \end{gather}
 where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter,
 and the volumetric Jacobian $J = \det\left(\mathbf{F}\right) = \sqrt{\det\left(\mathbf{C}\right)}$.
@@ -108,7 +108,7 @@ and the volumetric Jacobian $J = \det\left(\mathbf{F}\right) = \sqrt{\det\left(\
 \end{gather}
 \begin{gather}
 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}}
-  = \left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
+  = \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
   + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
 \end{gather}
 
@@ -117,7 +117,7 @@ Denoting $\chi\left( \bullet \right)$ as the Piola transformation, which implies
 \chi\left( \mathbf{A} \right)_{ij}
   = F_{iA} A_{AB} F_{jB} \\
 \chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
-  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD} 
+  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
 \end{gather}
 for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then the Kirchhoff stress and its associated material tangent are
 \begin{gather}
@@ -126,12 +126,12 @@ for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then 
   = \chi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
   = \mu \mathbf{b} - \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{I}
 \end{gather}
-and 
+and
 \begin{gather}
 J \boldsymbol{\mathcal{C}}
   = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
-  = \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
-  + \frac{\lambda}{2} \mathbf{I} \otimes \mathbf{I}
+  = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
+  + 2 \lambda \mathbf{I} \otimes \mathbf{I}
 \end{gather}
 where $\boldsymbol{\mathcal{S}}$ is the fourth-order symmetric identity tensor.
 The action that $J \boldsymbol{\mathcal{C}}$ performs when contracted with an arbitrary rank-2 symmetric tensor is therefore
