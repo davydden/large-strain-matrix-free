@@ -1050,7 +1050,7 @@ namespace Cook_Membrane
         Triangulation<dim> left;
         GridGenerator::plate_with_a_hole(
                           left,
-                          0.3 /*inner_radius*/,
+                          0.2 /*inner_radius*/,
                           0.5 /*outer_radius*/,
                           0. /*pad_bottom*/,
                           1. /*pad_top*/,
@@ -1791,8 +1791,8 @@ namespace Cook_Membrane
       }
     else
       {
-        // take center:
-        soln_pt[0] = 1. * parameters.scale;
+        // take center of left part:
+        soln_pt[0] = 0.5 * parameters.scale;
         soln_pt[1] = 1. * parameters.scale;
         if (dim == 3)
           soln_pt[2] = 1. * parameters.scale;
@@ -1995,10 +1995,15 @@ namespace Cook_Membrane
                     // Note that the contributions to the right hand side vector
                     // we compute here only exist in the displacement components
                     // of the vector.
-                    const double time_ramp = (time.current() / time.end()) * parameters.force_multiplier;
+                    const double time_ramp = (time.current() / time.end()) *
+                                             parameters.force_multiplier;
+                    const double area =
+                      (parameters.type == "Cook" ? 16.0 : 2.0) *
+                      parameters.scale * parameters.scale;
+                    const double force =
+                      (parameters.type == "Cook" ? 1.0 : 0.05);
                     const double magnitude =
-                      (1.0 /
-                       (16.0 * parameters.scale * 1.0 * parameters.scale)) *
+                      (force / area) *
                       time_ramp; // (Total force) / (RHS surface area)
                     Tensor<1, dim> dir;
                     if (parameters.type == "Cook")
