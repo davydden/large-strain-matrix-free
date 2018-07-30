@@ -169,6 +169,7 @@ namespace Cook_Membrane
       double       scale;
       unsigned int dim;
       unsigned int n_global_refinement;
+      std::string  type;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -201,6 +202,12 @@ namespace Cook_Membrane
                           "2",
                           Patterns::Integer(2, 3),
                           "Dimension of the problem");
+
+        prm.declare_entry("Type",
+                  "Cook",
+                  Patterns::Selection("Cook|Holes"),
+                  "Type of the problem");
+
       }
       prm.leave_subsection();
     }
@@ -214,6 +221,7 @@ namespace Cook_Membrane
         scale               = prm.get_double("Grid scale");
         dim                 = prm.get_integer("Dimension");
         n_global_refinement = prm.get_integer("Global refinement");
+        type                = prm.get("Type");
       }
       prm.leave_subsection();
     }
@@ -981,51 +989,120 @@ namespace Cook_Membrane
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::make_grid()
   {
-    // Divide the beam, but only along the x- and y-coordinate directions
-    std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
-    // Only allow one element through the thickness
-    // (modelling a plane strain condition)
-    if (dim == 3)
-      repetitions[dim - 1] = 1;
+    if (parameters.type == "Cook")
+      {
+        // Divide the beam, but only along the x- and y-coordinate directions
+        std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
+        // Only allow one element through the thickness
+        // (modelling a plane strain condition)
+        if (dim == 3)
+          repetitions[dim - 1] = 1;
 
-    const Point<dim> bottom_left =
-      (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
-    const Point<dim> top_right =
-      (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
+        const Point<dim> bottom_left =
+          (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
+        const Point<dim> top_right =
+          (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation,
-                                              repetitions,
-                                              bottom_left,
-                                              top_right);
+        GridGenerator::subdivided_hyper_rectangle(triangulation,
+                                                  repetitions,
+                                                  bottom_left,
+                                                  top_right);
 
-    // Since we wish to apply a Neumann BC to the right-hand surface, we
-    // must find the cell faces in this part of the domain and mark them with
-    // a distinct boundary ID number.  The faces we are looking for are on the
-    // +x surface and will get boundary ID 11.
-    // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
-    // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
-    // ID 2 and we will use to impose the plane strain condition)
-    const double tol_boundary = 1e-6;
-    // NOTE: we need to set IDs regardless of cell being locally owned or not
-    // as in the global refinement cells will be repartitioned and faces of
-    // their parents should have right IDs
-    for (auto cell : triangulation.active_cell_iterators())
-      for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-           ++face)
-        if (cell->face(face)->at_boundary() == true)
-          {
-            if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
-              cell->face(face)->set_boundary_id(1); // -X faces
-            else if (std::abs(cell->face(face)->center()[0] - 48.0) <
+        // Since we wish to apply a Neumann BC to the right-hand surface, we
+        // must find the cell faces in this part of the domain and mark them with
+        // a distinct boundary ID number.  The faces we are looking for are on the
+        // +x surface and will get boundary ID 11.
+        // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
+        // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
+        // ID 2 and we will use to impose the plane strain condition)
+        const double tol_boundary = 1e-6;
+        // NOTE: we need to set IDs regardless of cell being locally owned or not
+        // as in the global refinement cells will be repartitioned and faces of
+        // their parents should have right IDs
+        for (auto cell : triangulation.active_cell_iterators())
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+              ++face)
+            if (cell->face(face)->at_boundary() == true)
+              {
+                if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
+                  cell->face(face)->set_boundary_id(1); // -X faces
+                else if (std::abs(cell->face(face)->center()[0] - 48.0) <
+                        tol_boundary)
+                  cell->face(face)->set_boundary_id(11); // +X faces
+                else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
+                        tol_boundary)
+                  cell->face(face)->set_boundary_id(2); // +Z and -Z faces
+              }
+
+        // Transform the hyper-rectangle into the beam shape
+        GridTools::transform(&grid_y_transform<dim>, triangulation);
+      }
+    else if (parameters.type == "Holes")
+      {
+        Assert (dim == 2, ExcNotImplemented());
+        // plate with two holes of different radius
+        Point<dim> center1, center2;
+        center1[0] = 0.5;
+        center1[1] = 0.5;
+        center2[0] = 1.5;
+        center2[1] = 1.5;
+
+        Triangulation<dim> left;
+        GridGenerator::plate_with_a_hole(
+                          left,
+                          0.3 /*inner_radius*/,
+                          0.5 /*outer_radius*/,
+                          0. /*pad_bottom*/,
+                          1. /*pad_top*/,
+                          0. /*pad_left*/,
+                          0. /*pad_right*/,
+                          center1 /*center*/,
+                          1 /*polar_manifold_id*/,
+                          2 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+
+        Triangulation<dim> right;
+        GridGenerator::plate_with_a_hole(
+                          right,
+                          0.1 /*inner_radius*/,
+                          0.5 /*outer_radius*/,
+                          1. /*pad_bottom*/,
+                          0. /*pad_top*/,
+                          0. /*pad_left*/,
+                          0. /*pad_right*/,
+                          center2 /*center*/,
+                          3 /*polar_manifold_id*/,
+                          4 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+
+         GridGenerator::merge_triangulations(left,
+                                             right,
+                                             triangulation,
+                                             0.01);
+
+         const double tol_boundary = 1e-6;
+         for (auto cell : triangulation.active_cell_iterators())
+           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+                ++face)
+             if (cell->face(face)->at_boundary() == true)
+               {
+                 if (std::abs(cell->face(face)->center()[1] - 0.0) <
                      tol_boundary)
-              cell->face(face)->set_boundary_id(11); // +X faces
-            else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
-                     tol_boundary)
-              cell->face(face)->set_boundary_id(2); // +Z and -Z faces
-          }
+                   cell->face(face)->set_boundary_id(1); // -Y faces
+                 else if (std::abs(cell->face(face)->center()[1] - 2.0) <
+                          tol_boundary)
+                   cell->face(face)->set_boundary_id(11); // +Y faces
+               }
 
-    // Transform the hyper-rectangle into the beam shape
-    GridTools::transform(&grid_y_transform<dim>, triangulation);
+      }
+    else
+      {
+        Assert(false, ExcNotImplemented())
+      }
 
     GridTools::scale(parameters.scale, triangulation);
 
@@ -1705,10 +1782,22 @@ namespace Cook_Membrane
     pcout << std::endl;
 
     Point<dim> soln_pt;
-    soln_pt[0] = 48.0 * parameters.scale;
-    soln_pt[1] = 60.0 * parameters.scale;
-    if (dim == 3)
-      soln_pt[2] = 0.5 * parameters.scale;
+    if (parameters.type == "Cook")
+      {
+        soln_pt[0] = 48.0 * parameters.scale;
+        soln_pt[1] = 60.0 * parameters.scale;
+        if (dim == 3)
+          soln_pt[2] = 0.5 * parameters.scale;
+      }
+    else
+      {
+        // take center:
+        soln_pt[0] = 1. * parameters.scale;
+        soln_pt[1] = 1. * parameters.scale;
+        if (dim == 3)
+          soln_pt[2] = 1. * parameters.scale;
+
+      }
     double vertical_tip_displacement       = 0.0;
     double vertical_tip_displacement_check = 0.0;
 
@@ -1912,7 +2001,12 @@ namespace Cook_Membrane
                        (16.0 * parameters.scale * 1.0 * parameters.scale)) *
                       time_ramp; // (Total force) / (RHS surface area)
                     Tensor<1, dim> dir;
-                    dir[1]                        = 1.0;
+                    if (parameters.type == "Cook")
+                      dir[1] = 1.0;
+                    else if (parameters.type == "Holes")
+                      // apply simple shear force
+                      dir[0] = 1.0;
+
                     const Tensor<1, dim> traction = magnitude * dir;
 
                     for (unsigned int i = 0; i < dofs_per_cell; ++i)
