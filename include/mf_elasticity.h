@@ -1047,6 +1047,16 @@ namespace Cook_Membrane
         center2[0] = 1.5;
         center2[1] = 1.5;
 
+        // inclusion:
+        Triangulation<dim> sphere, sphere_flat;
+        GridGenerator::hyper_ball(sphere,
+                                  center1,
+                                  0.2);
+        sphere.refine_global(1);
+        // at this point we have 8 faces across circumference
+        GridGenerator::flatten_triangulation(sphere,
+                                             sphere_flat);
+
         Triangulation<dim> left;
         GridGenerator::plate_with_a_hole(
                           left,
@@ -1079,8 +1089,14 @@ namespace Cook_Membrane
                           1. /*n_slices*/,
                           false /*colorize*/);
 
+         Triangulation<dim> left_right;
          GridGenerator::merge_triangulations(left,
                                              right,
+                                             left_right,
+                                             0.01);
+
+         GridGenerator::merge_triangulations(left_right,
+                                             sphere_flat,
                                              triangulation,
                                              0.01);
 
@@ -1098,6 +1114,10 @@ namespace Cook_Membrane
                    cell->face(face)->set_boundary_id(11); // +Y faces
                }
 
+          // output coarse grid:
+          GridOut grid_out;
+          std::ofstream output("grid.eps");
+          grid_out.write_eps(triangulation, output);
       }
     else
       {
