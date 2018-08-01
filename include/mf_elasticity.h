@@ -1364,11 +1364,30 @@ namespace Cook_Membrane
     data.tasks_parallel_scheme = MatrixFree<dim, double>::AdditionalData::none;
     data.mapping_update_flags  = update_gradients | update_JxW_values;
 
-    typename MatrixFree<dim, float>::AdditionalData mg_additional_data;
-    mg_additional_data.tasks_parallel_scheme =
-      MatrixFree<dim, float>::AdditionalData::none; // partition_color;
-    mg_additional_data.mapping_update_flags =
-      update_gradients | update_JxW_values;
+    // make sure materials with different ID end up in different SIMD blocks:
+    data.cell_vectorization_categories_strict = true;
+    data.cell_vectorization_category.resize(triangulation.n_active_cells());
+    for (const auto & cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        data.cell_vectorization_category[cell->active_cell_index()] = cell->material_id();
+
+    std::vector<typename MatrixFree<dim, float>::AdditionalData> mg_additional_data(max_level+1);
+    for (unsigned int level = 0; level <= max_level; ++level)
+      {
+        mg_additional_data[level].tasks_parallel_scheme =
+          MatrixFree<dim, float>::AdditionalData::none; // partition_color;
+
+        mg_additional_data[level].mapping_update_flags =
+          update_gradients | update_JxW_values;
+
+        mg_additional_data[level].cell_vectorization_categories_strict = true;
+        mg_additional_data[level].cell_vectorization_category.resize(triangulation.n_cells(level));
+        for (const auto & cell : triangulation.cell_iterators_on_level(level))
+          if (cell->is_locally_owned_on_level())
+            mg_additional_data[level].cell_vectorization_category[cell->index()] = cell->material_id();
+
+        mg_additional_data[level].level_mg_handler = level;
+      }
 
     if (it_nr <= 1)
       {
@@ -1413,8 +1432,6 @@ namespace Cook_Membrane
         mg_eulerian_mapping.resize(0);
         for (unsigned int level = 0; level <= max_level; ++level)
           {
-            mg_additional_data.level_mg_handler = level;
-
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
@@ -1443,12 +1460,12 @@ namespace Cook_Membrane
             mg_mf_data_reference[level]->reinit(dof_handler_ref,
                                                 level_constraints,
                                                 quad,
-                                                mg_additional_data);
+                                                mg_additional_data[level]);
             mg_mf_data_current[level]->reinit(*euler_level,
                                               dof_handler_ref,
                                               level_constraints,
                                               quad,
-                                              mg_additional_data);
+                                              mg_additional_data[level]);
 
             mg_eulerian_mapping.push_back(euler_level);
 
@@ -1468,9 +1485,10 @@ namespace Cook_Membrane
         mf_data_current->reinit(
           *eulerian_mapping, dof_handler_ref, constraints, quad, data);
 
-        mg_additional_data.initialize_indices = false;
         for (unsigned int level = 0; level <= max_level; ++level)
           {
+            mg_additional_data[level].initialize_indices = false;
+
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
@@ -1481,7 +1499,6 @@ namespace Cook_Membrane
               mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
-            mg_additional_data.level_mg_handler = level;
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
@@ -1490,7 +1507,7 @@ namespace Cook_Membrane
                                               dof_handler_ref,
                                               level_constraints,
                                               quad,
-                                              mg_additional_data);
+                                              mg_additional_data[level]);
           }
       }
 
