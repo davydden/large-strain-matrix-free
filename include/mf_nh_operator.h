@@ -250,11 +250,15 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     {
+      const unsigned int material_id =
+        data_current->get_cell_iterator(cell, 0)->material_id();
+      const auto &cell_mat = (material_id == 0 ? material : material_inclusion);
+
       phi_reference.reinit(cell);
       phi_reference.read_dof_values_plain(*displacement);
       phi_reference.evaluate(false, true, false);
 
-      if (material->formulation == 0)
+      if (cell_mat->formulation == 0)
         {
           for (unsigned int q = 0; q < phi_reference.n_q_points; ++q)
             {
@@ -275,7 +279,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
               cached_scalar(cell, q) = std::pow(det_F, number(-1.0 / dim));
             }
         }
-      else if (material->formulation == 1)
+      else if (cell_mat->formulation == 1)
         {
           for (unsigned int q = 0; q < phi_reference.n_q_points; ++q)
             {
@@ -294,7 +298,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
                          "] is not positive: " + std::to_string(det_F[i])));
 
               cached_scalar(cell, q) =
-                material->mu - 2.0 * material->lambda * std::log(det_F);
+                cell_mat->mu - 2.0 * cell_mat->lambda * std::log(det_F);
             }
         }
       else
@@ -538,6 +542,27 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> &phi_reference,
   const unsigned int                                        cell) const
 {
+  const unsigned int material_id = data_current->get_cell_iterator(cell, 0)->material_id();
+  const auto &cell_mat =
+    (material_id == 0 ?
+       material :
+       material_inclusion);
+
+  // make sure all filled cells have the same ID
+#ifdef DEBUG
+  for (unsigned int i = 1; i < data_current->n_components_filled(cell); ++i)
+    {
+      const unsigned int other_id =
+        data_current->get_cell_iterator(cell, i)->material_id();
+      Assert(other_id == material_id,
+             ExcMessage("Cell block " + std::to_string(cell) + " element " +
+                        std::to_string(i) + " has material ID " +
+                        std::to_string(other_id) +
+                        ", different form 0-th element " +
+                        std::to_string(material_id)));
+    }
+#endif
+
   // make sure both MatrixFree objects use the same cells
   AssertDimension(data_current->n_components_filled(cell),
                   data_reference->n_components_filled(cell));
@@ -551,16 +576,16 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   using NumberType                     = VectorizedArray<number>;
   static constexpr number dim_f        = dim;
   static constexpr number two_over_dim = 2.0 / dim;
-  const number            kappa        = material->kappa;
-  const number            c_1          = material->c_1;
-  const number            mu           = material->mu;
-  const number            lambda       = material->lambda;
+  const number            kappa        = cell_mat->kappa;
+  const number            c_1          = cell_mat->c_1;
+  const number            mu           = cell_mat->mu;
+  const number            lambda       = cell_mat->lambda;
 
   phi_reference.evaluate(false, true, false);
   phi_current.evaluate(false, true, false);
   phi_current_s.evaluate(false, true, false);
 
-  if (material->formulation == 0)
+  if (cell_mat->formulation == 0)
     {
       for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
         {
@@ -740,7 +765,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
         } // end of the loop over quadrature points
     }
-  else if (material->formulation == 1)
+  else if (cell_mat->formulation == 1)
     {
       for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
         {
