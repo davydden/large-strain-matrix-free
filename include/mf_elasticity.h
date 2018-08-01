@@ -668,9 +668,10 @@ namespace Cook_Membrane
 
     IndexSet locally_owned_dofs, locally_relevant_dofs;
 
-    // homogeneous material
+    // matrix material
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
       material;
+
     std::shared_ptr<
       Material_Compressible_Neo_Hook_One_Field<dim,
                                                VectorizedArray<NumberType>>>
@@ -678,6 +679,10 @@ namespace Cook_Membrane
     std::shared_ptr<
       Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<float>>>
       material_level;
+
+    // inclusion material
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
+      material_inclusion;
 
     static const unsigned int n_components      = dim;
     static const unsigned int first_u_component = 0;
@@ -864,6 +869,12 @@ namespace Cook_Membrane
           Material_Compressible_Neo_Hook_One_Field<dim,
                                                    VectorizedArray<float>>>(
           parameters.mu,
+          parameters.nu,
+          parameters.material_formulation))
+    , material_inclusion(
+        std::make_shared<
+          Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>(
+          parameters.mu*100.,
           parameters.nu,
           parameters.material_formulation))
     , qf_cell(n_q_points_1d)
@@ -1191,9 +1202,11 @@ namespace Cook_Membrane
                }
 
           // output coarse grid:
+          /*
           GridOut grid_out;
           std::ofstream output("grid.eps");
           grid_out.write_eps(triangulation, output);
+          */
       }
     else
       {
@@ -1708,6 +1721,7 @@ namespace Cook_Membrane
         assemble_system();
 
 #ifdef DEBUG
+        /*
         // check vmult of matrix-based and matrix-free for a random vector:
         {
           TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
@@ -1762,6 +1776,7 @@ namespace Cook_Membrane
                      " at Newton iteration " +
                      std::to_string(newton_iteration)));
         }
+        */
 #endif
 
         if (newton_iteration == 0)
@@ -1992,6 +2007,8 @@ namespace Cook_Membrane
     for (const auto &cell : dof_handler_ref.active_cell_iterators())
       if (cell->is_locally_owned())
         {
+          const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
+
           fe_values_ref.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
@@ -2034,7 +2051,7 @@ namespace Cook_Membrane
                 }
 
               SymmetricTensor<2, dim, NumberType> tau;
-              material->get_tau(tau, det_F, b_bar, b);
+              cell_mat->get_tau(tau, det_F, b_bar, b);
               const Tensor<2, dim, NumberType> tau_ns(tau);
               const double                     JxW = fe_values_ref.JxW(q_point);
 
@@ -2050,7 +2067,7 @@ namespace Cook_Membrane
                       // which is only added along the local matrix diagonals:
                       cell_matrix(i, j) +=
                         (symm_grad_Nx[i] *
-                         material->act_Jc(
+                         cell_mat->act_Jc(
                            det_F,
                            b_bar,
                            b,
