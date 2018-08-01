@@ -2433,6 +2433,18 @@ namespace Cook_Membrane
       subdomain(i) = triangulation.locally_owned_subdomain();
     data_out.add_data_vector(subdomain, "subdomain");
 
+    Vector<float> material_id(triangulation.n_active_cells());
+    Vector<float> manifold_id(triangulation.n_active_cells());
+    for (const auto &cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          material_id[cell->active_cell_index()] = cell->material_id();
+          manifold_id[cell->active_cell_index()] = cell->manifold_id();
+        }
+
+    data_out.add_data_vector(material_id, "material_id");
+    data_out.add_data_vector(manifold_id, "manifold_id");
+
     // Since we are dealing with a large deformation problem, it would be nice
     // to display the result on a displaced grid!  The MappingQEulerian class
     // linked with the DataOut class provides an interface through which this
