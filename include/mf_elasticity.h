@@ -1040,63 +1040,120 @@ namespace Cook_Membrane
     else if (parameters.type == "Holes")
       {
         Assert (dim == 2, ExcNotImplemented());
-        // plate with two holes of different radius
-        Point<dim> center1, center2;
-        center1[0] = 0.5;
-        center1[1] = 0.5;
-        center2[0] = 1.5;
-        center2[1] = 1.5;
+        // plate with a hole and 2 inclusions (geometry from Miehe 2007,
+        // On multiscale FE analyses...)
+        Point<dim> center_1, center_2, center_3;
+        center_1[0] = -0.2;
+        center_1[1] = -0.2;
+        center_2[0] = -0.2;
+        center_2[1] =  0.2;
+        center_3[0] =  0.2;
+        center_3[1] =  0.0;
+        const double R = 0.15;
+        const types::manifold_id tfi_manifold_id = 10;
 
         // inclusion:
-        Triangulation<dim> sphere, sphere_flat;
-        GridGenerator::hyper_ball(sphere,
-                                  center1,
-                                  0.2);
-        sphere.refine_global(1);
-        // at this point we have 8 faces across circumference
-        GridGenerator::flatten_triangulation(sphere,
-                                             sphere_flat);
+        Triangulation<dim> sphere_2, sphere_3;
 
-        Triangulation<dim> left;
+        auto create_inclusion = [](Triangulation<dim> &out,
+                                   const Point<dim> &center,
+                                   const double radius,
+                                   const types::manifold_id tfi_manifold_id) -> void {
+          Triangulation<dim> sphere;
+          GridGenerator::hyper_ball(sphere,
+                                    center,
+                                    radius);
+
+          for (const auto &cell : sphere.active_cell_iterators())
+            {
+              if (cell->center().distance(center) < 1e-8)
+                {
+                  cell->set_all_manifold_ids(numbers::flat_manifold_id);
+                }
+              else
+                {
+                  cell->set_manifold_id(tfi_manifold_id);
+                }
+              cell->set_material_id(2);
+            }
+
+          sphere.refine_global(1);
+          // at this point we have 8 faces across circumference
+          GridGenerator::flatten_triangulation(sphere,
+                                               out);
+        };
+
+        create_inclusion(sphere_2, center_2, R, tfi_manifold_id);
+        create_inclusion(sphere_3, center_3, R, tfi_manifold_id);
+
+        Triangulation<dim> plate_1;
         GridGenerator::plate_with_a_hole(
-                          left,
-                          0.2 /*inner_radius*/,
-                          0.5 /*outer_radius*/,
+                          plate_1,
+                          R /*inner_radius*/,
+                          0.2 /*outer_radius*/,
                           0. /*pad_bottom*/,
-                          1. /*pad_top*/,
-                          0. /*pad_left*/,
+                          0. /*pad_top*/,
+                          0.1 /*pad_left*/,
                           0. /*pad_right*/,
-                          center1 /*center*/,
+                          center_1 /*center*/,
                           1 /*polar_manifold_id*/,
                           2 /*tfi_manifold_id*/,
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
 
-        Triangulation<dim> right;
+        Triangulation<dim> plate_2;
         GridGenerator::plate_with_a_hole(
-                          right,
-                          0.1 /*inner_radius*/,
-                          0.5 /*outer_radius*/,
-                          1. /*pad_bottom*/,
+                          plate_2,
+                          R /*inner_radius*/,
+                          0.2 /*outer_radius*/,
+                          0. /*pad_bottom*/,
                           0. /*pad_top*/,
-                          0. /*pad_left*/,
+                          0.1 /*pad_left*/,
                           0. /*pad_right*/,
-                          center2 /*center*/,
+                          center_2 /*center*/,
                           3 /*polar_manifold_id*/,
                           4 /*tfi_manifold_id*/,
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
 
-         Triangulation<dim> left_right;
-         GridGenerator::merge_triangulations(left,
-                                             right,
-                                             left_right,
+        Triangulation<dim> plate_3;
+        GridGenerator::plate_with_a_hole(
+                          plate_3,
+                          R /*inner_radius*/,
+                          0.2 /*outer_radius*/,
+                          0.2 /*pad_bottom*/,
+                          0.2 /*pad_top*/,
+                          0.  /*pad_left*/,
+                          0.1 /*pad_right*/,
+                          center_3 /*center*/,
+                          5 /*polar_manifold_id*/,
+                          6 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+
+         Triangulation<dim> left_plate;
+         GridGenerator::merge_triangulations(plate_1,
+                                             plate_2,
+                                             left_plate,
                                              0.01);
 
-         GridGenerator::merge_triangulations(left_right,
-                                             sphere_flat,
+         Triangulation<dim> left;
+         GridGenerator::merge_triangulations(left_plate,
+                                             sphere_2,
+                                             left,
+                                             0.01);
+
+         Triangulation<dim> right;
+         GridGenerator::merge_triangulations(plate_3,
+                                             sphere_3,
+                                             right,
+                                             0.01);
+
+         GridGenerator::merge_triangulations(left,
+                                             right,
                                              triangulation,
                                              0.01);
 
@@ -1106,10 +1163,10 @@ namespace Cook_Membrane
                 ++face)
              if (cell->face(face)->at_boundary() == true)
                {
-                 if (std::abs(cell->face(face)->center()[1] - 0.0) <
+                 if (std::abs(cell->face(face)->center()[1] - (-0.4)) <
                      tol_boundary)
                    cell->face(face)->set_boundary_id(1); // -Y faces
-                 else if (std::abs(cell->face(face)->center()[1] - 2.0) <
+                 else if (std::abs(cell->face(face)->center()[1] - 0.4) <
                           tol_boundary)
                    cell->face(face)->set_boundary_id(11); // +Y faces
                }
@@ -1811,11 +1868,11 @@ namespace Cook_Membrane
       }
     else
       {
-        // take center of left part:
-        soln_pt[0] = 0.5 * parameters.scale;
-        soln_pt[1] = 1. * parameters.scale;
+        // take center :
+        soln_pt[0] = 0. * parameters.scale;
+        soln_pt[1] = 0. * parameters.scale;
         if (dim == 3)
-          soln_pt[2] = 1. * parameters.scale;
+          soln_pt[2] = 0. * parameters.scale;
 
       }
     double vertical_tip_displacement       = 0.0;
