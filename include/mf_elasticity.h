@@ -1053,19 +1053,23 @@ namespace Cook_Membrane
         // as in the global refinement cells will be repartitioned and faces of
         // their parents should have right IDs
         for (auto cell : triangulation.active_cell_iterators())
-          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-              ++face)
-            if (cell->face(face)->at_boundary() == true)
-              {
-                if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
-                  cell->face(face)->set_boundary_id(1); // -X faces
-                else if (std::abs(cell->face(face)->center()[0] - 48.0) <
-                        tol_boundary)
-                  cell->face(face)->set_boundary_id(11); // +X faces
-                else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
-                        tol_boundary)
-                  cell->face(face)->set_boundary_id(2); // +Z and -Z faces
-              }
+          {
+            for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+                ++face)
+              if (cell->face(face)->at_boundary() == true)
+                {
+                  if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
+                    cell->face(face)->set_boundary_id(1); // -X faces
+                  else if (std::abs(cell->face(face)->center()[0] - 48.0) <
+                          tol_boundary)
+                    cell->face(face)->set_boundary_id(11); // +X faces
+                  else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
+                          tol_boundary)
+                    cell->face(face)->set_boundary_id(2); // +Z and -Z faces
+                }
+            // on the coarse mesh reset material ID
+            cell->set_material_id(0);
+          }
 
         // Transform the hyper-rectangle into the beam shape
         GridTools::transform(&grid_y_transform<dim>, triangulation);
