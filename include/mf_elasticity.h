@@ -1152,8 +1152,27 @@ namespace Cook_Membrane
                                              right,
                                              0.01);
 
-         GridGenerator::merge_triangulations(left,
-                                             right,
+         Triangulation<dim>                     top, bottom;
+         const std::vector<std::vector<double>> step_sizes = {
+           {0.1, 0.2, 0.2, 0.2, 0.2, 0.1}, {0.1}};
+         Point<dim> bl, tr;
+         bl[0] = -0.5;
+         bl[1] = 0.4;
+         tr[0] = 0.5;
+         tr[1] = 0.5;
+         GridGenerator::subdivided_hyper_rectangle(top, step_sizes, bl, tr);
+
+         bl[1] = -0.5;
+         tr[1] = -0.4;
+         GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
+
+         Triangulation<dim> top_bottom, left_right;
+         GridGenerator::merge_triangulations(top, bottom, top_bottom, 0.01);
+
+         GridGenerator::merge_triangulations(left, right, left_right, 0.01);
+
+         GridGenerator::merge_triangulations(left_right,
+                                             top_bottom,
                                              triangulation,
                                              0.01);
 
@@ -1163,10 +1182,10 @@ namespace Cook_Membrane
                 ++face)
              if (cell->face(face)->at_boundary() == true)
                {
-                 if (std::abs(cell->face(face)->center()[1] - (-0.4)) <
+                 if (std::abs(cell->face(face)->center()[1] - (-0.5)) <
                      tol_boundary)
                    cell->face(face)->set_boundary_id(1); // -Y faces
-                 else if (std::abs(cell->face(face)->center()[1] - 0.4) <
+                 else if (std::abs(cell->face(face)->center()[1] - 0.5) <
                           tol_boundary)
                    cell->face(face)->set_boundary_id(11); // +Y faces
                }
