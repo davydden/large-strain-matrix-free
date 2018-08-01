@@ -684,6 +684,15 @@ namespace Cook_Membrane
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
       material_inclusion;
 
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim,
+                                               VectorizedArray<NumberType>>>
+      material_inclusion_vec;
+
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<float>>>
+      material_inclusion_level;
+
     static const unsigned int n_components      = dim;
     static const unsigned int first_u_component = 0;
 
@@ -874,7 +883,20 @@ namespace Cook_Membrane
     , material_inclusion(
         std::make_shared<
           Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>(
-          parameters.mu*100.,
+          parameters.mu * 100.,
+          parameters.nu,
+          parameters.material_formulation))
+    , material_inclusion_vec(
+        std::make_shared<Material_Compressible_Neo_Hook_One_Field<
+          dim,
+          VectorizedArray<NumberType>>>(parameters.mu * 100.,
+                                        parameters.nu,
+                                        parameters.material_formulation))
+    , material_inclusion_level(
+        std::make_shared<
+          Material_Compressible_Neo_Hook_One_Field<dim,
+                                                   VectorizedArray<float>>>(
+          parameters.mu * 100.,
           parameters.nu,
           parameters.material_formulation))
     , qf_cell(n_q_points_1d)
@@ -890,8 +912,8 @@ namespace Cook_Membrane
         timer_output_file.open("timings.txt");
       }
 
-    mf_nh_operator.set_material(material_vec);
-    mf_ad_nh_operator.set_material(material_vec);
+    mf_nh_operator.set_material(material_vec, material_inclusion_vec);
+    mf_ad_nh_operator.set_material(material_vec, material_inclusion_vec);
   }
 
   // The class destructor simply clears the data held by the DOFHandler
@@ -1525,7 +1547,7 @@ namespace Cook_Membrane
 
     for (unsigned int level = 0; level <= max_level; ++level)
       {
-        mg_mf_nh_operator[level].set_material(material_level);
+        mg_mf_nh_operator[level].set_material(material_level, material_inclusion_level);
         mg_mf_nh_operator[level].cache();
         mg_mf_nh_operator[level].compute_diagonal();
 

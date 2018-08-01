@@ -60,7 +60,10 @@ public:
   set_material(
     std::shared_ptr<
       Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
-      material);
+      material,
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
+      material_inclusion);
 
   void
   compute_diagonal();
@@ -145,6 +148,10 @@ private:
   std::shared_ptr<
     Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
     material;
+
+  std::shared_ptr<
+    Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
+    material_inclusion;
 
   std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>
     inverse_diagonal_entries;
@@ -302,9 +309,13 @@ void
 NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::set_material(
   std::shared_ptr<
     Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
-    material_)
+    material_,
+  std::shared_ptr<
+    Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<number>>>
+    material_inclusion_)
 {
-  material = material_;
+  material           = material_;
+  material_inclusion = material_inclusion_;
 }
 
 
