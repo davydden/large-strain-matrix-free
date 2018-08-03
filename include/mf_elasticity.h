@@ -1764,7 +1764,6 @@ namespace Cook_Membrane
         assemble_system();
 
 #ifdef DEBUG
-        /*
         // check vmult of matrix-based and matrix-free for a random vector:
         {
           TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
@@ -1819,7 +1818,6 @@ namespace Cook_Membrane
                      " at Newton iteration " +
                      std::to_string(newton_iteration)));
         }
-        */
 #endif
 
         if (newton_iteration == 0)
