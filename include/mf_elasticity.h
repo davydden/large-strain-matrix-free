@@ -1175,19 +1175,22 @@ namespace Cook_Membrane
          GridGenerator::merge_triangulations(plate_1,
                                              plate_2,
                                              left_plate,
-                                             0.01);
+                                             0.01,
+                                             true);
 
          Triangulation<dim> left;
          GridGenerator::merge_triangulations(left_plate,
                                              sphere_2,
                                              left,
-                                             0.01);
+                                             0.01,
+                                             true);
 
          Triangulation<dim> right;
          GridGenerator::merge_triangulations(plate_3,
                                              sphere_3,
                                              right,
-                                             0.01);
+                                             0.01,
+                                             true);
 
          Triangulation<dim>                     top, bottom;
          const std::vector<std::vector<double>> step_sizes = {
@@ -1204,14 +1207,15 @@ namespace Cook_Membrane
          GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
 
          Triangulation<dim> top_bottom, left_right;
-         GridGenerator::merge_triangulations(top, bottom, top_bottom, 0.01);
+         GridGenerator::merge_triangulations(top, bottom, top_bottom, 0.01, true);
 
-         GridGenerator::merge_triangulations(left, right, left_right, 0.01);
+         GridGenerator::merge_triangulations(left, right, left_right, 0.01, true);
 
          GridGenerator::merge_triangulations(left_right,
                                              top_bottom,
                                              triangulation,
-                                             0.01);
+                                             0.01,
+                                             true);
 
          const double tol_boundary = 1e-6;
          for (auto cell : triangulation.active_cell_iterators())
