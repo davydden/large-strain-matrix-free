@@ -1095,7 +1095,8 @@ namespace Cook_Membrane
         auto create_inclusion = [](Triangulation<dim> &out,
                                    const Point<dim> &center,
                                    const double radius,
-                                   const types::manifold_id tfi_manifold_id) -> void {
+                                   const types::manifold_id tfi_manifold_id,
+                                   const types::manifold_id ball_id) -> void {
           Triangulation<dim> sphere;
           GridGenerator::hyper_ball(sphere,
                                     center,
@@ -1118,10 +1119,11 @@ namespace Cook_Membrane
           // at this point we have 8 faces across circumference
           GridGenerator::flatten_triangulation(sphere,
                                                out);
+          out.set_all_manifold_ids_on_boundary(ball_id);
         };
 
-        create_inclusion(sphere_2, center_2, R, 7);
-        create_inclusion(sphere_3, center_3, R, 8);
+        create_inclusion(sphere_2, center_2, R, 7, 2);
+        create_inclusion(sphere_3, center_3, R, 8, 3);
 
         Triangulation<dim> plate_1;
         GridGenerator::plate_with_a_hole(
