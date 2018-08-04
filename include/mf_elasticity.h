@@ -1074,6 +1074,7 @@ namespace Cook_Membrane
 
         // Transform the hyper-rectangle into the beam shape
         GridTools::transform(&grid_y_transform<dim>, triangulation);
+        GridTools::scale(parameters.scale, triangulation);
       }
     else if (parameters.type == "Holes")
       {
@@ -1081,22 +1082,25 @@ namespace Cook_Membrane
         // plate with a hole and 2 inclusions (geometry from Miehe 2007,
         // On multiscale FE analyses...)
         Point<dim> center_1, center_2, center_3;
-        center_1[0] = -0.2;
-        center_1[1] = -0.2;
-        center_2[0] = -0.2;
-        center_2[1] =  0.2;
-        center_3[0] =  0.2;
-        center_3[1] =  0.0;
-        const double R = 0.15;
+        center_1[0] = -0.2*parameters.scale;
+        center_1[1] = -0.2*parameters.scale;
+        center_2[0] = -0.2*parameters.scale;
+        center_2[1] =  0.2*parameters.scale;
+        center_3[0] =  0.2*parameters.scale;
+        center_3[1] =  0.0*parameters.scale;
+        const double R = 0.15*parameters.scale;
+        const double R2 = 0.2*parameters.scale;
+        const double pLR = 0.1*parameters.scale;
+        const double pBT = 0.2*parameters.scale;
 
         // inclusion:
         Triangulation<dim> sphere_2, sphere_3;
 
-        auto create_inclusion = [](Triangulation<dim> &out,
-                                   const Point<dim> &center,
-                                   const double radius,
-                                   const types::manifold_id tfi_manifold_id,
-                                   const types::manifold_id ball_id) -> void {
+        auto create_inclusion = [&](Triangulation<dim> &     out,
+                                    const Point<dim> &       center,
+                                    const double             radius,
+                                    const types::manifold_id tfi_manifold_id,
+                                    const types::manifold_id ball_id) -> void {
           Triangulation<dim> sphere;
           GridGenerator::hyper_ball(sphere,
                                     center,
@@ -1104,7 +1108,7 @@ namespace Cook_Membrane
 
           for (const auto &cell : sphere.active_cell_iterators())
             {
-              if (cell->center().distance(center) < 1e-8)
+              if (cell->center().distance(center) < 1e-8*this->parameters.scale)
                 {
                   cell->set_all_manifold_ids(numbers::flat_manifold_id);
                 }
@@ -1129,10 +1133,10 @@ namespace Cook_Membrane
         GridGenerator::plate_with_a_hole(
                           plate_1,
                           R /*inner_radius*/,
-                          0.2 /*outer_radius*/,
+                          R2 /*outer_radius*/,
                           0. /*pad_bottom*/,
                           0. /*pad_top*/,
-                          0.1 /*pad_left*/,
+                          pLR /*pad_left*/,
                           0. /*pad_right*/,
                           center_1 /*center*/,
                           1 /*polar_manifold_id*/,
@@ -1150,10 +1154,10 @@ namespace Cook_Membrane
         GridGenerator::plate_with_a_hole(
                           plate_2,
                           R /*inner_radius*/,
-                          0.2 /*outer_radius*/,
+                          R2 /*outer_radius*/,
                           0. /*pad_bottom*/,
                           0. /*pad_top*/,
-                          0.1 /*pad_left*/,
+                          pLR /*pad_left*/,
                           0. /*pad_right*/,
                           center_2 /*center*/,
                           2 /*polar_manifold_id*/,
@@ -1171,11 +1175,11 @@ namespace Cook_Membrane
         GridGenerator::plate_with_a_hole(
                           plate_3,
                           R /*inner_radius*/,
-                          0.2 /*outer_radius*/,
-                          0.2 /*pad_bottom*/,
-                          0.2 /*pad_top*/,
+                          R2 /*outer_radius*/,
+                          pBT /*pad_bottom*/,
+                          pBT /*pad_top*/,
                           0.  /*pad_left*/,
-                          0.1 /*pad_right*/,
+                          pLR /*pad_right*/,
                           center_3 /*center*/,
                           3 /*polar_manifold_id*/,
                           6 /*tfi_manifold_id*/,
@@ -1190,22 +1194,28 @@ namespace Cook_Membrane
 
          Triangulation<dim>                     top, bottom;
          const std::vector<std::vector<double>> step_sizes = {
-           {0.1, 0.2, 0.2, 0.2, 0.2, 0.1}, {0.1}};
+           {0.1 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.1 * parameters.scale},
+           {0.1 * parameters.scale}};
          Point<dim> bl, tr;
-         bl[0] = -0.5;
-         bl[1] = 0.4;
-         tr[0] = 0.5;
-         tr[1] = 0.5;
+         bl[0] = -0.5*parameters.scale;
+         bl[1] = 0.4*parameters.scale;
+         tr[0] = 0.5*parameters.scale;
+         tr[1] = 0.5*parameters.scale;
          GridGenerator::subdivided_hyper_rectangle(top, step_sizes, bl, tr);
 
-         bl[1] = -0.5;
-         tr[1] = -0.4;
+         bl[1] = -0.5*parameters.scale;
+         tr[1] = -0.4*parameters.scale;
          GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
 
          GridGenerator::merge_triangulations(
            {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
            triangulation,
-           0.01,
+           0.01*parameters.scale,
            true);
 
          // we need to set manifolds:
@@ -1224,16 +1234,16 @@ namespace Cook_Membrane
              triangulation.set_manifold(i, transfinite_manifold);
            }
 
-         const double tol_boundary = 1e-6;
+         const double tol_boundary = 1e-6*parameters.scale;
          for (auto cell : triangulation.active_cell_iterators())
            for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
                 ++face)
              if (cell->face(face)->at_boundary() == true)
                {
-                 if (std::abs(cell->face(face)->center()[1] - (-0.5)) <
+                 if (std::abs(cell->face(face)->center()[1] - (-0.5*parameters.scale)) <
                      tol_boundary)
                    cell->face(face)->set_boundary_id(1); // -Y faces
-                 else if (std::abs(cell->face(face)->center()[1] - 0.5) <
+                 else if (std::abs(cell->face(face)->center()[1] - 0.5*parameters.scale) <
                           tol_boundary)
                    cell->face(face)->set_boundary_id(11); // +Y faces
                }
@@ -1249,8 +1259,6 @@ namespace Cook_Membrane
       {
         Assert(false, ExcNotImplemented())
       }
-
-    GridTools::scale(parameters.scale, triangulation);
 
     triangulation.refine_global(parameters.n_global_refinement);
 
