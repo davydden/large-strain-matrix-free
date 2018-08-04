@@ -41,6 +41,7 @@ static const unsigned int debug_level = 0;
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
+#include <deal.II/grid/manifold_lib.h>
 #include <deal.II/grid/tria.h>
 
 #include <deal.II/lac/affine_constraints.h>
@@ -1087,7 +1088,6 @@ namespace Cook_Membrane
         center_3[0] =  0.2;
         center_3[1] =  0.0;
         const double R = 0.15;
-        const types::manifold_id tfi_manifold_id = 10;
 
         // inclusion:
         Triangulation<dim> sphere_2, sphere_3;
@@ -1120,8 +1120,8 @@ namespace Cook_Membrane
                                                out);
         };
 
-        create_inclusion(sphere_2, center_2, R, tfi_manifold_id);
-        create_inclusion(sphere_3, center_3, R, tfi_manifold_id);
+        create_inclusion(sphere_2, center_2, R, 7);
+        create_inclusion(sphere_3, center_3, R, 8);
 
         Triangulation<dim> plate_1;
         GridGenerator::plate_with_a_hole(
@@ -1134,7 +1134,7 @@ namespace Cook_Membrane
                           0. /*pad_right*/,
                           center_1 /*center*/,
                           1 /*polar_manifold_id*/,
-                          2 /*tfi_manifold_id*/,
+                          4 /*tfi_manifold_id*/,
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
@@ -1149,8 +1149,8 @@ namespace Cook_Membrane
                           0.1 /*pad_left*/,
                           0. /*pad_right*/,
                           center_2 /*center*/,
-                          3 /*polar_manifold_id*/,
-                          4 /*tfi_manifold_id*/,
+                          2 /*polar_manifold_id*/,
+                          5 /*tfi_manifold_id*/,
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
@@ -1165,32 +1165,11 @@ namespace Cook_Membrane
                           0.  /*pad_left*/,
                           0.1 /*pad_right*/,
                           center_3 /*center*/,
-                          5 /*polar_manifold_id*/,
+                          3 /*polar_manifold_id*/,
                           6 /*tfi_manifold_id*/,
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
-
-         Triangulation<dim> left_plate;
-         GridGenerator::merge_triangulations(plate_1,
-                                             plate_2,
-                                             left_plate,
-                                             0.01,
-                                             true);
-
-         Triangulation<dim> left;
-         GridGenerator::merge_triangulations(left_plate,
-                                             sphere_2,
-                                             left,
-                                             0.01,
-                                             true);
-
-         Triangulation<dim> right;
-         GridGenerator::merge_triangulations(plate_3,
-                                             sphere_3,
-                                             right,
-                                             0.01,
-                                             true);
 
          Triangulation<dim>                     top, bottom;
          const std::vector<std::vector<double>> step_sizes = {
@@ -1206,16 +1185,23 @@ namespace Cook_Membrane
          tr[1] = -0.4;
          GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
 
-         Triangulation<dim> top_bottom, left_right;
-         GridGenerator::merge_triangulations(top, bottom, top_bottom, 0.01, true);
+         GridGenerator::merge_triangulations(
+           {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
+           triangulation,
+           0.01,
+           true);
 
-         GridGenerator::merge_triangulations(left, right, left_right, 0.01, true);
+         // we need to set manifolds:
+         PolarManifold<dim> polar_manifold_1(center_1);
+         PolarManifold<dim> polar_manifold_2(center_2);
+         PolarManifold<dim> polar_manifold_3(center_3);
 
-         GridGenerator::merge_triangulations(left_right,
-                                             top_bottom,
-                                             triangulation,
-                                             0.01,
-                                             true);
+         triangulation.set_manifold(1, polar_manifold_1);
+         triangulation.set_manifold(2, polar_manifold_2);
+         triangulation.set_manifold(3, polar_manifold_3);
+
+        //  for (unsigned int i = 4; i <= 8; ++i)
+        //    triangulation.set_manifold(i, TransfiniteInterpolationManifold<dim>());
 
          const double tol_boundary = 1e-6;
          for (auto cell : triangulation.active_cell_iterators())
