@@ -1140,6 +1140,11 @@ namespace Cook_Membrane
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
+         for (const auto &cell : plate_1.active_cell_iterators())
+            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                 ++face_no)
+               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 1)
+                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
         Triangulation<dim> plate_2;
         GridGenerator::plate_with_a_hole(
@@ -1156,6 +1161,11 @@ namespace Cook_Membrane
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
+         for (const auto &cell : plate_2.active_cell_iterators())
+            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                 ++face_no)
+               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 2)
+                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
         Triangulation<dim> plate_3;
         GridGenerator::plate_with_a_hole(
@@ -1172,6 +1182,11 @@ namespace Cook_Membrane
                           1. /*L*/,
                           1. /*n_slices*/,
                           false /*colorize*/);
+         for (const auto &cell : plate_3.active_cell_iterators())
+           for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                ++face_no)
+              if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 3)
+                cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
          Triangulation<dim>                     top, bottom;
          const std::vector<std::vector<double>> step_sizes = {
@@ -1202,8 +1217,12 @@ namespace Cook_Membrane
          triangulation.set_manifold(2, polar_manifold_2);
          triangulation.set_manifold(3, polar_manifold_3);
 
-        //  for (unsigned int i = 4; i <= 8; ++i)
-        //    triangulation.set_manifold(i, TransfiniteInterpolationManifold<dim>());
+         for (unsigned int i = 4; i <= 8; ++i)
+           {
+             TransfiniteInterpolationManifold<dim> transfinite_manifold;
+             transfinite_manifold.initialize(triangulation);
+             triangulation.set_manifold(i, transfinite_manifold);
+           }
 
          const double tol_boundary = 1e-6;
          for (auto cell : triangulation.active_cell_iterators())
