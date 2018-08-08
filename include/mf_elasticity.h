@@ -41,6 +41,7 @@ static const unsigned int debug_level = 0;
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
+#include <deal.II/grid/manifold_lib.h>
 #include <deal.II/grid/tria.h>
 
 #include <deal.II/lac/affine_constraints.h>
@@ -169,6 +170,7 @@ namespace Cook_Membrane
       double       scale;
       unsigned int dim;
       unsigned int n_global_refinement;
+      std::string  type;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -201,6 +203,12 @@ namespace Cook_Membrane
                           "2",
                           Patterns::Integer(2, 3),
                           "Dimension of the problem");
+
+        prm.declare_entry("Type",
+                  "Cook",
+                  Patterns::Selection("Cook|Holes"),
+                  "Type of the problem");
+
       }
       prm.leave_subsection();
     }
@@ -214,6 +222,7 @@ namespace Cook_Membrane
         scale               = prm.get_double("Grid scale");
         dim                 = prm.get_integer("Dimension");
         n_global_refinement = prm.get_integer("Global refinement");
+        type                = prm.get("Type");
       }
       prm.leave_subsection();
     }
@@ -660,9 +669,10 @@ namespace Cook_Membrane
 
     IndexSet locally_owned_dofs, locally_relevant_dofs;
 
-    // homogeneous material
+    // matrix material
     std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
       material;
+
     std::shared_ptr<
       Material_Compressible_Neo_Hook_One_Field<dim,
                                                VectorizedArray<NumberType>>>
@@ -670,6 +680,19 @@ namespace Cook_Membrane
     std::shared_ptr<
       Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<float>>>
       material_level;
+
+    // inclusion material
+    std::shared_ptr<Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>
+      material_inclusion;
+
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim,
+                                               VectorizedArray<NumberType>>>
+      material_inclusion_vec;
+
+    std::shared_ptr<
+      Material_Compressible_Neo_Hook_One_Field<dim, VectorizedArray<float>>>
+      material_inclusion_level;
 
     static const unsigned int n_components      = dim;
     static const unsigned int first_u_component = 0;
@@ -858,6 +881,25 @@ namespace Cook_Membrane
           parameters.mu,
           parameters.nu,
           parameters.material_formulation))
+    , material_inclusion(
+        std::make_shared<
+          Material_Compressible_Neo_Hook_One_Field<dim, NumberType>>(
+          parameters.mu * 100.,
+          parameters.nu,
+          parameters.material_formulation))
+    , material_inclusion_vec(
+        std::make_shared<Material_Compressible_Neo_Hook_One_Field<
+          dim,
+          VectorizedArray<NumberType>>>(parameters.mu * 100.,
+                                        parameters.nu,
+                                        parameters.material_formulation))
+    , material_inclusion_level(
+        std::make_shared<
+          Material_Compressible_Neo_Hook_One_Field<dim,
+                                                   VectorizedArray<float>>>(
+          parameters.mu * 100.,
+          parameters.nu,
+          parameters.material_formulation))
     , qf_cell(n_q_points_1d)
     , qf_face(n_q_points_1d)
     , n_q_points(qf_cell.size())
@@ -871,8 +913,8 @@ namespace Cook_Membrane
         timer_output_file.open("timings.txt");
       }
 
-    mf_nh_operator.set_material(material_vec);
-    mf_ad_nh_operator.set_material(material_vec);
+    mf_nh_operator.set_material(material_vec, material_inclusion_vec);
+    mf_ad_nh_operator.set_material(material_vec, material_inclusion_vec);
   }
 
   // The class destructor simply clears the data held by the DOFHandler
@@ -981,53 +1023,242 @@ namespace Cook_Membrane
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::make_grid()
   {
-    // Divide the beam, but only along the x- and y-coordinate directions
-    std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
-    // Only allow one element through the thickness
-    // (modelling a plane strain condition)
-    if (dim == 3)
-      repetitions[dim - 1] = 1;
+    if (parameters.type == "Cook")
+      {
+        // Divide the beam, but only along the x- and y-coordinate directions
+        std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
+        // Only allow one element through the thickness
+        // (modelling a plane strain condition)
+        if (dim == 3)
+          repetitions[dim - 1] = 1;
 
-    const Point<dim> bottom_left =
-      (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
-    const Point<dim> top_right =
-      (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
+        const Point<dim> bottom_left =
+          (dim == 3 ? Point<dim>(0.0, 0.0, -0.5) : Point<dim>(0.0, 0.0));
+        const Point<dim> top_right =
+          (dim == 3 ? Point<dim>(48.0, 44.0, 0.5) : Point<dim>(48.0, 44.0));
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation,
-                                              repetitions,
-                                              bottom_left,
-                                              top_right);
+        GridGenerator::subdivided_hyper_rectangle(triangulation,
+                                                  repetitions,
+                                                  bottom_left,
+                                                  top_right);
 
-    // Since we wish to apply a Neumann BC to the right-hand surface, we
-    // must find the cell faces in this part of the domain and mark them with
-    // a distinct boundary ID number.  The faces we are looking for are on the
-    // +x surface and will get boundary ID 11.
-    // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
-    // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
-    // ID 2 and we will use to impose the plane strain condition)
-    const double tol_boundary = 1e-6;
-    // NOTE: we need to set IDs regardless of cell being locally owned or not
-    // as in the global refinement cells will be repartitioned and faces of
-    // their parents should have right IDs
-    for (auto cell : triangulation.active_cell_iterators())
-      for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-           ++face)
-        if (cell->face(face)->at_boundary() == true)
+        // Since we wish to apply a Neumann BC to the right-hand surface, we
+        // must find the cell faces in this part of the domain and mark them with
+        // a distinct boundary ID number.  The faces we are looking for are on the
+        // +x surface and will get boundary ID 11.
+        // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
+        // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
+        // ID 2 and we will use to impose the plane strain condition)
+        const double tol_boundary = 1e-6;
+        // NOTE: we need to set IDs regardless of cell being locally owned or not
+        // as in the global refinement cells will be repartitioned and faces of
+        // their parents should have right IDs
+        for (auto cell : triangulation.active_cell_iterators())
           {
-            if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
-              cell->face(face)->set_boundary_id(1); // -X faces
-            else if (std::abs(cell->face(face)->center()[0] - 48.0) <
-                     tol_boundary)
-              cell->face(face)->set_boundary_id(11); // +X faces
-            else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
-                     tol_boundary)
-              cell->face(face)->set_boundary_id(2); // +Z and -Z faces
+            for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+                ++face)
+              if (cell->face(face)->at_boundary() == true)
+                {
+                  if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
+                    cell->face(face)->set_boundary_id(1); // -X faces
+                  else if (std::abs(cell->face(face)->center()[0] - 48.0) <
+                          tol_boundary)
+                    cell->face(face)->set_boundary_id(11); // +X faces
+                  else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
+                          tol_boundary)
+                    cell->face(face)->set_boundary_id(2); // +Z and -Z faces
+                }
+            // on the coarse mesh reset material ID
+            cell->set_material_id(0);
           }
 
-    // Transform the hyper-rectangle into the beam shape
-    GridTools::transform(&grid_y_transform<dim>, triangulation);
+        // Transform the hyper-rectangle into the beam shape
+        GridTools::transform(&grid_y_transform<dim>, triangulation);
+        GridTools::scale(parameters.scale, triangulation);
+      }
+    else if (parameters.type == "Holes")
+      {
+        Assert (dim == 2, ExcNotImplemented());
+        // plate with a hole and 2 inclusions (geometry from Miehe 2007,
+        // On multiscale FE analyses...)
+        Point<dim> center_1, center_2, center_3;
+        center_1[0] = -0.2*parameters.scale;
+        center_1[1] = -0.2*parameters.scale;
+        center_2[0] = -0.2*parameters.scale;
+        center_2[1] =  0.2*parameters.scale;
+        center_3[0] =  0.2*parameters.scale;
+        center_3[1] =  0.0*parameters.scale;
+        const double R = 0.15*parameters.scale;
+        const double R2 = 0.2*parameters.scale;
+        const double pLR = 0.1*parameters.scale;
+        const double pBT = 0.2*parameters.scale;
 
-    GridTools::scale(parameters.scale, triangulation);
+        // inclusion:
+        Triangulation<dim> sphere_2, sphere_3;
+
+        auto create_inclusion = [&](Triangulation<dim> &     out,
+                                    const Point<dim> &       center,
+                                    const double             radius,
+                                    const types::manifold_id tfi_manifold_id,
+                                    const types::manifold_id ball_id) -> void {
+          Triangulation<dim> sphere;
+          GridGenerator::hyper_ball(sphere,
+                                    center,
+                                    radius);
+
+          for (const auto &cell : sphere.active_cell_iterators())
+            {
+              if (cell->center().distance(center) < 1e-8*this->parameters.scale)
+                {
+                  cell->set_all_manifold_ids(numbers::flat_manifold_id);
+                }
+              else
+                {
+                  cell->set_manifold_id(tfi_manifold_id);
+                }
+              cell->set_material_id(2);
+            }
+
+          sphere.refine_global(1);
+          // at this point we have 8 faces across circumference
+          GridGenerator::flatten_triangulation(sphere,
+                                               out);
+          out.set_all_manifold_ids_on_boundary(ball_id);
+        };
+
+        create_inclusion(sphere_2, center_2, R, 7, 2);
+        create_inclusion(sphere_3, center_3, R, 8, 3);
+
+        Triangulation<dim> plate_1;
+        GridGenerator::plate_with_a_hole(
+                          plate_1,
+                          R /*inner_radius*/,
+                          R2 /*outer_radius*/,
+                          0. /*pad_bottom*/,
+                          0. /*pad_top*/,
+                          pLR /*pad_left*/,
+                          0. /*pad_right*/,
+                          center_1 /*center*/,
+                          1 /*polar_manifold_id*/,
+                          4 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+         for (const auto &cell : plate_1.active_cell_iterators())
+            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                 ++face_no)
+               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 1)
+                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+
+        Triangulation<dim> plate_2;
+        GridGenerator::plate_with_a_hole(
+                          plate_2,
+                          R /*inner_radius*/,
+                          R2 /*outer_radius*/,
+                          0. /*pad_bottom*/,
+                          0. /*pad_top*/,
+                          pLR /*pad_left*/,
+                          0. /*pad_right*/,
+                          center_2 /*center*/,
+                          2 /*polar_manifold_id*/,
+                          5 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+         for (const auto &cell : plate_2.active_cell_iterators())
+            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                 ++face_no)
+               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 2)
+                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+
+        Triangulation<dim> plate_3;
+        GridGenerator::plate_with_a_hole(
+                          plate_3,
+                          R /*inner_radius*/,
+                          R2 /*outer_radius*/,
+                          pBT /*pad_bottom*/,
+                          pBT /*pad_top*/,
+                          0.  /*pad_left*/,
+                          pLR /*pad_right*/,
+                          center_3 /*center*/,
+                          3 /*polar_manifold_id*/,
+                          6 /*tfi_manifold_id*/,
+                          1. /*L*/,
+                          1. /*n_slices*/,
+                          false /*colorize*/);
+         for (const auto &cell : plate_3.active_cell_iterators())
+           for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+                ++face_no)
+              if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 3)
+                cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+
+         Triangulation<dim>                     top, bottom;
+         const std::vector<std::vector<double>> step_sizes = {
+           {0.1 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.2 * parameters.scale,
+            0.1 * parameters.scale},
+           {0.1 * parameters.scale}};
+         Point<dim> bl, tr;
+         bl[0] = -0.5*parameters.scale;
+         bl[1] = 0.4*parameters.scale;
+         tr[0] = 0.5*parameters.scale;
+         tr[1] = 0.5*parameters.scale;
+         GridGenerator::subdivided_hyper_rectangle(top, step_sizes, bl, tr);
+
+         bl[1] = -0.5*parameters.scale;
+         tr[1] = -0.4*parameters.scale;
+         GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
+
+         GridGenerator::merge_triangulations(
+           {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
+           triangulation,
+           0.01*parameters.scale,
+           true);
+
+         // we need to set manifolds:
+         PolarManifold<dim> polar_manifold_1(center_1);
+         PolarManifold<dim> polar_manifold_2(center_2);
+         PolarManifold<dim> polar_manifold_3(center_3);
+
+         triangulation.set_manifold(1, polar_manifold_1);
+         triangulation.set_manifold(2, polar_manifold_2);
+         triangulation.set_manifold(3, polar_manifold_3);
+
+         for (unsigned int i = 4; i <= 8; ++i)
+           {
+             TransfiniteInterpolationManifold<dim> transfinite_manifold;
+             transfinite_manifold.initialize(triangulation);
+             triangulation.set_manifold(i, transfinite_manifold);
+           }
+
+         const double tol_boundary = 1e-6*parameters.scale;
+         for (auto cell : triangulation.active_cell_iterators())
+           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+                ++face)
+             if (cell->face(face)->at_boundary() == true)
+               {
+                 if (std::abs(cell->face(face)->center()[1] - (-0.5*parameters.scale)) <
+                     tol_boundary)
+                   cell->face(face)->set_boundary_id(1); // -Y faces
+                 else if (std::abs(cell->face(face)->center()[1] - 0.5*parameters.scale) <
+                          tol_boundary)
+                   cell->face(face)->set_boundary_id(11); // +Y faces
+               }
+
+          // output coarse grid:
+          /*
+          GridOut grid_out;
+          std::ofstream output("grid.eps");
+          grid_out.write_eps(triangulation, output);
+          */
+      }
+    else
+      {
+        Assert(false, ExcNotImplemented())
+      }
 
     triangulation.refine_global(parameters.n_global_refinement);
 
@@ -1152,11 +1383,30 @@ namespace Cook_Membrane
     data.tasks_parallel_scheme = MatrixFree<dim, double>::AdditionalData::none;
     data.mapping_update_flags  = update_gradients | update_JxW_values;
 
-    typename MatrixFree<dim, float>::AdditionalData mg_additional_data;
-    mg_additional_data.tasks_parallel_scheme =
-      MatrixFree<dim, float>::AdditionalData::none; // partition_color;
-    mg_additional_data.mapping_update_flags =
-      update_gradients | update_JxW_values;
+    // make sure materials with different ID end up in different SIMD blocks:
+    data.cell_vectorization_categories_strict = true;
+    data.cell_vectorization_category.resize(triangulation.n_active_cells());
+    for (const auto & cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        data.cell_vectorization_category[cell->active_cell_index()] = cell->material_id();
+
+    std::vector<typename MatrixFree<dim, float>::AdditionalData> mg_additional_data(max_level+1);
+    for (unsigned int level = 0; level <= max_level; ++level)
+      {
+        mg_additional_data[level].tasks_parallel_scheme =
+          MatrixFree<dim, float>::AdditionalData::none; // partition_color;
+
+        mg_additional_data[level].mapping_update_flags =
+          update_gradients | update_JxW_values;
+
+        mg_additional_data[level].cell_vectorization_categories_strict = true;
+        mg_additional_data[level].cell_vectorization_category.resize(triangulation.n_cells(level));
+        for (const auto & cell : triangulation.cell_iterators_on_level(level))
+          if (cell->is_locally_owned_on_level())
+            mg_additional_data[level].cell_vectorization_category[cell->index()] = cell->material_id();
+
+        mg_additional_data[level].level_mg_handler = level;
+      }
 
     if (it_nr <= 1)
       {
@@ -1201,8 +1451,6 @@ namespace Cook_Membrane
         mg_eulerian_mapping.resize(0);
         for (unsigned int level = 0; level <= max_level; ++level)
           {
-            mg_additional_data.level_mg_handler = level;
-
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
@@ -1231,12 +1479,12 @@ namespace Cook_Membrane
             mg_mf_data_reference[level]->reinit(dof_handler_ref,
                                                 level_constraints,
                                                 quad,
-                                                mg_additional_data);
+                                                mg_additional_data[level]);
             mg_mf_data_current[level]->reinit(*euler_level,
                                               dof_handler_ref,
                                               level_constraints,
                                               quad,
-                                              mg_additional_data);
+                                              mg_additional_data[level]);
 
             mg_eulerian_mapping.push_back(euler_level);
 
@@ -1256,9 +1504,10 @@ namespace Cook_Membrane
         mf_data_current->reinit(
           *eulerian_mapping, dof_handler_ref, constraints, quad, data);
 
-        mg_additional_data.initialize_indices = false;
         for (unsigned int level = 0; level <= max_level; ++level)
           {
+            mg_additional_data[level].initialize_indices = false;
+
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
             DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
@@ -1269,7 +1518,6 @@ namespace Cook_Membrane
               mg_constrained_dofs.get_boundary_indices(level));
             level_constraints.close();
 
-            mg_additional_data.level_mg_handler = level;
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
@@ -1278,7 +1526,7 @@ namespace Cook_Membrane
                                               dof_handler_ref,
                                               level_constraints,
                                               quad,
-                                              mg_additional_data);
+                                              mg_additional_data[level]);
           }
       }
 
@@ -1339,7 +1587,7 @@ namespace Cook_Membrane
 
     for (unsigned int level = 0; level <= max_level; ++level)
       {
-        mg_mf_nh_operator[level].set_material(material_level);
+        mg_mf_nh_operator[level].set_material(material_level, material_inclusion_level);
         mg_mf_nh_operator[level].cache();
         mg_mf_nh_operator[level].compute_diagonal();
 
@@ -1705,10 +1953,22 @@ namespace Cook_Membrane
     pcout << std::endl;
 
     Point<dim> soln_pt;
-    soln_pt[0] = 48.0 * parameters.scale;
-    soln_pt[1] = 60.0 * parameters.scale;
-    if (dim == 3)
-      soln_pt[2] = 0.5 * parameters.scale;
+    if (parameters.type == "Cook")
+      {
+        soln_pt[0] = 48.0 * parameters.scale;
+        soln_pt[1] = 60.0 * parameters.scale;
+        if (dim == 3)
+          soln_pt[2] = 0.5 * parameters.scale;
+      }
+    else
+      {
+        // take center :
+        soln_pt[0] = 0. * parameters.scale;
+        soln_pt[1] = 0. * parameters.scale;
+        if (dim == 3)
+          soln_pt[2] = 0. * parameters.scale;
+
+      }
     double vertical_tip_displacement       = 0.0;
     double vertical_tip_displacement_check = 0.0;
 
@@ -1807,6 +2067,8 @@ namespace Cook_Membrane
     for (const auto &cell : dof_handler_ref.active_cell_iterators())
       if (cell->is_locally_owned())
         {
+          const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
+
           fe_values_ref.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
@@ -1849,7 +2111,7 @@ namespace Cook_Membrane
                 }
 
               SymmetricTensor<2, dim, NumberType> tau;
-              material->get_tau(tau, det_F, b_bar, b);
+              cell_mat->get_tau(tau, det_F, b_bar, b);
               const Tensor<2, dim, NumberType> tau_ns(tau);
               const double                     JxW = fe_values_ref.JxW(q_point);
 
@@ -1865,7 +2127,7 @@ namespace Cook_Membrane
                       // which is only added along the local matrix diagonals:
                       cell_matrix(i, j) +=
                         (symm_grad_Nx[i] *
-                         material->act_Jc(
+                         cell_mat->act_Jc(
                            det_F,
                            b_bar,
                            b,
@@ -1906,13 +2168,23 @@ namespace Cook_Membrane
                     // Note that the contributions to the right hand side vector
                     // we compute here only exist in the displacement components
                     // of the vector.
-                    const double time_ramp = (time.current() / time.end()) * parameters.force_multiplier;
+                    const double time_ramp = (time.current() / time.end()) *
+                                             parameters.force_multiplier;
+                    const double area =
+                      (parameters.type == "Cook" ? 16.0 : 2.0) *
+                      parameters.scale * parameters.scale;
+                    const double force =
+                      (parameters.type == "Cook" ? 1.0 : 0.05);
                     const double magnitude =
-                      (1.0 /
-                       (16.0 * parameters.scale * 1.0 * parameters.scale)) *
+                      (force / area) *
                       time_ramp; // (Total force) / (RHS surface area)
                     Tensor<1, dim> dir;
-                    dir[1]                        = 1.0;
+                    if (parameters.type == "Cook")
+                      dir[1] = 1.0;
+                    else if (parameters.type == "Holes")
+                      // apply simple shear force
+                      dir[0] = 1.0;
+
                     const Tensor<1, dim> traction = magnitude * dir;
 
                     for (unsigned int i = 0; i < dofs_per_cell; ++i)
@@ -2237,6 +2509,18 @@ namespace Cook_Membrane
     for (unsigned int i = 0; i < subdomain.size(); ++i)
       subdomain(i) = triangulation.locally_owned_subdomain();
     data_out.add_data_vector(subdomain, "subdomain");
+
+    Vector<float> material_id(triangulation.n_active_cells());
+    Vector<float> manifold_id(triangulation.n_active_cells());
+    for (const auto &cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          material_id[cell->active_cell_index()] = cell->material_id();
+          manifold_id[cell->active_cell_index()] = cell->manifold_id();
+        }
+
+    data_out.add_data_vector(material_id, "material_id");
+    data_out.add_data_vector(manifold_id, "manifold_id");
 
     // Since we are dealing with a large deformation problem, it would be nice
     // to display the result on a displaced grid!  The MappingQEulerian class
