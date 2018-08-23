@@ -54,7 +54,8 @@ public:
   void
   initialize(std::shared_ptr<const MatrixFree<dim, number>>    data_current,
              std::shared_ptr<const MatrixFree<dim, number>>    data_reference,
-             const LinearAlgebra::distributed::Vector<number> &displacement);
+             const LinearAlgebra::distributed::Vector<number> &displacement,
+             const std::string caching);
 
   void
   set_material(
@@ -158,9 +159,14 @@ private:
   std::shared_ptr<DiagonalMatrix<LinearAlgebra::distributed::Vector<number>>>
     diagonal_entries;
 
-  Table<2, VectorizedArray<number>> cached_scalar;
+  Table<2, VectorizedArray<number>>                 cached_scalar;
+  Table<2, VectorizedArray<number>>                 cached_second_scalar;
+  Table<2, Tensor<2, dim, VectorizedArray<number>>> cached_tensor2;
+  Table<2, SymmetricTensor<4, dim, VectorizedArray<number>>> cached_tensor4;
 
   bool diagonal_is_available;
+
+  std::string mf_caching;
 };
 
 
@@ -169,6 +175,7 @@ template <int dim, int fe_degree, int n_q_points_1d, typename number>
 NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::NeoHookOperator()
   : Subscriptor()
   , diagonal_is_available(false)
+  , mf_caching("")
 {}
 
 
@@ -224,17 +231,36 @@ void
 NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::initialize(
   std::shared_ptr<const MatrixFree<dim, number>>    data_current_,
   std::shared_ptr<const MatrixFree<dim, number>>    data_reference_,
-  const LinearAlgebra::distributed::Vector<number> &displacement_)
+  const LinearAlgebra::distributed::Vector<number> &displacement_,
+  const std::string caching)
 {
   data_current   = data_current_;
   data_reference = data_reference_;
   displacement   = &displacement_;
-
+  mf_caching     = caching;
 
   const unsigned int n_cells = data_reference_->n_macro_cells();
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> phi(
     *data_reference_);
-  cached_scalar.reinit(n_cells, phi.n_q_points);
+  if (mf_caching == "scalar")
+    {
+      cached_scalar.reinit(n_cells, phi.n_q_points);
+    }
+  else if (mf_caching == "tensor2")
+    {
+      cached_scalar.reinit(n_cells, phi.n_q_points);
+      cached_second_scalar.reinit(n_cells, phi.n_q_points);
+      cached_tensor2.reinit(n_cells, phi.n_q_points);
+    }
+  else if (mf_caching == "tensor4")
+    {
+      cached_tensor2.reinit(n_cells, phi.n_q_points);
+      cached_tensor4.reinit(n_cells, phi.n_q_points);
+    }
+  else
+    {
+      AssertThrow(false, ExcMessage("Unknown caching"));
+    }
 }
 
 
@@ -297,8 +323,44 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
                          "det_F[" + std::to_string(i) +
                          "] is not positive: " + std::to_string(det_F[i])));
 
-              cached_scalar(cell, q) =
+              const VectorizedArray<number> scalar =
                 cell_mat->mu - 2.0 * cell_mat->lambda * std::log(det_F);
+              if (mf_caching == "scalar")
+                {
+                  cached_scalar(cell, q) = scalar;
+                }
+              else if (mf_caching == "tensor2")
+                {
+                  cached_scalar(cell, q)        = scalar * 2. / det_F;
+                  cached_second_scalar(cell, q) = 2 * cell_mat->lambda / det_F;
+
+                  SymmetricTensor<2, dim, VectorizedArray<number>> tau;
+                  {
+                    tau = cell_mat->mu * Physics::Elasticity::Kinematics::b(F);
+                    for (unsigned int d = 0; d < dim; ++d)
+                      tau[d][d] -= scalar;
+                  }
+                  cached_tensor2(cell, q) = tau / det_F;
+                }
+              else if (mf_caching == "tensor4")
+                {
+                  SymmetricTensor<2, dim, VectorizedArray<number>> tau;
+                  {
+                    tau = cell_mat->mu * Physics::Elasticity::Kinematics::b(F);
+                    for (unsigned int d = 0; d < dim; ++d)
+                      tau[d][d] -= scalar;
+                  }
+                  cached_tensor2(cell, q) = tau / det_F;
+                  cached_tensor4(cell, q) =
+                    (scalar * 2. / det_F) *
+                      Physics::Elasticity::StandardTensors<dim>::S +
+                    (cell_mat->lambda * 2. / det_F) *
+                      Physics::Elasticity::StandardTensors<dim>::IxI;
+                }
+              else
+                {
+                  AssertThrow(false, ExcMessage("Unknown caching"));
+                }
             }
         }
       else
@@ -542,11 +604,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> &phi_reference,
   const unsigned int                                        cell) const
 {
-  const unsigned int material_id = data_current->get_cell_iterator(cell, 0)->material_id();
-  const auto &cell_mat =
-    (material_id == 0 ?
-       material :
-       material_inclusion);
+  const unsigned int material_id =
+    data_current->get_cell_iterator(cell, 0)->material_id();
+  const auto &cell_mat = (material_id == 0 ? material : material_inclusion);
 
   // make sure all filled cells have the same ID
 #ifdef DEBUG
@@ -581,7 +641,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   const number            mu           = cell_mat->mu;
   const number            lambda       = cell_mat->lambda;
 
-  phi_reference.evaluate(false, true, false);
+  if (mf_caching == "scalar")
+    phi_reference.evaluate(false, true, false);
+
   phi_current.evaluate(false, true, false);
   phi_current_s.evaluate(false, true, false);
 
@@ -765,7 +827,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
         } // end of the loop over quadrature points
     }
-  else if (cell_mat->formulation == 1)
+  else if (cell_mat->formulation == 1 && mf_caching == "scalar")
+    // the least amount of cache and the most calculations
     {
       for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
         {
@@ -835,8 +898,47 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
           phi_current.submit_gradient(geo / det_F, q);
         }
     }
+  else if (cell_mat->formulation == 1 && mf_caching == "tensor2")
+    // moderate cache of two scalar + 2nd order tensor
+    {
+      for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
+        {
+          const Tensor<2, dim, NumberType> &grad_Nx_v =
+            phi_current.get_gradient(q);
+          const SymmetricTensor<2, dim, NumberType> &symm_grad_Nx_v =
+            phi_current.get_symmetric_gradient(q);
+
+          SymmetricTensor<2, dim, VectorizedArray<number>> jc_part;
+          {
+            jc_part = cached_scalar(cell, q) * symm_grad_Nx_v;
+            const NumberType tmp =
+              cached_second_scalar(cell, q) * trace(symm_grad_Nx_v);
+            for (unsigned int i = 0; i < dim; ++i)
+              jc_part[i][i] += tmp;
+          }
+
+          phi_current_s.submit_symmetric_gradient(jc_part, q);
+          phi_current.submit_gradient(grad_Nx_v * cached_tensor2(cell, q), q);
+        }
+    }
+  else if (cell_mat->formulation == 1 && mf_caching == "tensor4")
+    // maximum cache (2nd order  4th order sym)
+    {
+      for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
+        {
+          const Tensor<2, dim, NumberType> &grad_Nx_v =
+            phi_current.get_gradient(q);
+          const SymmetricTensor<2, dim, NumberType> &symm_grad_Nx_v =
+            phi_current.get_symmetric_gradient(q);
+
+          phi_current_s.submit_symmetric_gradient(cached_tensor4(cell, q) *
+                                                    symm_grad_Nx_v,
+                                                  q);
+          phi_current.submit_gradient(grad_Nx_v * cached_tensor2(cell, q), q);
+        }
+    }
   else
-    AssertThrow(false, ExcMessage("Unknown material formulation"));
+    AssertThrow(false, ExcMessage("Unknown material formulation/caching"));
 
   // actually do the contraction
   phi_current.integrate(false, true);

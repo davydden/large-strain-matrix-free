@@ -292,6 +292,7 @@ namespace Cook_Membrane
       std::string  preconditioner_type;
       double       preconditioner_relaxation;
       unsigned int cond_number_cg_iterations;
+      std::string  mf_caching;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -336,6 +337,12 @@ namespace Cook_Membrane
           "20",
           Patterns::Integer(1),
           "Number of CG iterations to estimate condition number");
+
+        prm.declare_entry("MF caching",
+                  "scalar",
+                  Patterns::Selection("scalar|tensor2|tensor4"),
+                  "Type of preconditioner");
+
       }
       prm.leave_subsection();
     }
@@ -352,6 +359,7 @@ namespace Cook_Membrane
         preconditioner_relaxation = prm.get_double("Preconditioner relaxation");
         cond_number_cg_iterations =
           prm.get_integer("Condition number CG iterations");
+        mf_caching                = prm.get("MF caching");
       }
       prm.leave_subsection();
     }
@@ -1443,7 +1451,8 @@ namespace Cook_Membrane
 
         mf_nh_operator.initialize(mf_data_current,
                                   mf_data_reference,
-                                  solution_total);
+                                  solution_total,
+                                  parameters.mf_caching);
         mf_ad_nh_operator.initialize(mf_data_current,
                                      mf_data_reference,
                                      solution_total);
@@ -1491,7 +1500,8 @@ namespace Cook_Membrane
             mg_mf_nh_operator[level].initialize(
               mg_mf_data_current[level],
               mg_mf_data_reference[level],
-              mg_solution_total[level]); // (mg_level_data, mg_constrained_dofs,
+              mg_solution_total[level],
+              parameters.mf_caching); // (mg_level_data, mg_constrained_dofs,
                                          // level);
           }
       }
