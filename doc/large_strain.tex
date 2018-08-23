@@ -21,6 +21,8 @@
 %\usepackage[labelformat=simple]{subcaption}
 %\usepackage{xspace}
 
+\usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
+
 %\renewcommand{\thetable}{\arabic{table}}
 %\captionsetup[table]{labelformat=simple, labelsep=colon}
 
@@ -117,7 +119,7 @@ Denoting $\chi\left( \bullet \right)$ as the Piola transformation, which implies
 \chi\left( \mathbf{A} \right)_{ij}
   = F_{iA} A_{AB} F_{jB} \\
 \chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
-  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD} 
+  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
 \end{gather}
 for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then the Kirchhoff stress and its associated material tangent are
 \begin{gather}
@@ -126,7 +128,7 @@ for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then 
   = \chi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
   = \mu \mathbf{b} - \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{I}
 \end{gather}
-and 
+and
 \begin{gather}
 J \boldsymbol{\mathcal{C}}
   = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
@@ -155,6 +157,33 @@ where superscript $h$ denotes that this representation is related to the FE mesh
 macroscopic fields. For the sake of this study $\gz N^i_\varphi (\gz X)$ are such that only one component of the vector shape function is non-zero for each $i$.
 
 \section{Matrix-free operator evaluation}
+
+Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, when performing contraction with gradient of shape functions in current (deformed) configuration, the integration is also done over the deformed configuration. Therefore in order to arrive at the integral in undeformed configuration, additionally we have to divide by Jacobian $J$ of the mapping at a given quadrature point.
+
+\begin{algorithm}[h]
+  \SetKwInOut{Input}{Given}
+  \SetKwInOut{Output}{Return}
+  \Input{RHS FE vector $\gz x$, current FE solution $\gz u$,
+  cacheed $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
+  \Output{action of the FE tangent on $\gz x$}
+  \ForEach{ element $K \in \Omega^h$ }{
+        \ForEach{quadrature point $q$ on $K$}{
+          evaluate $\gz \nabla_X \gz u^h$ \tcp*{2nd order}
+          evaluate $\gz F = \gz I + \gz \nabla_X \gz u^h$ \tcp*{2nd order}
+          evaluate $J = \rm{det}(\gz F)$ \tcp*{scalar}
+          evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
+          evaluate $\gz x_1 := \gz \nabla \gz x$ \tcp*{2nd order}
+          evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
+          evaluate $J \boldsymbol{\mathcal{G}} = x_1 \cdot \gz \tau$ \tcp*{2nd order symmetric}
+          ``submit'' contraction $\left[\gz \nabla \gz N_i : J\boldsymbol{\mathcal{G}}\right] / J$\;
+          evaluate $\gz x_2 := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+          evaluate $J \boldsymbol{\mathcal{C}} = 2 c_1 \gz x_2 + 2 \lambda \rm{tr}( \gz x_2) \gz I $ \tcp*{2nd order symmetric}
+          ``submit'' contraction $\left[\gz \nabla_{sym} \gz N_i : J \boldsymbol{\mathcal{C}} \right]/ J$ \;
+        }
+  }
+  \caption{Matrix-free tangent cell operator, variant 1: minimum caching.}
+  \label{alg:mf_multivector}
+\end{algorithm}
 
 TODO[DD]: summary of what's happening, how operator is evaluated, what we do, what operations (determinant, etc), count number of FLOPS
 
