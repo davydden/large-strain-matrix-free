@@ -80,6 +80,7 @@ static const unsigned int debug_level = 0;
 #include <material.h>
 #include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
+#include <sys/stat.h>
 
 #include <fstream>
 #include <iostream>
@@ -115,6 +116,41 @@ namespace Cook_Membrane
   // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
+    struct Misc
+    {
+      std::string output_folder;
+      static void
+      declare_parameters(ParameterHandler &prm);
+
+      void
+      parse_parameters(ParameterHandler &prm);
+    };
+
+    void
+    Misc::declare_parameters(ParameterHandler &prm)
+    {
+      prm.enter_subsection("Misc");
+      {
+        prm.declare_entry("Output folder",
+                          "",
+                          Patterns::Anything(),
+                          "Output folder (must exist)");
+      }
+      prm.leave_subsection();
+    }
+
+    void
+    Misc::parse_parameters(ParameterHandler &prm)
+    {
+      prm.enter_subsection("Misc");
+      {
+        output_folder = prm.get("Output folder");
+        if (!output_folder.empty() && output_folder.back() != '/')
+          output_folder += "/";
+      }
+      prm.leave_subsection();
+    }
+
     // @sect4{Finite Element system}
 
     // Here we specify the polynomial order used to approximate the solution.
@@ -474,7 +510,8 @@ namespace Cook_Membrane
                            public Materials,
                            public LinearSolver,
                            public NonlinearSolver,
-                           public Time
+                           public Time,
+                           public Misc
 
     {
       AllParameters(const std::string &input_file);
@@ -503,6 +540,7 @@ namespace Cook_Membrane
       LinearSolver::declare_parameters(prm);
       NonlinearSolver::declare_parameters(prm);
       Time::declare_parameters(prm);
+      Misc::declare_parameters(prm);
     }
 
     void
@@ -514,6 +552,7 @@ namespace Cook_Membrane
       LinearSolver::parse_parameters(prm);
       NonlinearSolver::parse_parameters(prm);
       Time::parse_parameters(prm);
+      Misc::parse_parameters(prm);
     }
   } // namespace Parameters
 
@@ -837,6 +876,36 @@ namespace Cook_Membrane
 
   // @sect4{Public interface}
 
+  int
+  create_directory(std::string pathname, const mode_t mode)
+  {
+    // force trailing / so we can handle everything in loop
+    if (pathname[pathname.size() - 1] != '/')
+      {
+        pathname += '/';
+      }
+
+    size_t pre = 0;
+    size_t pos;
+
+    while ((pos = pathname.find_first_of('/', pre)) != std::string::npos)
+      {
+        const std::string subdir = pathname.substr(0, pos++);
+        pre                      = pos;
+
+        // if leading '/', first string is 0 length
+        if (subdir.size() == 0)
+          continue;
+
+        int mkdir_return_value;
+        if ((mkdir_return_value = mkdir(subdir.c_str(), mode)) &&
+            (errno != EEXIST))
+          return mkdir_return_value;
+      }
+
+    return 0;
+  }
+
   // We initialise the Solid class using data extracted from the parameter file.
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   Solid<dim, degree, n_q_points_1d, NumberType>::Solid(
@@ -915,10 +984,16 @@ namespace Cook_Membrane
   {
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
-        deallogfile.open("deallog.txt");
+        const int ierr =
+          create_directory(parameters.output_folder,
+                           S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+        Assert(ierr == 0,
+               ExcMessage("can't create: " + parameters.output_folder));
+
+        deallogfile.open(parameters.output_folder + "deallog.txt");
         deallog.attach(deallogfile);
 
-        timer_output_file.open("timings.txt");
+        timer_output_file.open(parameters.output_folder + "timings.txt");
       }
 
     mf_nh_operator.set_material(material_vec, material_inclusion_vec);
@@ -2549,7 +2624,7 @@ namespace Cook_Membrane
              std::to_string(proc) + ".vtu";
     };
 
-    const std::string filename =
+    const std::string filename = parameters.output_folder +
       name_func(triangulation.locally_owned_subdomain());
     std::ofstream output(filename.c_str());
     data_out.write_vtu(output);
@@ -2563,14 +2638,14 @@ namespace Cook_Membrane
              ++i)
           filenames.push_back(name_func(i));
 
-        const std::string filename_pvtu =
+        const std::string filename_pvtu = parameters.output_folder +
           "solution-" + std::to_string(time.get_timestep()) + ".pvtu";
         std::ofstream pvtu_master(filename_pvtu.c_str());
         data_out.write_pvtu_record(pvtu_master, filenames);
       }
 
     // output MG mesh
-    const std::string mg_mesh = "mg_mesh";
+    const std::string mg_mesh = parameters.output_folder + "mg_mesh";
     GridOut           grid_out;
     grid_out.write_mesh_per_processor_as_vtu(triangulation,
                                              mg_mesh,
