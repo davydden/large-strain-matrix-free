@@ -31,7 +31,7 @@
 #define GET_D(L) BOOST_PP_TUPLE_ELEM(3, 0, BOOST_PP_TUPLE_ELEM(1, 0, L))
 #define GET_Q(L) BOOST_PP_TUPLE_ELEM(3, 1, BOOST_PP_TUPLE_ELEM(1, 0, L))
 
-#define MF_DQ BOOST_PP_TUPLE_TO_LIST(4, ((1, 2), (2, 3), (3, 4), (4, 5)))
+#define MF_DQ BOOST_PP_TUPLE_TO_LIST(8, ((1, 2), (2, 3), (3, 4), (4, 5), (5,6), (6,7), (7,8), (8,9)))
 
 #define DOIF2(R, L)                                            \
   else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))   \
