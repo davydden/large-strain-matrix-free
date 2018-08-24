@@ -10,7 +10,7 @@
 \usepackage{bm}
 %\usepackage{bbm}
 %\usepackage{caption}
-%\usepackage{color}
+\usepackage{color}
 %\usepackage{geometry}
 %\usepackage{graphicx}
 %\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
@@ -20,7 +20,6 @@
 %\usepackage{srcltx}
 %\usepackage[labelformat=simple]{subcaption}
 %\usepackage{xspace}
-
 \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
 
 %\renewcommand{\thetable}{\arabic{table}}
@@ -158,6 +157,10 @@ macroscopic fields. For the sake of this study $\gz N^i_\varphi (\gz X)$ are suc
 
 \section{Matrix-free operator evaluation}
 
+{\color{red}
+[DA] Daniel, please add a brief intro about MF (readership will likely not know anything about it), maybe borrow 1-2 pictures to explain how tensor-product structure is handled.
+}
+
 Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, when performing contraction with gradient of shape functions in current (deformed) configuration, the integration is also done over the deformed configuration. Therefore in order to arrive at the integral in undeformed configuration, additionally we have to divide by Jacobian $J$ of the mapping at a given quadrature point.
 
 \begin{algorithm}[h]
@@ -172,18 +175,62 @@ Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, whe
           evaluate $\gz F = \gz I + \gz \nabla_X \gz u^h$ \tcp*{2nd order}
           evaluate $J = \rm{det}(\gz F)$ \tcp*{scalar}
           evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
-          evaluate $\gz x_1 := \gz \nabla \gz x$ \tcp*{2nd order}
+          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
           evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
-          evaluate $J \boldsymbol{\mathcal{G}} = x_1 \cdot \gz \tau$ \tcp*{2nd order symmetric}
-          ``submit'' contraction $\left[\gz \nabla \gz N_i : J\boldsymbol{\mathcal{G}}\right] / J$\;
-          evaluate $\gz x_2 := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
-          evaluate $J \boldsymbol{\mathcal{C}} = 2 c_1 \gz x_2 + 2 \lambda \rm{tr}( \gz x_2) \gz I $ \tcp*{2nd order symmetric}
-          ``submit'' contraction $\left[\gz \nabla_{sym} \gz N_i : J \boldsymbol{\mathcal{C}} \right]/ J$ \;
+          evaluate $\boldsymbol{\mathcal{G}} \gz g = \gz g \cdot \gz \tau/J$ \tcp*{2nd order}
+          ``submit'' contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
+          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{C}}\gz g_s = \left[2 c_1 \gz g_s + 2 \lambda\, \rm{tr}( \gz g_s) \gz I \right]/J$ \tcp*{2nd order symmetric}
+          ``submit'' contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
         }
   }
-  \caption{Matrix-free tangent cell operator, variant 1: minimum caching.}
-  \label{alg:mf_multivector}
+  \caption{Matrix-free tangent cell operator: scalar cache}
+  \label{alg:mf_scalar}
 \end{algorithm}
+
+\begin{algorithm}[h]
+  \SetKwInOut{Input}{Given}
+  \SetKwInOut{Output}{Return}
+  \Input{RHS FE vector $\gz x$,
+  cached
+  $c_1 := 2\left[\mu - 2 \lambda \log(J)\right]/J$,
+  $c_2 := 2\lambda/J$ and $\gz \tau/J$ for each cell and quadrature point}
+  \Output{action of the FE tangent on $\gz x$}
+  \ForEach{ element $K \in \Omega^h$ }{
+        \ForEach{quadrature point $q$ on $K$}{
+          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
+          evaluate $\boldsymbol{\mathcal{G}}\gz g = \gz g \cdot \left[\gz \tau/J \right]$ \tcp*{2nd order}
+          ``submit'' contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$ \;
+          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{C}} \gz g_s = c_1 \gz g_s + c_2 \, \rm{tr}(\gz g_s) \gz I$ \tcp*{2nd order symmetric}
+          ``submit'' contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}} \gz g_s $ \;
+        }
+  }
+  \caption{Matrix-free tangent cell operator, variant 1: cache second order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate refential quantities like $\gz F$ at runtime.}
+  \label{alg:mf_tensor2}
+\end{algorithm}
+
+\begin{algorithm}[h]
+  \SetKwInOut{Input}{Given}
+  \SetKwInOut{Output}{Return}
+  \Input{RHS FE vector $\gz x$,
+  cached $\gz \tau/J$ and $\boldsymbol{\mathcal{C}}$ for each cell and quadrature point}
+  \Output{action of the FE tangent on $\gz x$}
+  \ForEach{ element $K \in \Omega^h$ }{
+        \ForEach{quadrature point $q$ on $K$}{
+          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
+          evaluate $\boldsymbol{\mathcal{G}} \gz g = \gz g \cdot \left[\gz \tau/J\right]$ \tcp*{2nd order}
+          ``submit'' contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
+          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{C}}\gz g_s = \boldsymbol{\mathcal{C}}\gz : \gz g_s$ \tcp*{2nd order symmetric}
+          ``submit'' contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
+        }
+  }
+  \caption{Matrix-free tangent cell operator: cache fourth order material tangent $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
+  \label{alg:mf_tensor4}
+\end{algorithm}
+
+The primary difference between Algorithm \ref{alg:mf_tensor2} and Algorithm \ref{alg:mf_tensor4}, is that the former utilizes the chosen structure of free energy function and thereby ends up with a computationally cheap way of evaluation of $\boldsymbol{\mathcal{C}} \gz g_s $, whereas the latter performs the double contraction between the fourth order and second order tensors.
 
 TODO[DD]: summary of what's happening, how operator is evaluated, what we do, what operations (determinant, etc), count number of FLOPS
 
