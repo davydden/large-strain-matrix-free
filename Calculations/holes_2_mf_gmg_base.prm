@@ -1,0 +1,41 @@
+subsection Finite element system
+  set Polynomial degree = 1
+  set Quadrature order  = 2
+end
+
+subsection Geometry
+  set Grid scale         = 1e-3
+  set Type               = Holes
+  set Global refinement  = 2
+end
+
+
+subsection Linear solver
+  set Max iteration multiplier   = 1
+  set Residual                   = 1e-6
+  set Preconditioner type        = gmg
+  set Preconditioner relaxation  = 0.65
+  set Solver type                = MF_CG
+end
+
+
+subsection Material properties
+  set Poisson's ratio = 0.3
+  set Shear modulus   = 0.4225e6
+  set Formulation     = 1
+end
+
+
+subsection Nonlinear solver
+  set Max iterations Newton-Raphson = 10
+  set Tolerance displacement        = 1.0e-6
+  set Tolerance force               = 1.0e-9
+end
+
+
+subsection Time
+  # Do a single loading step:
+  set End time         = 0.1
+  set Force multiplier = 0.1
+  set Time step size   = 0.1
+end

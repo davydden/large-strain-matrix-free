@@ -1,0 +1,13 @@
+include holes_2_mf_gmg_base.prm
+
+#	 Number of active cells: 22528
+#	 Number of degrees of freedom: 2887680
+
+subsection Finite element system
+  set Polynomial degree = 8
+  set Quadrature order  = 9
+end
+
+subsection Geometry
+  set Global refinement  = 4
+end
