@@ -11,3 +11,7 @@ end
 subsection Geometry
   set Global refinement  = 7
 end
+
+subsection Misc
+  set Output folder = holes_p1_scalar
+end
