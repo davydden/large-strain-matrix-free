@@ -20,6 +20,7 @@ static const unsigned int debug_level = 0;
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/quadrature_point_data.h>
+#include <deal.II/base/revision.h>
 #include <deal.II/base/std_cxx11/shared_ptr.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
@@ -998,6 +999,54 @@ namespace Cook_Membrane
 
     mf_nh_operator.set_material(material_vec, material_inclusion_vec);
     mf_ad_nh_operator.set_material(material_vec, material_inclusion_vec);
+
+    // print some data about how we run:
+    const int n_tasks =
+      dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
+    const int          n_threads = dealii::MultithreadInfo::n_threads();
+    const unsigned int n_vect_doubles =
+      VectorizedArray<double>::n_array_elements;
+    const unsigned int n_vect_bits = 8 * sizeof(double) * n_vect_doubles;
+
+    timer_out
+      << "-----------------------------------------------------------------------------"
+      << std::endl
+#ifdef DEBUG
+      << "--     . running in DEBUG mode" << std::endl
+#else
+      << "--     . running in OPTIMIZED mode" << std::endl
+#endif
+      << "--     . running with " << n_tasks << " MPI process"
+      << (n_tasks == 1 ? "" : "es") << std::endl;
+
+    if (n_threads > 1)
+      timer_out << "--     . using " << n_threads << " threads "
+                << (n_tasks == 1 ? "" : "each") << std::endl;
+
+    timer_out << "--     . vectorization over " << n_vect_doubles
+              << " doubles = " << n_vect_bits << " bits (";
+
+    if (n_vect_bits == 64)
+      timer_out << "disabled";
+    if (n_vect_bits == 128)
+      timer_out << "SSE2";
+    else if (n_vect_bits == 256)
+      timer_out << "AVX";
+    else if (n_vect_bits == 512)
+      timer_out << "AVX512";
+    else
+      AssertThrow(false, ExcNotImplemented());
+
+    timer_out << "), VECTORIZATION_LEVEL="
+              << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
+
+    timer_out << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
+              << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
+              << ")" << std::endl;
+    timer_out
+      << "-----------------------------------------------------------------------------"
+      << std::endl
+      << std::endl;
   }
 
   // The class destructor simply clears the data held by the DOFHandler
@@ -1867,7 +1916,6 @@ namespace Cook_Membrane
         // solution_delta for this iteration.
         assemble_system();
 
-#ifdef DEBUG
         // check vmult of matrix-based and matrix-free for a random vector:
         {
           TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
@@ -1879,11 +1927,26 @@ namespace Cook_Membrane
           constraints.set_zero(src_trilinos);
 
           LinearAlgebra::distributed::Vector<double> src(newton_update),
-            dst_mf(newton_update), diff(newton_update);
+            dst_mf(newton_update);
           copy_trilinos(src, src_trilinos);
 
-          tangent_matrix.vmult(dst_mb, src_trilinos);
-          mf_nh_operator.vmult(dst_mf, src);
+          const unsigned int n_times = 10;
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (Trilinos)");
+              tangent_matrix.vmult(dst_mb, src_trilinos);
+            }
+
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF)");
+              mf_nh_operator.vmult(dst_mf, src);
+            }
+
+#ifdef DEBUG
+          LinearAlgebra::distributed::Vector<double> diff(newton_update);
 
           copy_trilinos(diff, dst_mb);
           diff.add(-1, dst_mf);
@@ -1921,8 +1984,8 @@ namespace Cook_Membrane
                      std::to_string(diff.local_element(i)) +
                      " at Newton iteration " +
                      std::to_string(newton_iteration)));
-        }
 #endif
+        }
 
         if (newton_iteration == 0)
           error_residual_0 = error_residual;
