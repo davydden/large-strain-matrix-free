@@ -58,8 +58,8 @@ subsection Geometry
 end
 
 subsection Linear solver
-  set Preconditioner type        = {4}
-  set Solver type                = {5}
+  set Solver type                = {4}
+  set Preconditioner type        = {5}
   set MF caching                 = {6}
 end
 
