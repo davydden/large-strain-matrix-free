@@ -1,6 +1,6 @@
 #!/bin/bash
-#   allocate 1 nodes with 40 CPU per node for 4 hours:
-#PBS -l nodes=1:ppn=40,walltime=4:00:00
+#   allocate 1 nodes with 40 CPU per node for 6 hours:
+#PBS -l nodes=1:ppn=40,walltime=6:00:00
 #   job name
 #PBS -N dealii_large_strain
 #   stdout and stderr files:
