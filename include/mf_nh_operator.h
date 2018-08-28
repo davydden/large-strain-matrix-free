@@ -109,6 +109,11 @@ public:
   void
   cache();
 
+  /**
+   * Cache memory consumption by this class.
+   */
+  std::size_t memory_consumption() const;
+
 private:
   /**
    * Apply operator on a range of cells.
@@ -168,6 +173,19 @@ private:
 
   std::string mf_caching;
 };
+
+
+
+template <int dim, int fe_degree, int n_q_points_1d, typename number>
+std::size_t
+NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
+  const
+{
+  return cached_scalar.memory_consumption() +
+         cached_second_scalar.memory_consumption() +
+         cached_tensor2.memory_consumption() +
+         cached_tensor4.memory_consumption();
+}
 
 
 

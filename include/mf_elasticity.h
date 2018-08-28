@@ -871,6 +871,8 @@ namespace Cook_Membrane
       multigrid_preconditioner;
 
     MGConstrainedDoFs mg_constrained_dofs;
+
+    bool print_mf_memory;
   };
 
   // @sect3{Implementation of the <code>Solid</code> class}
@@ -982,6 +984,7 @@ namespace Cook_Membrane
     , qf_face(n_q_points_1d)
     , n_q_points(qf_cell.size())
     , n_q_points_f(qf_face.size())
+    , print_mf_memory(true)
   {
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
@@ -1471,6 +1474,17 @@ namespace Cook_Membrane
     solution_total.update_ghost_values();
 
     timer.leave_subsection();
+
+    // print some info
+    timer_out
+      << "dim   = " << dim << std::endl
+      << "p     = " << degree << std::endl
+      << "q     = " << n_q_points_1d << std::endl
+      << "cells = " << triangulation.n_global_active_cells() << std::endl
+      << "dofs  = " << dof_handler_ref.n_dofs() << std::endl
+      << std::endl
+      << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption(), mpi_communicator)/1000000 << " Mb" << std::endl;
+
   }
 
 
@@ -1580,6 +1594,13 @@ namespace Cook_Membrane
         mf_ad_nh_operator.initialize(mf_data_current,
                                      mf_data_reference,
                                      solution_total);
+
+        // print memory consumption by MF
+        if (print_mf_memory)
+          {
+            timer_out << "MF cache memory = " << dealii::Utilities::MPI::sum(mf_nh_operator.memory_consumption(), mpi_communicator)/1000000 << " Mb" << std::endl;
+            print_mf_memory = false;
+          }
 
         mg_eulerian_mapping.resize(0);
         for (unsigned int level = 0; level <= max_level; ++level)
