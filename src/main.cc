@@ -65,9 +65,9 @@ main(int argc, char *argv[])
         argc > 1 ? argv[1] : "parameters.prm";
       Parameters::AllParameters parameters(parameter_filename);
       {
-        // Allow multi-threading
+        // Disable multi-threading to have a better comparision with Trilinos
         Utilities::MPI::MPI_InitFinalize mpi_initialization(
-          argc, argv, dealii::numbers::invalid_unsigned_int);
+          argc, argv, 1/*dealii::numbers::invalid_unsigned_int*/);
 
         if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
           std::cout
