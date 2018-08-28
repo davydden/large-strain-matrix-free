@@ -31,7 +31,7 @@ solvers = [
 ]
 
 # MPI run command
-mpicmd = 'mpirun -np 20 /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build/main  /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/Calculations/{0}\n'
+mpicmd = 'mpirun -np 20 /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build/main  /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/Calculations/{0}.prm 2>&1 | tee {0}.toutput\nmv {0}.prm {0}/{0}.prm\n\n'
 
 
 #
@@ -84,7 +84,7 @@ for pqr in poly_quad_ref:
             s[2],
             name
         ))
-        filenames.append(fname)
+        filenames.append(name)
 
 # write bash script
 fout = open ('run.sh', 'w')
