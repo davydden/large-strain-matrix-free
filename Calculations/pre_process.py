@@ -7,6 +7,14 @@ import argparse
 parser = argparse.ArgumentParser(description='Prepare input files.')
 parser.add_argument('base_prm', metavar='base_prm', default='holes.prm', nargs='?',
                     help='Base parameter file to use')
+parser.add_argument('dir', metavar='dir', default='Emmy_RRZE', nargs='?',
+                    help='Directory to store calculations')
+parser.add_argument('prefix', metavar='prefix', default='/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build/', nargs='?',
+                    help='Directory with executable')
+parser.add_argument('calc', metavar='calc', default='/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/Calculations/', nargs='?',
+                    help='Directory with calculations')
+parser.add_argument('mpirun', metavar='mpirun', default='mpirun -np 20', nargs='?',
+                    help='mpi run command with cores')
 args = parser.parse_args()
 
 # parameters (list of tuples):
@@ -31,7 +39,7 @@ solvers = [
 ]
 
 # MPI run command
-mpicmd = 'mpirun -np 20 /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build/main  /home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/Calculations/{0}.prm 2>&1 | tee {0}.toutput\nmv {0}.prm {0}/{0}.prm\n\n'
+mpicmd = args.mpirun + ' ' + args.prefix + 'main ' + args.calc + '{0}.prm 2>&1 | tee {0}.toutput\nmv {0}.toutput {1}{0}/{0}.toutput\n\n'
 
 
 #
@@ -62,8 +70,14 @@ end
 
 base_prm = args.base_prm
 base_name = args.base_prm.split('.')[0]
+out_dir = args.dir
+
+if out_dir and not out_dir.endswith('/'):
+    out_dir = out_dir + '/'
 
 print 'base parameter file: {0}'.format(base_prm)
+print 'output directory:    {0}'.format(out_dir)
+print 'mpi comand:\n{0}'.format(mpicmd)
 
 filenames = []
 
@@ -82,11 +96,11 @@ for pqr in poly_quad_ref:
             s[0],
             s[1],
             s[2],
-            name
+            out_dir + name
         ))
         filenames.append(name)
 
 # write bash script
 fout = open ('run.sh', 'w')
 for f in filenames:
-    fout.write(mpicmd.format(f))
+    fout.write(mpicmd.format(f, out_dir))
