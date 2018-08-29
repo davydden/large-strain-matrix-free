@@ -1491,7 +1491,7 @@ namespace Cook_Membrane
       << "cells = " << triangulation.n_global_active_cells() << std::endl
       << "dofs  = " << dof_handler_ref.n_dofs() << std::endl
       << std::endl
-      << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption(), mpi_communicator)/1000000 << " Mb" << std::endl;
+      << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
 
   }
 
@@ -1606,7 +1606,7 @@ namespace Cook_Membrane
         // print memory consumption by MF
         if (print_mf_memory)
           {
-            timer_out << "MF cache memory = " << dealii::Utilities::MPI::sum(mf_nh_operator.memory_consumption(), mpi_communicator)/1000000 << " Mb" << std::endl;
+            timer_out << "MF cache memory = " << dealii::Utilities::MPI::sum(mf_nh_operator.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
             print_mf_memory = false;
           }
 
