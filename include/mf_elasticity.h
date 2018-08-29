@@ -120,6 +120,8 @@ namespace Cook_Membrane
     struct Misc
     {
       std::string output_folder;
+      bool output_solution;
+
       static void
       declare_parameters(ParameterHandler &prm);
 
@@ -136,6 +138,10 @@ namespace Cook_Membrane
                           "",
                           Patterns::Anything(),
                           "Output folder (must exist)");
+        prm.declare_entry("Output solution",
+                          "true",
+                          Patterns::Bool(),
+                          "Output solution and mesh");
       }
       prm.leave_subsection();
     }
@@ -148,6 +154,8 @@ namespace Cook_Membrane
         output_folder = prm.get("Output folder");
         if (!output_folder.empty() && output_folder.back() != '/')
           output_folder += "/";
+
+        output_solution = prm.get_bool("Output solution");
       }
       prm.leave_subsection();
     }
@@ -2660,6 +2668,9 @@ namespace Cook_Membrane
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::output_results() const
   {
+    if (!parameters.output_solution)
+      return;
+
     DataOut<dim> data_out;
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
       data_component_interpretation(

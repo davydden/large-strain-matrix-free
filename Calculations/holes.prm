@@ -39,3 +39,7 @@ subsection Time
   set Force multiplier = 0.1 # N
   set Time step size   = 0.1
 end
+
+subsection Misc
+  set Output solution = false
+end
