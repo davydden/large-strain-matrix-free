@@ -1171,6 +1171,62 @@ namespace Cook_Membrane
     return pt_out;
   }
 
+
+  void merge(
+    parallel::distributed::Triangulation<3> &                   dst,
+    const std::initializer_list<const Triangulation<2> *const> &triangulations,
+    const double                                                scale,
+    const Point<3> &                                            center_dim_1,
+    const Point<3> &                                            center_dim_2,
+    const Point<3> &                                            center_dim_3)
+  {
+    Triangulation<2> triangulation_2d;
+    GridGenerator::merge_triangulations(triangulations,
+                                        triangulation_2d,
+                                        0.01 * scale,
+                                        true);
+
+    GridGenerator::extrude_triangulation(
+      triangulation_2d, 5, 1.0 * scale, dst, true);
+
+    // we need to set manifolds:
+    Tensor<1, 3> dir_1(center_dim_1), dir_2(center_dim_2), dir_3(center_dim_3);
+    dir_1[2] = 1.;
+    dir_2[2] = 1.;
+    dir_3[2] = 1.;
+    CylindricalManifold<3> cylindrical_manifold_1(dir_1, center_dim_1);
+    CylindricalManifold<3> cylindrical_manifold_2(dir_2, center_dim_2);
+    CylindricalManifold<3> cylindrical_manifold_3(dir_3, center_dim_3);
+
+    dst.set_manifold(1, cylindrical_manifold_1);
+    dst.set_manifold(2, cylindrical_manifold_2);
+    dst.set_manifold(3, cylindrical_manifold_3);
+  }
+
+  void merge(
+    parallel::distributed::Triangulation<2> &                   dst,
+    const std::initializer_list<const Triangulation<2> *const> &triangulations,
+    const double                                                scale,
+    const Point<2> &                                            center_dim_1,
+    const Point<2> &                                            center_dim_2,
+    const Point<2> &                                            center_dim_3)
+  {
+    GridGenerator::merge_triangulations(triangulations,
+                                        dst,
+                                        0.01 * scale,
+                                        true);
+
+    // we need to set manifolds:
+    PolarManifold<2> polar_manifold_1(center_dim_1);
+    PolarManifold<2> polar_manifold_2(center_dim_2);
+    PolarManifold<2> polar_manifold_3(center_dim_3);
+
+    dst.set_manifold(1, polar_manifold_1);
+    dst.set_manifold(2, polar_manifold_2);
+    dst.set_manifold(3, polar_manifold_3);
+  }
+
+
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::make_grid()
@@ -1230,10 +1286,9 @@ namespace Cook_Membrane
       }
     else if (parameters.type == "Holes")
       {
-        Assert (dim == 2, ExcNotImplemented());
         // plate with a hole and 2 inclusions (geometry from Miehe 2007,
         // On multiscale FE analyses...)
-        Point<dim> center_1, center_2, center_3;
+        Point<2> center_1, center_2, center_3;
         center_1[0] = -0.2*parameters.scale;
         center_1[1] = -0.2*parameters.scale;
         center_2[0] = -0.2*parameters.scale;
@@ -1246,14 +1301,14 @@ namespace Cook_Membrane
         const double pBT = 0.2*parameters.scale;
 
         // inclusion:
-        Triangulation<dim> sphere_2, sphere_3;
+        Triangulation<2> sphere_2, sphere_3;
 
-        auto create_inclusion = [&](Triangulation<dim> &     out,
-                                    const Point<dim> &       center,
+        auto create_inclusion = [&](Triangulation<2> &     out,
+                                    const Point<2> &       center,
                                     const double             radius,
                                     const types::manifold_id tfi_manifold_id,
                                     const types::manifold_id ball_id) -> void {
-          Triangulation<dim> sphere;
+          Triangulation<2> sphere;
           GridGenerator::hyper_ball(sphere,
                                     center,
                                     radius);
@@ -1281,7 +1336,7 @@ namespace Cook_Membrane
         create_inclusion(sphere_2, center_2, R, 7, 2);
         create_inclusion(sphere_3, center_3, R, 8, 3);
 
-        Triangulation<dim> plate_1;
+        Triangulation<2> plate_1;
         GridGenerator::plate_with_a_hole(
                           plate_1,
                           R /*inner_radius*/,
@@ -1297,12 +1352,12 @@ namespace Cook_Membrane
                           1. /*n_slices*/,
                           false /*colorize*/);
          for (const auto &cell : plate_1.active_cell_iterators())
-            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+            for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
                  ++face_no)
                if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 1)
                  cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
-        Triangulation<dim> plate_2;
+        Triangulation<2> plate_2;
         GridGenerator::plate_with_a_hole(
                           plate_2,
                           R /*inner_radius*/,
@@ -1318,12 +1373,12 @@ namespace Cook_Membrane
                           1. /*n_slices*/,
                           false /*colorize*/);
          for (const auto &cell : plate_2.active_cell_iterators())
-            for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+            for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
                  ++face_no)
                if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 2)
                  cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
-        Triangulation<dim> plate_3;
+        Triangulation<2> plate_3;
         GridGenerator::plate_with_a_hole(
                           plate_3,
                           R /*inner_radius*/,
@@ -1339,12 +1394,12 @@ namespace Cook_Membrane
                           1. /*n_slices*/,
                           false /*colorize*/);
          for (const auto &cell : plate_3.active_cell_iterators())
-           for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell;
+           for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
                 ++face_no)
               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 3)
                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
 
-         Triangulation<dim>                     top, bottom;
+         Triangulation<2>                     top, bottom;
          const std::vector<std::vector<double>> step_sizes = {
            {0.1 * parameters.scale,
             0.2 * parameters.scale,
@@ -1353,7 +1408,7 @@ namespace Cook_Membrane
             0.2 * parameters.scale,
             0.1 * parameters.scale},
            {0.1 * parameters.scale}};
-         Point<dim> bl, tr;
+         Point<2> bl, tr;
          bl[0] = -0.5*parameters.scale;
          bl[1] = 0.4*parameters.scale;
          tr[0] = 0.5*parameters.scale;
@@ -1364,20 +1419,21 @@ namespace Cook_Membrane
          tr[1] = -0.4*parameters.scale;
          GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
 
-         GridGenerator::merge_triangulations(
-           {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
+         Point<dim> center_dim_1, center_dim_2, center_dim_3;
+         for (unsigned int d = 0; d < 2; ++d)
+          {
+            center_dim_1[d] = center_1[d];
+            center_dim_2[d] = center_2[d];
+            center_dim_3[d] = center_3[d];
+          }
+
+         merge(
            triangulation,
-           0.01*parameters.scale,
-           true);
-
-         // we need to set manifolds:
-         PolarManifold<dim> polar_manifold_1(center_1);
-         PolarManifold<dim> polar_manifold_2(center_2);
-         PolarManifold<dim> polar_manifold_3(center_3);
-
-         triangulation.set_manifold(1, polar_manifold_1);
-         triangulation.set_manifold(2, polar_manifold_2);
-         triangulation.set_manifold(3, polar_manifold_3);
+           {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
+           parameters.scale,
+           center_dim_1,
+           center_dim_2,
+           center_dim_3);
 
          for (unsigned int i = 4; i <= 8; ++i)
            {
