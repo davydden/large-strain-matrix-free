@@ -104,6 +104,9 @@ mem_sc = [tup[3]/tup[1] for tup in data_scalar]
 mem_t2 = [tup[3]/tup[1] for tup in data_tensor2]
 mem_t4 = [tup[3]/tup[1] for tup in data_tensor4]
 
+# file location
+fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
+
 plt.plot(deg,time_tr, 'rs--', label='Trilinos')
 plt.plot(deg,time_sc, 'bo--', label='MF scalar')
 plt.plot(deg,time_t2, 'g^--', label='MF tensor2')
@@ -111,7 +114,7 @@ plt.plot(deg,time_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.savefig('timing.eps', format='eps')
+plt.savefig(fig_prefix + 'timing.eps', format='eps')
 
 
 # clear
@@ -124,4 +127,4 @@ plt.plot(deg,mem_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.savefig('memory.eps', format='eps')
+plt.savefig(fig_prefix + 'memory.eps', format='eps')
