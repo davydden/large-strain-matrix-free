@@ -7,9 +7,11 @@ import matplotlib as mp
 import numpy as np
 
 # define command line arguments
-parser = argparse.ArgumentParser(description='Post-Process timing/memory info and plot figures.')
+parser = argparse.ArgumentParser(
+    description='Post-Process timing/memory info and plot figures.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('prefix', metavar='prefix', default='Emmy_RRZE', nargs='?',
-                    help='A folder to look for data')
+                    help='A folder to look for benchmark results')
 args = parser.parse_args()
 
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
