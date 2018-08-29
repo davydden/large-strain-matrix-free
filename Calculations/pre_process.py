@@ -4,15 +4,17 @@ import os
 import argparse
 
 # define command line arguments
-parser = argparse.ArgumentParser(description='Prepare input files.')
+parser = argparse.ArgumentParser(
+    description='Prepare input files.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('base_prm', metavar='base_prm', default='holes.prm', nargs='?',
                     help='Base parameter file to use')
 parser.add_argument('dir', metavar='dir', default='Emmy_RRZE', nargs='?',
-                    help='Directory to store calculations')
+                    help='Subdirectory to store calculations')
 parser.add_argument('prefix', metavar='prefix', default='/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build/', nargs='?',
-                    help='Directory with executable')
+                    help='Build directory with executable `main`')
 parser.add_argument('calc', metavar='calc', default='/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/Calculations/', nargs='?',
-                    help='Directory with calculations')
+                    help='Directory with calculations where .prm files will be generated and `base_prm` is located')
 parser.add_argument('mpirun', metavar='mpirun', default='mpirun -np 20', nargs='?',
                     help='mpi run command with cores')
 args = parser.parse_args()
