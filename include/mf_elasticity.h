@@ -1007,6 +1007,7 @@ namespace Cook_Membrane
         const int ierr =
           create_directory(parameters.output_folder,
                            S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+        (void)ierr;
         Assert(ierr == 0,
                ExcMessage("can't create: " + parameters.output_folder));
 
