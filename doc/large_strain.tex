@@ -51,6 +51,10 @@
 %\usepackage{xspace}
 \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
 
+\usepackage[format=plain,indention=.5cm]{caption}
+\usepackage[labelformat=simple]{subcaption}
+\renewcommand\thesubfigure{(\alph{subfigure})}
+
 %\renewcommand{\thetable}{\arabic{table}}
 %\captionsetup[table]{labelformat=simple, labelsep=colon}
 
@@ -191,7 +195,7 @@ Finally, a direct or iterative solver is used to solve the linear system for the
 On modern computer architectures however, it turns out that loading data is significantly slower than performing the arithmetic operations when solving.
 For this reason, recent implementations often focus on so-called matrix-free approaches. The idea is to perform the operations in the solver on-the-fly
 rather than loading matrix elements from memory.
-For iterative solvers, this is possible since it is sufficient to compute matrix vector products. More precisely, the linear system corresponding to a bilinear form 
+For iterative solvers, this is possible since it is sufficient to compute matrix vector products. More precisely, the linear system corresponding to a bilinear form
 $a\colon V_h\times V_h\to\mathbb{R}$ and right-hand side $f\colon V_h\to\mathbb{R}$ defined with respect to the ansatz space $V_h$ can be represented by
 \begin{align*}
  &&a(v,u) &= f(v) && \forall v\in V_h\\
@@ -203,14 +207,14 @@ where $A_{i,j}=a(\varphi_i, \varphi_j)$ and $b_i= f(\varphi_i)$.
 Thus, the matrix-vector product $Ax$ can be expressed by
 \begin{align*}
  (Ax)_i &= \sum_j a(\varphi_i,\varphi_j) x_j \\
-        &= \sum_K\sum_q \sum_j \tilde{a}_K(\varphi_i,\varphi_j)(x_q) x_j w_q 
+        &= \sum_K\sum_q \sum_j \tilde{a}_K(\varphi_i,\varphi_j)(x_q) x_j w_q
 \end{align*}
 where in the last step $\tilde{a}_K(\varphi_i,\varphi_j)$ is a representation for the evaluation of the bilinear in one quadrature point and a quadrature rule is used.
-For the sake of demonstration, let us assume $A$ represents a mass matrix. In this case, it holds 
+For the sake of demonstration, let us assume $A$ represents a mass matrix. In this case, it holds
 \begin{align*}
  \tilde{a}_K(\varphi_i,\varphi_j)(x_q) = \varphi_i(x_q)\varphi_j(x_q).
 \end{align*}
-Further assuming that the number of the one-dimensional quadrature points $n$ matches the degree of the ansatz space plus one, the evaluation of all the shape functions ($n^d$) 
+Further assuming that the number of the one-dimensional quadrature points $n$ matches the degree of the ansatz space plus one, the evaluation of all the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in case we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$
 and this is the same as for a regular matrix-vector where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, we can actually do better
 than that. Indeed, the evaluation of all the shape functions in all the ansatz points can be rewritten as
@@ -336,6 +340,39 @@ TODO: summarize Mathias results (head and Cook's membrane)
 TODO: switch head to quasi-static load instead of dynamics?
 
 \subsection{Large strain Neo-Hook elasticity}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{Emmy_RRZE_timing.eps}
+      \caption{vmult}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{Emmy_RRZE_memory.eps}
+      \caption{memory consumption}
+  \end{subfigure}
+  \caption{Heterogeneous 2D large-strain example (Emmy cluster, RRZE).}%
+  \label{fig:benchmark_2d_miehe}
+\end{figure}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{IWR_timing.eps}
+      \caption{vmult}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{IWR_memory.eps}
+      \caption{memory consumption}
+  \end{subfigure}
+  \caption{Heterogeneous 2D large-strain example (IWR cluster).}%
+  \label{fig:benchmark_2d_miehe_IWR}
+\end{figure}
+
 
 TODO: add new results from Cook's and some matrix-inclusion (matrix-pore).
 Elliptical holes are easier as we don't need heterogeneous operator.

@@ -31,7 +31,7 @@
 #define GET_D(L) BOOST_PP_TUPLE_ELEM(3, 0, BOOST_PP_TUPLE_ELEM(1, 0, L))
 #define GET_Q(L) BOOST_PP_TUPLE_ELEM(3, 1, BOOST_PP_TUPLE_ELEM(1, 0, L))
 
-#define MF_DQ BOOST_PP_TUPLE_TO_LIST(4, ((1, 2), (2, 3), (3, 4), (4, 5)))
+#define MF_DQ BOOST_PP_TUPLE_TO_LIST(8, ((1, 2), (2, 3), (3, 4), (4, 5), (5,6), (6,7), (7,8), (8,9)))
 
 #define DOIF2(R, L)                                            \
   else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))   \
@@ -65,9 +65,9 @@ main(int argc, char *argv[])
         argc > 1 ? argv[1] : "parameters.prm";
       Parameters::AllParameters parameters(parameter_filename);
       {
-        // Allow multi-threading
+        // Disable multi-threading to have a better comparision with Trilinos
         Utilities::MPI::MPI_InitFinalize mpi_initialization(
-          argc, argv, dealii::numbers::invalid_unsigned_int);
+          argc, argv, 1/*dealii::numbers::invalid_unsigned_int*/);
 
         if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
           std::cout
