@@ -336,6 +336,7 @@ namespace Cook_Membrane
       double       max_iterations_lin;
       std::string  preconditioner_type;
       double       preconditioner_relaxation;
+      double       preconditioner_aggregation_threshold;
       unsigned int cond_number_cg_iterations;
       std::string  mf_caching;
 
@@ -369,13 +370,18 @@ namespace Cook_Membrane
 
         prm.declare_entry("Preconditioner type",
                           "jacobi",
-                          Patterns::Selection("jacobi|ssor|gmg|none"),
+                          Patterns::Selection("jacobi|ssor|amg|gmg|none"),
                           "Type of preconditioner");
 
         prm.declare_entry("Preconditioner relaxation",
                           "0.65",
                           Patterns::Double(0.0),
                           "Preconditioner relaxation value");
+
+        prm.declare_entry("Preconditioner AMG aggregation threshold",
+                          "1e-4",
+                          Patterns::Double(0.0),
+                          "Preconditioner AMG aggregation threshold");
 
         prm.declare_entry(
           "Condition number CG iterations",
@@ -402,6 +408,8 @@ namespace Cook_Membrane
         max_iterations_lin        = prm.get_double("Max iteration multiplier");
         preconditioner_type       = prm.get("Preconditioner type");
         preconditioner_relaxation = prm.get_double("Preconditioner relaxation");
+        preconditioner_aggregation_threshold =
+          prm.get_double("Preconditioner AMG aggregation threshold");
         cond_number_cg_iterations =
           prm.get_integer("Condition number CG iterations");
         mf_caching                = prm.get("MF caching");
@@ -999,6 +1007,7 @@ namespace Cook_Membrane
         const int ierr =
           create_directory(parameters.output_folder,
                            S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+        (void)ierr;
         Assert(ierr == 0,
                ExcMessage("can't create: " + parameters.output_folder));
 
@@ -2560,21 +2569,54 @@ namespace Cook_Membrane
 
         if (parameters.type_lin == "CG")
           {
-            AssertThrow(parameters.preconditioner_type == "jacobi",
-                        ExcNotImplemented());
-
             GrowingVectorMemory<TrilinosWrappers::MPI::Vector> GVM_trilinos;
             SolverCG<TrilinosWrappers::MPI::Vector> solver_CG_trilinos(
               solver_control, GVM_trilinos);
 
-            TrilinosWrappers::PreconditionJacobi preconditioner;
-            preconditioner.initialize(tangent_matrix,
-                                      parameters.preconditioner_relaxation);
+            std::unique_ptr<TrilinosWrappers::PreconditionBase> preconditioner;
+            if (parameters.preconditioner_type == "jacobi")
+            {
+              TrilinosWrappers::PreconditionJacobi* p_preconditioner = new TrilinosWrappers::PreconditionJacobi ();
+              p_preconditioner->initialize(tangent_matrix,
+                                         parameters.preconditioner_relaxation);
+              preconditioner.reset(p_preconditioner);
+            }
+            else if (parameters.preconditioner_type == "ssor")
+            {
+              TrilinosWrappers::PreconditionSSOR* p_preconditioner = new TrilinosWrappers::PreconditionSSOR ();
+              p_preconditioner->initialize(tangent_matrix,
+                                         parameters.preconditioner_relaxation);
+              preconditioner.reset(p_preconditioner);
+            }
+            else if (parameters.preconditioner_type == "amg")
+            {
+              // Note: Default settings for AMG preconditioner are
+              // good for a Laplace problem
+              TrilinosWrappers::PreconditionAMG::AdditionalData additional_data;
+              additional_data.higher_order_elements =  (degree>1);
+              additional_data.elliptic = true;
+              additional_data.aggregation_threshold = parameters.preconditioner_aggregation_threshold;
+
+              // Build constant modes
+              std::vector< std::vector<bool> > constant_modes;
+              const ComponentMask component_mask (dof_handler_ref.get_fe_collection().n_components(), true);
+              DoFTools::extract_constant_modes (dof_handler_ref, component_mask, constant_modes);
+              additional_data.constant_modes = constant_modes;
+
+              TrilinosWrappers::PreconditionAMG* p_preconditioner = new TrilinosWrappers::PreconditionAMG ();
+              p_preconditioner->initialize(tangent_matrix,
+                  additional_data);
+              preconditioner.reset(p_preconditioner);
+            }
+            else
+            {
+              AssertThrow(false,  ExcMessage("Unknown preconditioner type selected."));
+            }
 
             solver_CG_trilinos.solve(tangent_matrix,
                                      newton_update_trilinos,
                                      system_rhs_trilinos,
-                                     preconditioner);
+                                     *preconditioner);
 
             copy_trilinos(newton_update, newton_update_trilinos);
           }
