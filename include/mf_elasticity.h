@@ -2819,7 +2819,12 @@ namespace Cook_Membrane
     if (!parameters.output_solution)
       return;
 
+    DataOutBase::VtkFlags flags;
+    flags.write_higher_order_cells = true;
+
     DataOut<dim> data_out;
+    data_out.set_flags(flags);
+
     std::vector<DataComponentInterpretation::DataComponentInterpretation>
       data_component_interpretation(
         dim, DataComponentInterpretation::component_is_part_of_vector);
@@ -2860,7 +2865,7 @@ namespace Cook_Membrane
     // a more refined output data set when higher order polynomials are used.
     MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>> q_mapping(
       degree, dof_handler_ref, solution_n);
-    data_out.build_patches(q_mapping, degree);
+    data_out.build_patches(q_mapping, degree, DataOut<dim>::curved_inner_cells);
 
     auto name_func = [&](const unsigned int proc) -> std::string {
       return "solution-" + std::to_string(time.get_timestep()) + "_" +
