@@ -1189,14 +1189,20 @@ namespace Cook_Membrane
     GridGenerator::extrude_triangulation(
       triangulation_2d, 5, 1.0 * scale, dst, true);
 
+    for (const auto& cell: dst.active_cell_iterators())
+      for (unsigned int face_no=0; face_no < GeometryInfo<3>::faces_per_cell; ++face_no)
+        if (!cell->at_boundary(face_no))
+          if (cell->manifold_id() != cell->neighbor(face_no)->manifold_id())
+            cell->face(face_no)->set_all_manifold_ids(cell->face(face_no)->manifold_id());
+
     // we need to set manifolds:
-    Tensor<1, 3> dir_1, dir_2, dir_3;
-    dir_1[2] = 1.;
-    dir_2[2] = 1.;
-    dir_3[2] = 1.;
-    CylindricalManifold<3> cylindrical_manifold_1(dir_1, center_dim_1);
-    CylindricalManifold<3> cylindrical_manifold_2(dir_2, center_dim_2);
-    CylindricalManifold<3> cylindrical_manifold_3(dir_3, center_dim_3);
+    Tensor<1, 3> dir;
+    dir[0] = 0.;
+    dir[1] = 0.;
+    dir[2] = 1.;
+    CylindricalManifold<3> cylindrical_manifold_1(dir, center_dim_1);
+    CylindricalManifold<3> cylindrical_manifold_2(dir, center_dim_2);
+    CylindricalManifold<3> cylindrical_manifold_3(dir, center_dim_3);
 
     dst.set_manifold(1, cylindrical_manifold_1);
     dst.set_manifold(2, cylindrical_manifold_2);
