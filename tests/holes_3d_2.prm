@@ -1,4 +1,4 @@
-# same as holes_2.prm but in 3D
+# same as holes_2.prm but in 3D and only two steps:
 
 # Listing of Parameters
 # ---------------------
@@ -66,11 +66,8 @@ end
 
 
 subsection Time
-  # End time
-  set End time       = 1
-
-  # Time step size
-  set Time step size = 0.1
+  # Do two steps to save time:
+  set End time         = 0.2
+  set Force multiplier = 0.2 # N
+  set Time step size   = 0.1
 end
-
-

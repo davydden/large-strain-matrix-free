@@ -1190,7 +1190,7 @@ namespace Cook_Membrane
       triangulation_2d, 5, 1.0 * scale, dst, true);
 
     // we need to set manifolds:
-    Tensor<1, 3> dir_1(center_dim_1), dir_2(center_dim_2), dir_3(center_dim_3);
+    Tensor<1, 3> dir_1, dir_2, dir_3;
     dir_1[2] = 1.;
     dir_2[2] = 1.;
     dir_3[2] = 1.;
@@ -2209,7 +2209,8 @@ namespace Cook_Membrane
         soln_pt[0] = 0. * parameters.scale;
         soln_pt[1] = 0. * parameters.scale;
         if (dim == 3)
-          soln_pt[2] = 0. * parameters.scale;
+          // we extrude by 1.0 * scale:
+          soln_pt[2] = 0.5 * parameters.scale;
 
       }
     double vertical_tip_displacement       = 0.0;
