@@ -2213,54 +2213,40 @@ namespace Cook_Membrane
           soln_pt[2] = 0.5 * parameters.scale;
 
       }
-    double vertical_tip_displacement       = 0.0;
-    double vertical_tip_displacement_check = 0.0;
 
-    for (const auto &cell : dof_handler_ref.active_cell_iterators())
-      if (cell->is_locally_owned())
-        {
-          for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell;
-               ++v)
-            if (cell->vertex(v).distance(soln_pt) < 1e-6)
-              {
-                // Extract y-component of solution at the given point
-                // This point is coindicent with a vertex, so we can
-                // extract it directly as we're using FE_Q finite elements
-                // that have support at the vertices
-                vertical_tip_displacement =
-                  solution_n(cell->vertex_dof_index(v, u_dof + 1));
+    double vertical_tip_displacement = 0.0;
+    unsigned int found = 0;
 
-                // Sanity check using alternate method to extract the solution
-                // at the given point. To do this, we must create an FEValues
-                // instance to help us extract the solution value at the desired
-                // point
-                const MappingQ<dim> mapping(degree);
-                const Point<dim>    qp_unit =
-                  mapping.transform_real_to_unit_cell(cell, soln_pt);
-                const Quadrature<dim> soln_qrule(qp_unit);
-                AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-                FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
-                fe_values_soln.reinit(cell);
+    try
+      {
+        const MappingQ<dim> mapping(degree);
+        const auto          cell_point =
+          GridTools::find_active_cell_around_point(mapping,
+                                                   dof_handler_ref,
+                                                   soln_pt);
+        found = 1;
 
-                // Extract y-component of solution at given point
-                std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-                fe_values_soln[u_fe].get_function_values(solution_n,
-                                                         soln_values);
-                vertical_tip_displacement_check = soln_values[0][u_dof + 1];
+        const Quadrature<dim> soln_qrule(cell_point.second);
+        AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+        FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+        fe_values_soln.reinit(cell_point.first);
 
-                break;
-              }
-        }
+        // Extract y-component of solution at given point
+        std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+        fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
+        vertical_tip_displacement = soln_values[0][u_dof + 1];
+      }
+    catch (const GridTools::ExcPointNotFound<dim> &)
+      {}
+
     vertical_tip_displacement =
       Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
-    vertical_tip_displacement_check =
-      Utilities::MPI::max(vertical_tip_displacement_check, mpi_communicator);
-    AssertThrow(vertical_tip_displacement > 0.0,
+    AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
                 ExcMessage("Found no cell with point inside!"))
 
         pcout
       << "Vertical tip displacement: " << vertical_tip_displacement
-      << "\t Check: " << vertical_tip_displacement_check << std::endl;
+      << "\t Check: " << vertical_tip_displacement << std::endl;
   }
 
 
