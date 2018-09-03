@@ -1,4 +1,4 @@
-# same as holes_2.prm but in 3D and only two steps:
+# same as holes_3d_2.prm but gmg with tensor4 caching
 
 # Listing of Parameters
 # ---------------------
@@ -31,13 +31,15 @@ subsection Linear solver
   set Residual                  = 1e-6
 
   # Preconditioner type
-  set Preconditioner type        = jacobi
+  set Preconditioner type        = gmg
 
   # Preconditioner relaxation value
   set Preconditioner relaxation  = 0.65
 
   # Type of solver used to solve the linear system
-  set Solver type               = CG
+  set Solver type               = MF_CG
+
+  set MF caching                = tensor4
 end
 
 
