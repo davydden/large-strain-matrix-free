@@ -2229,17 +2229,21 @@ namespace Cook_Membrane
           GridTools::find_active_cell_around_point(mapping,
                                                    dof_handler_ref,
                                                    soln_pt);
-        found = 1;
+        // we may find artifical cells here:
+        if (cell_point.first->is_locally_owned())
+          {
+            found = 1;
 
-        const Quadrature<dim> soln_qrule(cell_point.second);
-        AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-        FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
-        fe_values_soln.reinit(cell_point.first);
+            const Quadrature<dim> soln_qrule(cell_point.second);
+            AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+            FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+            fe_values_soln.reinit(cell_point.first);
 
-        // Extract y-component of solution at given point
-        std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-        fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
-        vertical_tip_displacement = soln_values[0][u_dof + 1];
+            // Extract y-component of solution at given point
+            std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+            fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
+            vertical_tip_displacement = soln_values[0][u_dof + 1];
+          }
       }
     catch (const GridTools::ExcPointNotFound<dim> &)
       {}
