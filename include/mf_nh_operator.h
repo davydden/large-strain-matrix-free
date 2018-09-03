@@ -895,7 +895,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               // MatrixFree data and displacement vector stored in this
               // operator.
               Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
-                       1000. * std::numeric_limits<number>::epsilon(),
+                       10000. * std::numeric_limits<number>::epsilon(),
                      ExcMessage(
                        std::to_string(i) + " out of " +
                        std::to_string(
