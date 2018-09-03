@@ -1435,12 +1435,13 @@ namespace Cook_Membrane
            center_dim_2,
            center_dim_3);
 
-         for (unsigned int i = 4; i <= 8; ++i)
-           {
-             TransfiniteInterpolationManifold<dim> transfinite_manifold;
-             transfinite_manifold.initialize(triangulation);
-             triangulation.set_manifold(i, transfinite_manifold);
-           }
+         if (dim == 2) // FIXME: some issues with 3D
+           for (unsigned int i = 4; i <= 8; ++i)
+             {
+               TransfiniteInterpolationManifold<dim> transfinite_manifold;
+               transfinite_manifold.initialize(triangulation);
+               triangulation.set_manifold(i, transfinite_manifold);
+             }
 
          const double tol_boundary = 1e-6*parameters.scale;
          for (auto cell : triangulation.active_cell_iterators())
@@ -2424,8 +2425,13 @@ namespace Cook_Membrane
                     if (parameters.type == "Cook")
                       dir[1] = 1.0;
                     else if (parameters.type == "Holes")
-                      // apply simple shear force
-                      dir[0] = 1.0;
+                      {
+                        // apply simple shear force
+                        dir[0] = 1.0;
+                        if (dim == 3)
+                          // in 3D add component in Z direction
+                          dir[2] = 1.0;
+                      }
 
                     const Tensor<1, dim> traction = magnitude * dir;
 
