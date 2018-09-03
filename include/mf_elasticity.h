@@ -1468,49 +1468,6 @@ namespace Cook_Membrane
           std::ofstream output("grid.eps");
           grid_out.write_eps(triangulation, output);
           */
-          // debug output of face data:
-          if (true && dim==3)
-            {
-              using Tuple =
-                std::tuple<Point<dim>, types::boundary_id, types::manifold_id>;
-              std::vector<Tuple> boundary_faces;
-
-              for (const auto &cell : triangulation.active_cell_iterators())
-                for (unsigned int face_n = 0;
-                     face_n < GeometryInfo<dim>::faces_per_cell;
-                     ++face_n)
-                  if (cell->face(face_n)->manifold_id() == 2 || cell->face(face_n)->manifold_id() == 3)
-                  // if (cell->face(face_n)->at_boundary() &&
-                  //     std::abs(cell->face(face_n)->center()[2])<1e-10)
-                    boundary_faces.push_back(
-                      std::make_tuple(cell->face(face_n)->center(),
-                                      cell->face(face_n)->boundary_id(),
-                                      cell->face(face_n)->manifold_id()));
-
-              // see dof_tools.cc internal::ComparisonHelper
-              std::sort(begin(boundary_faces),
-                        end(boundary_faces),
-                        [](const Tuple &t1, const Tuple &t2) {
-                          const auto &b1 = std::get<1>(t1);
-                          const auto &b2 = std::get<1>(t2);
-                          if (b1 != b2)
-                            return b1 < b2;
-
-                          const auto &p1 = std::get<0>(t1);
-                          const auto &p2 = std::get<0>(t2);
-
-                          for (unsigned int d = 0; d < dim; ++d)
-                            if (std::abs(p1[d] - p2[d]) > 1e-8)
-                              return p1[d] < p2[d];
-
-                          return std::get<2>(t1) < std::get<2>(t2);
-                        });
-
-              for (const auto el : boundary_faces)
-                std::cout << "center: " << std::get<0>(el)
-                          << " boundary id: " << std::get<1>(el)
-                          << " manifold id: " << std::get<2>(el) << std::endl;
-            }
       }
     else
       {
