@@ -1441,20 +1441,11 @@ namespace Cook_Membrane
            center_dim_2,
            center_dim_3);
 
-         if (dim == 2) // FIXME: some issues with 3D
-           {
-             for (unsigned int i = 4; i <= 8; ++i)
-               {
-                 TransfiniteInterpolationManifold<dim> transfinite_manifold;
-                 transfinite_manifold.initialize(triangulation);
-                 triangulation.set_manifold(i, transfinite_manifold);
-               }
-           }
-         else
+         for (unsigned int i = 4; i <= 8; ++i)
            {
              TransfiniteInterpolationManifold<dim> transfinite_manifold;
              transfinite_manifold.initialize(triangulation);
-             triangulation.set_manifold(4, transfinite_manifold); // hole
+             triangulation.set_manifold(i, transfinite_manifold);
            }
 
          const double tol_boundary = 1e-6*parameters.scale;
