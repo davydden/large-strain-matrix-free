@@ -9,6 +9,8 @@
  */
 static const unsigned int debug_level = 0;
 
+#define COMPONENT_LESS_GEOM_TANGENT
+
 // We start by including all the necessary deal.II header files and some C++
 // related ones. They have been discussed in detail in previous tutorial
 // programs, so you need only refer to past tutorials for details.
@@ -2424,13 +2426,16 @@ namespace Cook_Membrane
                 Physics::Elasticity::Kinematics::F(grad_u);
               const SymmetricTensor<2, dim, NumberType> b =
                 Physics::Elasticity::Kinematics::b(F);
+
               const NumberType                 det_F = determinant(F);
-              const Tensor<2, dim, NumberType> F_bar =
-                Physics::Elasticity::Kinematics::F_iso(F);
-              const SymmetricTensor<2, dim, NumberType> b_bar =
-                Physics::Elasticity::Kinematics::b(F_bar);
-              const Tensor<2, dim, NumberType> F_inv = invert(F);
               Assert(det_F > NumberType(0.0), ExcInternalError());
+              const Tensor<2, dim, NumberType> F_inv = invert(F);
+
+              // don't calculate b_bar if we don't need to:
+              const SymmetricTensor<2, dim, NumberType> b_bar =
+                cell_mat->formulation == 0 ?
+                Physics::Elasticity::Kinematics::b(Physics::Elasticity::Kinematics::F_iso(F)) :
+                SymmetricTensor<2, dim, NumberType>();
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
                 {
@@ -2450,6 +2455,10 @@ namespace Cook_Membrane
                   if (skip_assembly_on_this_cell)
                     continue;
 
+#ifndef COMPONENT_LESS_GEOM_TANGENT
+                  const unsigned int component_i = fe.system_to_component_index(i).first;
+                  const Tensor<1,dim> grad_Nx_i_comp_i_tau = grad_Nx[i][component_i] * tau_ns;
+#endif
                   for (unsigned int j = 0; j <= i; ++j)
                     {
                       // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
@@ -2464,10 +2473,17 @@ namespace Cook_Membrane
                            b,
                            symm_grad_Nx[j])) // The material contribution:
                         * JxW;
+
+#ifdef COMPONENT_LESS_GEOM_TANGENT
                       // geometrical stress contribution
                       const Tensor<2, dim> geo = egeo_grad(grad_Nx[j], tau_ns);
                       cell_matrix(i, j) +=
                         double_contract<0, 0, 1, 1>(grad_Nx[i], geo) * JxW;
+#else
+                      const unsigned int component_j = fe.system_to_component_index(j).first;
+                      if (component_i == component_j) // geometrical stress contribution
+                        cell_matrix(i, j) += grad_Nx_i_comp_i_tau * grad_Nx[j][component_j] * JxW;
+#endif
                     }
                 }
             } // end loop over quadrature points
