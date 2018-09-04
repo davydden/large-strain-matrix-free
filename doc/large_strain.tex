@@ -90,6 +90,61 @@
 
 \begin{document}
 
+\begin{frontmatter}
+  \title{
+  A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid
+  }
+
+  \author[a]{Denis Davydov\corref{cor}}
+  \ead{denis.davydov@fau.de}
+
+  \author[a]{Jean-Paul Pelteret}
+  \ead{jean-paul.pelteret@fau.de}
+
+  \author[b]{Daniel Arndt}
+  \ead{daniel.arndt@iwr.uni-heidelberg.de}
+
+  \author[a]{Paul Steinmann}
+  \ead{paul.steinmann@fau.de}
+
+  \cortext[cor]{Corresponding author.}
+
+  \address[a]{Chair of Applied Mechanics,
+  Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
+  Egerlandstr.\ 5, 91058 Erlangen, Germany}
+
+  \address[b]{Interdisciplinary Center for Scientific Computing (IWR),
+      Heidelberg University,
+      Im Neuenheimer Feld 205,
+      69120 Heidelberg,
+      Germany}
+
+
+  \begin{abstract}
+    The performance of finite element solvers on modern computer architectures is typically memory bound.
+    The main cause for this is that loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
+    In order to improve the performance of the iterative solver, so-called matrix-free methods are
+    widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly.
+
+    In this work, we advance the application of matrix-free approaches to problems in solid mechanics.
+    We propose and numerically investigate different implementations of the finite-strain hyper-elastic tangent operator.
+    In order to improve the convergence of iterative solvers, we also propose a way to construct level tangent operators
+    and employ them to define a geometric multigrid preconditioner.
+    Our implementation employs MPI and Intel Threading Building Blocks parallelization and SIMD vectorization.
+    The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of heterogeneous hyper-elastic material in two and three dimensions.
+  \end{abstract}
+
+
+  \begin{keyword}
+      adaptive finite element method \sep
+      geometric multigrids \sep
+      finite-strain \sep
+      matrix-free \sep
+      hyperelasticity
+  \end{keyword}
+
+  \end{frontmatter}
+
 \section{Introduction}
 
 TODO: elasticity and no matrix-free. fluids used a lot.
