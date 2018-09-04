@@ -121,12 +121,12 @@
 
 
   \begin{abstract}
-    Solution of source problems on modern computer architectures is typically memory bound.
-    Loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
-    In order to improve the performance of the iterative solver, the so-called matrix-free methods are
+    The performance of finite element solvers on modern computer architectures is typically memory bound.
+    The main cause for this is that loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
+    In order to improve the performance of the iterative solver, so-called matrix-free methods are
     widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly.
 
-    In this work we advance the application of matrix-free approaches to problems in solid mechanics.
+    In this work, we advance the application of matrix-free approaches to problems in solid mechanics.
     We propose and numerically investigate different implementations of the finite-strain hyper-elastic tangent operator.
     In order to improve the convergence of iterative solvers, we also propose a way to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
