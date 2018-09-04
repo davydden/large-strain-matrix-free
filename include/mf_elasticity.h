@@ -2477,8 +2477,7 @@ namespace Cook_Membrane
 #ifdef COMPONENT_LESS_GEOM_TANGENT
                       // geometrical stress contribution
                       const Tensor<2, dim> geo = egeo_grad(grad_Nx[j], tau_ns);
-                      cell_matrix(i, j) +=
-                        double_contract<0, 0, 1, 1>(grad_Nx[i], geo) * JxW;
+                      cell_matrix(i, j) += scalar_product(grad_Nx[i], geo) * JxW;
 #else
                       const unsigned int component_j = fe.system_to_component_index(j).first;
                       if (component_i == component_j) // geometrical stress contribution
