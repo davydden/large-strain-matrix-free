@@ -2044,6 +2044,16 @@ namespace Cook_Membrane
 
     print_conv_header();
 
+    // auxiliary vectors to test vmult()
+    TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
+      dst_mb(newton_update_trilinos);
+    for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
+      src_trilinos(locally_owned_dofs.nth_index_in_set(i)) =
+        ((double)std::rand()) / RAND_MAX;
+
+    LinearAlgebra::distributed::Vector<double> src(newton_update),
+      dst_mf(newton_update);
+
     // We now perform a number of Newton iterations to iteratively solve the
     // nonlinear problem.  Since the problem is fully nonlinear and we are
     // using a full Newton method, the data stored in the tangent matrix and
@@ -2077,16 +2087,7 @@ namespace Cook_Membrane
 
         // check vmult of matrix-based and matrix-free for a random vector:
         {
-          TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
-            dst_mb(newton_update_trilinos);
-          for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
-            src_trilinos(locally_owned_dofs.nth_index_in_set(i)) =
-              ((double)std::rand()) / RAND_MAX;
-
           constraints.set_zero(src_trilinos);
-
-          LinearAlgebra::distributed::Vector<double> src(newton_update),
-            dst_mf(newton_update);
           copy_trilinos(src, src_trilinos);
 
           const unsigned int n_times = 10;
