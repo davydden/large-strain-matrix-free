@@ -1,0 +1,22 @@
+Assembly method: Residual and linearisation are computed manually.
+Grid:
+	 Reference volume: 9.29767e-10
+Triangulation:
+	 Number of active cells: 22528
+	 Number of degrees of freedom: 75072
+
+Timestep 1 @ 0.1s
+__________________________________________________________________________________________________
+    SOLVER STEP     |  LIN_IT    LIN_RES   COND_NUM   RES_NORM      RES_U      NU_NORM       NU_U
+__________________________________________________________________________________________________
+  0  CST  ASM  SLV  |    1310  1.801e-10  1.961e+04  1.000e+00  1.000e+00    1.000e+00  1.000e+00  
+  1  CST  ASM  SLV  |    1143  3.683e-11  4.333e+02  2.080e-01  2.080e-01    1.623e-03  1.623e-03  
+  2  CST  ASM  SLV  |    1256  7.111e-16  8.415e+02  4.294e-06  4.294e-06    2.842e-07  2.842e-07  
+  3  CST  ASM  CONVERGED! 
+__________________________________________________________________________________________________
+Relative errors:
+Displacement:	2.842e-07
+Force: 		8.479e-12
+v / V_0:	9.298e-10 / 9.298e-10
+_______________________________________________________________________________________
+Vertical tip displacement: -6.627e-08	 Check: -6.627e-08
