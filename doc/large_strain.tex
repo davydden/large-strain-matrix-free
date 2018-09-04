@@ -92,7 +92,7 @@
 
 \begin{frontmatter}
   \title{
-  Large-strain matrix-free finite element solver of hyperelastic problems with geometric multigrid preconditioner
+  A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid
   }
 
   \author[a]{Denis Davydov\corref{cor}}
@@ -127,7 +127,7 @@
     widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly.
 
     In this work we advance the application of matrix-free approaches to problems in solid mechanics.
-    We propose and numerically investigate different implementations of the large-strain hyper-elastic tangent operator.
+    We propose and numerically investigate different implementations of the finite-strain hyper-elastic tangent operator.
     In order to improve the convergence of iterative solvers, we also propose a way to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
     Our implementation employs MPI and Intel Threading Building Blocks parallelization and SIMD vectorization.
