@@ -215,6 +215,8 @@ namespace Cook_Membrane
       double       scale;
       unsigned int dim;
       unsigned int n_global_refinement;
+      unsigned int extrusion_slices;
+      double       extrusion_height;
       std::string  type;
 
       static void
@@ -244,6 +246,16 @@ namespace Cook_Membrane
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
 
+        prm.declare_entry("Extrusion height",
+                          "1",
+                          Patterns::Double(0.0),
+                          "Extrusion height");
+
+        prm.declare_entry("Extrusion slices",
+                          "5",
+                          Patterns::Integer(0),
+                          "Number of extrusion slices");
+
         prm.declare_entry("Dimension",
                           "2",
                           Patterns::Integer(2, 3),
@@ -268,6 +280,8 @@ namespace Cook_Membrane
         dim                 = prm.get_integer("Dimension");
         n_global_refinement = prm.get_integer("Global refinement");
         type                = prm.get("Type");
+        extrusion_slices    = prm.get_integer("Extrusion slices");
+        extrusion_height    = prm.get_double("Extrusion height");
       }
       prm.leave_subsection();
     }
@@ -1178,7 +1192,9 @@ namespace Cook_Membrane
     const double                                                scale,
     const Point<3> &                                            center_dim_1,
     const Point<3> &                                            center_dim_2,
-    const Point<3> &                                            center_dim_3)
+    const Point<3> &                                            center_dim_3,
+    const double                                                extrusion_height,
+    const unsigned int                                          extrusion_slices)
   {
     Triangulation<2> triangulation_2d;
     GridGenerator::merge_triangulations(triangulations,
@@ -1187,7 +1203,7 @@ namespace Cook_Membrane
                                         true);
 
     GridGenerator::extrude_triangulation(
-      triangulation_2d, 5, 1.0 * scale, dst, true);
+      triangulation_2d, extrusion_slices, extrusion_height * scale, dst, true);
 
     for (const auto& cell: dst.active_cell_iterators())
       for (unsigned int face_no=0; face_no < GeometryInfo<3>::faces_per_cell; ++face_no)
@@ -1215,7 +1231,10 @@ namespace Cook_Membrane
     const double                                                scale,
     const Point<2> &                                            center_dim_1,
     const Point<2> &                                            center_dim_2,
-    const Point<2> &                                            center_dim_3)
+    const Point<2> &                                            center_dim_3,
+    const double                                                /*extrusion_height*/,
+    const unsigned int                                          /*extrusion_slices*/)
+
   {
     GridGenerator::merge_triangulations(triangulations,
                                         dst,
@@ -1439,7 +1458,9 @@ namespace Cook_Membrane
            parameters.scale,
            center_dim_1,
            center_dim_2,
-           center_dim_3);
+           center_dim_3,
+           parameters.extrusion_height,
+           parameters.extrusion_slices);
 
          for (unsigned int i = 4; i <= 8; ++i)
            {
@@ -2214,9 +2235,7 @@ namespace Cook_Membrane
         soln_pt[0] = 0. * parameters.scale;
         soln_pt[1] = 0. * parameters.scale;
         if (dim == 3)
-          // we extrude by 1.0 * scale:
-          soln_pt[2] = 0.5 * parameters.scale;
-
+          soln_pt[2] = 0.5 * parameters.extrusion_height * parameters.scale;
       }
 
     double vertical_tip_displacement = 0.0;
