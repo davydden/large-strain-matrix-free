@@ -903,6 +903,9 @@ namespace Cook_Membrane
     MGConstrainedDoFs mg_constrained_dofs;
 
     bool print_mf_memory;
+
+    unsigned long int total_n_cg_iterations;
+    unsigned int total_n_cg_solve;
   };
 
   // @sect3{Implementation of the <code>Solid</code> class}
@@ -1015,6 +1018,8 @@ namespace Cook_Membrane
     , n_q_points(qf_cell.size())
     , n_q_points_f(qf_face.size())
     , print_mf_memory(true)
+    , total_n_cg_iterations(0)
+    , total_n_cg_solve(0)
   {
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
@@ -1148,6 +1153,9 @@ namespace Cook_Membrane
     // Lastly, we print the vertical tip displacement of the Cook cantilever
     // after the full load is applied
     print_vertical_tip_displacement();
+
+    // for post-processing, print average CG iterations over the whole run:
+    timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
   }
 
 
@@ -2127,6 +2135,9 @@ namespace Cook_Membrane
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
           solve_linear_system(newton_update, newton_update_trilinos);
+
+        total_n_cg_iterations += std::get<0>(lin_solver_output);
+        total_n_cg_solve++;
 
         if (newton_iteration == 0)
           error_update_0 = error_update;
