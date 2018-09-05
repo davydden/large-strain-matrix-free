@@ -9,7 +9,7 @@
  */
 static const unsigned int debug_level = 0;
 
-#define COMPONENT_LESS_GEOM_TANGENT
+//#define COMPONENT_LESS_GEOM_TANGENT
 
 // We start by including all the necessary deal.II header files and some C++
 // related ones. They have been discussed in detail in previous tutorial
@@ -2457,14 +2457,15 @@ namespace Cook_Membrane
                   if (skip_assembly_on_this_cell)
                     continue;
 
-#ifdef COMPONENT_LESS_GEOM_TANGENT
                   const SymmetricTensor<2, dim> Jc_symm_grad_Nx_j =
                     cell_mat->act_Jc(det_F, b_bar, b, symm_grad_Nx[j]);
+
+#ifdef COMPONENT_LESS_GEOM_TANGENT
                   const Tensor<2, dim> Jg_grad_Nx_j =
                     egeo_grad(grad_Nx[j], tau_ns);
 #else
-                  const unsigned int component_i = fe.system_to_component_index(i).first;
-                  const Tensor<1,dim> grad_Nx_i_comp_i_tau = grad_Nx[i][component_i] * tau_ns;
+                  const unsigned int component_j = fe.system_to_component_index(j).first;
+                  const Tensor<1,dim> tau_grad_Nx_j_comp_j = tau_ns * grad_Nx[j][component_j];
 #endif
                   for (unsigned int i = 0; i <= j; ++i)
                     {
@@ -2482,9 +2483,9 @@ namespace Cook_Membrane
                       cell_matrix(i, j) +=
                         scalar_product(grad_Nx[i], Jg_grad_Nx_j) * JxW;
 #else
-                      const unsigned int component_j = fe.system_to_component_index(j).first;
+                      const unsigned int component_i = fe.system_to_component_index(i).first;
                       if (component_i == component_j) // geometrical stress contribution
-                        cell_matrix(i, j) += grad_Nx_i_comp_i_tau * grad_Nx[j][component_j] * JxW;
+                        cell_matrix(i, j) += (grad_Nx[i][component_i] * tau_grad_Nx_j_comp_j) * JxW;
 #endif
                     }
                 }
