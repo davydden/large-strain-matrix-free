@@ -446,7 +446,9 @@ namespace Cook_Membrane
     {
       unsigned int max_iterations_NR;
       double       tol_f;
+      double       tol_f_abs;
       double       tol_u;
+      double       tol_u_abs;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -470,6 +472,16 @@ namespace Cook_Membrane
                           Patterns::Double(0.0),
                           "Force residual tolerance");
 
+        prm.declare_entry("Absolute tolerance force",
+                          "0.",
+                          Patterns::Double(0.0),
+                          "Force residual absolute tolerance");
+
+        prm.declare_entry("Absolute tolerance displacement",
+                          "0.",
+                          Patterns::Double(0.0),
+                          "Displacement update absolute tolerance");
+
         prm.declare_entry("Tolerance displacement",
                           "1.0e-6",
                           Patterns::Double(0.0),
@@ -485,7 +497,9 @@ namespace Cook_Membrane
       {
         max_iterations_NR = prm.get_integer("Max iterations Newton-Raphson");
         tol_f             = prm.get_double("Tolerance force");
+        tol_f_abs         = prm.get_double("Absolute tolerance force");
         tol_u             = prm.get_double("Tolerance displacement");
+        tol_u_abs         = prm.get_double("Absolute tolerance displacement");
       }
       prm.leave_subsection();
     }
@@ -2137,13 +2151,27 @@ namespace Cook_Membrane
         error_residual_norm = error_residual;
         error_residual_norm.normalise(error_residual_0);
 
-        if (newton_iteration > 0 && error_update_norm.u <= parameters.tol_u &&
-            error_residual_norm.u <= parameters.tol_f)
+        // do at least 3 NR iterations before converging,
+        if (newton_iteration > 2)
           {
-            pcout << " CONVERGED! " << std::endl;
-            print_conv_footer();
+            bool converged = false;
+            // first check abosolute tolerance
+            if (error_residual.u <= parameters.tol_f_abs ||
+                error_update.u <= parameters.tol_u_abs)
+              converged = true;
 
-            break;
+
+            if (error_residual_norm.u <= parameters.tol_f &&
+                error_update_norm.u <= parameters.tol_u)
+              converged = true;
+
+            if (converged)
+              {
+                pcout << " CONVERGED! " << std::endl;
+                print_conv_footer();
+
+                break;
+              }
           }
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
