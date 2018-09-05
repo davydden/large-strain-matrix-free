@@ -42,4 +42,5 @@ end
 
 subsection Misc
   set Output solution = false
+  set Always assemble tangent = false
 end

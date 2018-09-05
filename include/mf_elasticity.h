@@ -121,6 +121,7 @@ namespace Cook_Membrane
     {
       std::string output_folder;
       bool output_solution;
+      bool always_assemble_tangent;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -142,6 +143,10 @@ namespace Cook_Membrane
                           "true",
                           Patterns::Bool(),
                           "Output solution and mesh");
+        prm.declare_entry("Always assemble tangent",
+                          "true",
+                          Patterns::Bool(),
+                          "Always assemble tangent matrix regardless of the solver");
       }
       prm.leave_subsection();
     }
@@ -156,6 +161,7 @@ namespace Cook_Membrane
           output_folder += "/";
 
         output_solution = prm.get_bool("Output solution");
+        always_assemble_tangent = prm.get_bool("Always assemble tangent");
       }
       prm.leave_subsection();
     }
@@ -545,6 +551,8 @@ namespace Cook_Membrane
                            public Misc
 
     {
+      bool skip_tangent_assembly;
+
       AllParameters(const std::string &input_file);
 
       static void
@@ -560,6 +568,8 @@ namespace Cook_Membrane
       declare_parameters(prm);
       prm.parse_input(input_file);
       parse_parameters(prm);
+
+      skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
 
     void
@@ -2075,44 +2085,47 @@ namespace Cook_Membrane
             }
 
 #ifdef DEBUG
-          LinearAlgebra::distributed::Vector<double> diff(newton_update);
+          if (!parameters.skip_tangent_assembly)
+            {
+              LinearAlgebra::distributed::Vector<double> diff(newton_update);
 
-          copy_trilinos(diff, dst_mb);
-          diff.add(-1, dst_mf);
+              copy_trilinos(diff, dst_mb);
+              diff.add(-1, dst_mf);
 
-          // FIXME: looks like there are some severe round-off errors.
-          const unsigned int ulp = std::pow(10, 9);
+              // FIXME: looks like there are some severe round-off errors.
+              const unsigned int ulp = std::pow(10, 9);
 
-          for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert(std::abs(diff.local_element(i)) <=
-                     std::numeric_limits<double>::epsilon() * ulp *
-                       std::abs(dst_mf.local_element(i)),
-                   ExcMessage("MF and MB are different on local element " +
-                              std::to_string(i) + ": " +
-                              std::to_string(dst_mf.local_element(i)) +
-                              " diff " + std::to_string(diff.local_element(i)) +
-                              " at Newton iteration " +
-                              std::to_string(newton_iteration)));
+              for (unsigned int i = 0; i < diff.local_size(); ++i)
+                Assert(std::abs(diff.local_element(i)) <=
+                        std::numeric_limits<double>::epsilon() * ulp *
+                          std::abs(dst_mf.local_element(i)),
+                      ExcMessage("MF and MB are different on local element " +
+                                  std::to_string(i) + ": " +
+                                  std::to_string(dst_mf.local_element(i)) +
+                                  " diff " + std::to_string(diff.local_element(i)) +
+                                  " at Newton iteration " +
+                                  std::to_string(newton_iteration)));
 
-          // now check Jacobi preconditioner
-          TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
-          trilinos_jacobi.initialize(tangent_matrix, 0.8);
-          trilinos_jacobi.vmult(dst_mb, src_trilinos);
-          mf_nh_operator.precondition_Jacobi(dst_mf, src, 0.8);
+              // now check Jacobi preconditioner
+              TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
+              trilinos_jacobi.initialize(tangent_matrix, 0.8);
+              trilinos_jacobi.vmult(dst_mb, src_trilinos);
+              mf_nh_operator.precondition_Jacobi(dst_mf, src, 0.8);
 
-          copy_trilinos(diff, dst_mb);
-          diff.add(-1, dst_mf);
-          for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert(std::abs(diff.local_element(i)) <=
-                     10000. * std::numeric_limits<double>::epsilon() *
-                       std::abs(dst_mf.local_element(i)),
-                   ExcMessage(
-                     "MF and MB Jacobi are different on local element " +
-                     std::to_string(i) + ": " +
-                     std::to_string(dst_mf.local_element(i)) + " diff " +
-                     std::to_string(diff.local_element(i)) +
-                     " at Newton iteration " +
-                     std::to_string(newton_iteration)));
+              copy_trilinos(diff, dst_mb);
+              diff.add(-1, dst_mf);
+              for (unsigned int i = 0; i < diff.local_size(); ++i)
+                Assert(std::abs(diff.local_element(i)) <=
+                        10000. * std::numeric_limits<double>::epsilon() *
+                          std::abs(dst_mf.local_element(i)),
+                      ExcMessage(
+                        "MF and MB Jacobi are different on local element " +
+                        std::to_string(i) + ": " +
+                        std::to_string(dst_mf.local_element(i)) + " diff " +
+                        std::to_string(diff.local_element(i)) +
+                        " at Newton iteration " +
+                        std::to_string(newton_iteration)));
+            }
 #endif
         }
 
@@ -2338,6 +2351,13 @@ namespace Cook_Membrane
         {
           const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
 
+          bool skip_assembly_on_this_cell = parameters.skip_tangent_assembly;
+          // be conservative and do not skip assembly of boundary cells regardless of BC
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+               ++face)
+            if (cell->face(face)->at_boundary())
+              skip_assembly_on_this_cell = false;
+
           fe_values_ref.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
@@ -2388,6 +2408,9 @@ namespace Cook_Membrane
                 {
                   cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
 
+                  if (skip_assembly_on_this_cell)
+                    continue;
+
                   for (unsigned int j = 0; j <= i; ++j)
                     {
                       // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
@@ -2412,9 +2435,10 @@ namespace Cook_Membrane
 
           // Finally, we need to copy the lower half of the local matrix into
           // the upper half:
-          for (unsigned int i = 0; i < dofs_per_cell; ++i)
-            for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
-              cell_matrix(i, j) = cell_matrix(j, i);
+          if (!skip_assembly_on_this_cell)
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+                cell_matrix(i, j) = cell_matrix(j, i);
 
           // Next we assemble the Neumann contribution. We first check to see it
           // the cell face exists on a boundary on which a traction is applied
