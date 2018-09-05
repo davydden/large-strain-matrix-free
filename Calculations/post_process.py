@@ -123,7 +123,7 @@ mb3d_data.sort(key=lambda tup: tup[0])
 deg2d = [tup[0] for tup in mf2d_data_scalar]
 deg3d = [tup[0] for tup in mf3d_data_scalar]
 
-# time per dof
+# vmult time per dof
 time2d_tr = [tup[4][1]/tup[1] for tup in mf2d_data_scalar]
 time2d_sc = [tup[4][0]/tup[1] for tup in mf2d_data_scalar]
 time2d_t2 = [tup[4][0]/tup[1] for tup in mf2d_data_tensor2]
@@ -133,6 +133,17 @@ time3d_tr = [tup[4][1]/tup[1] for tup in mf3d_data_scalar]
 time3d_sc = [tup[4][0]/tup[1] for tup in mf3d_data_scalar]
 time3d_t2 = [tup[4][0]/tup[1] for tup in mf3d_data_tensor2]
 time3d_t4 = [tup[4][0]/tup[1] for tup in mf3d_data_tensor4]
+
+# solver time per dof
+solver2d_tr = [tup[4][2]/tup[1] for tup in mb2d_data]
+solver2d_sc = [tup[4][2]/tup[1] for tup in mf2d_data_scalar]
+solver2d_t2 = [tup[4][2]/tup[1] for tup in mf2d_data_tensor2]
+solver2d_t4 = [tup[4][2]/tup[1] for tup in mf2d_data_tensor4]
+
+solver3d_tr = [tup[4][2]/tup[1] for tup in mb3d_data]
+solver3d_sc = [tup[4][2]/tup[1] for tup in mf3d_data_scalar]
+solver3d_t2 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor2]
+solver3d_t4 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor4]
 
 # Mb per dof
 mem2d_tr = [tup[2]/tup[1] for tup in mf2d_data_scalar]
@@ -153,7 +164,7 @@ plt.plot(deg2d,time2d_sc, 'bo--', label='MF scalar')
 plt.plot(deg2d,time2d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg2d,time2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
-plt.ylabel('wall time (s) / DoF')
+plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
 plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
 
@@ -165,7 +176,7 @@ plt.plot(deg3d,time3d_sc, 'bo--', label='MF scalar')
 plt.plot(deg3d,time3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,time3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
-plt.ylabel('wall time (s) / DoF')
+plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
 plt.savefig(fig_prefix + 'timing3d.eps', format='eps')
 
@@ -192,3 +203,27 @@ plt.xlabel('degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
 plt.savefig(fig_prefix + 'memory3d.eps', format='eps')
+
+# clear
+plt.clf()
+
+plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos')
+plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
+plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg2d,solver2d_t4, 'cv--', label='MF tensor4')
+plt.xlabel('degree')
+plt.ylabel('solver wall time (s) / DoF')
+leg = plt.legend(loc='best', ncol=1)
+plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
+
+# clear
+plt.clf()
+
+plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos')
+plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
+plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg3d,solver3d_t4, 'cv--', label='MF tensor4')
+plt.xlabel('degree')
+plt.ylabel('solver wall time (s) / DoF')
+leg = plt.legend(loc='best', ncol=1)
+plt.savefig(fig_prefix + 'solver3d.eps', format='eps')
