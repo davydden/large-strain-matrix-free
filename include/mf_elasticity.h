@@ -2457,7 +2457,12 @@ namespace Cook_Membrane
                   if (skip_assembly_on_this_cell)
                     continue;
 
-#ifndef COMPONENT_LESS_GEOM_TANGENT
+#ifdef COMPONENT_LESS_GEOM_TANGENT
+                  const SymmetricTensor<2, dim> Jc_symm_grad_Nx_j =
+                    cell_mat->act_Jc(det_F, b_bar, b, symm_grad_Nx[j]);
+                  const Tensor<2, dim> Jg_grad_Nx_j =
+                    egeo_grad(grad_Nx[j], tau_ns);
+#else
                   const unsigned int component_i = fe.system_to_component_index(i).first;
                   const Tensor<1,dim> grad_Nx_i_comp_i_tau = grad_Nx[i][component_i] * tau_ns;
 #endif
@@ -2469,17 +2474,13 @@ namespace Cook_Membrane
                       // which is only added along the local matrix diagonals:
                       cell_matrix(i, j) +=
                         (symm_grad_Nx[i] *
-                         cell_mat->act_Jc(
-                           det_F,
-                           b_bar,
-                           b,
-                           symm_grad_Nx[j])) // The material contribution:
+                         Jc_symm_grad_Nx_j) // The material contribution:
                         * JxW;
 
 #ifdef COMPONENT_LESS_GEOM_TANGENT
                       // geometrical stress contribution
-                      const Tensor<2, dim> geo = egeo_grad(grad_Nx[j], tau_ns);
-                      cell_matrix(i, j) += scalar_product(grad_Nx[i], geo) * JxW;
+                      cell_matrix(i, j) +=
+                        scalar_product(grad_Nx[i], Jg_grad_Nx_j) * JxW;
 #else
                       const unsigned int component_j = fe.system_to_component_index(j).first;
                       if (component_i == component_j) // geometrical stress contribution
