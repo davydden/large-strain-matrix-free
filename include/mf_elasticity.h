@@ -2448,9 +2448,11 @@ namespace Cook_Membrane
               const Tensor<2, dim, NumberType> tau_ns(tau);
               const double                     JxW = fe_values_ref.JxW(q_point);
 
-              for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              // loop over j first to make caching a bit more
+              // straight-forward without recourse to symmetry
+              for (unsigned int j = 0; j < dofs_per_cell; ++j)
                 {
-                  cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
+                  cell_rhs(j) -= (symm_grad_Nx[j] * tau) * JxW;
 
                   if (skip_assembly_on_this_cell)
                     continue;
@@ -2459,7 +2461,7 @@ namespace Cook_Membrane
                   const unsigned int component_i = fe.system_to_component_index(i).first;
                   const Tensor<1,dim> grad_Nx_i_comp_i_tau = grad_Nx[i][component_i] * tau_ns;
 #endif
-                  for (unsigned int j = 0; j <= i; ++j)
+                  for (unsigned int i = 0; i <= j; ++i)
                     {
                       // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
                       // \mathbf{u}}$ contribution. It comprises a material
@@ -2490,8 +2492,8 @@ namespace Cook_Membrane
           // Finally, we need to copy the lower half of the local matrix into
           // the upper half:
           if (!skip_assembly_on_this_cell)
-            for (unsigned int i = 0; i < dofs_per_cell; ++i)
-              for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+            for (unsigned int j = 0; j < dofs_per_cell; ++j)
+              for (unsigned int i = j + 1; i < dofs_per_cell; ++i)
                 cell_matrix(i, j) = cell_matrix(j, i);
 
           // Next we assemble the Neumann contribution. We first check to see it
