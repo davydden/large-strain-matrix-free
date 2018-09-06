@@ -122,6 +122,7 @@ namespace Cook_Membrane
       std::string output_folder;
       bool output_solution;
       bool always_assemble_tangent;
+      bool output_abs_norms;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -147,6 +148,10 @@ namespace Cook_Membrane
                           "true",
                           Patterns::Bool(),
                           "Always assemble tangent matrix regardless of the solver");
+        prm.declare_entry("Output absolute norms",
+                          "false",
+                          Patterns::Bool(),
+                          "Output absolute norms during convergence");
       }
       prm.leave_subsection();
     }
@@ -162,6 +167,7 @@ namespace Cook_Membrane
 
         output_solution = prm.get_bool("Output solution");
         always_assemble_tangent = prm.get_bool("Always assemble tangent");
+        output_abs_norms = prm.get_bool("Output absolute norms");
       }
       prm.leave_subsection();
     }
@@ -2196,9 +2202,13 @@ namespace Cook_Membrane
               << std::scientific << std::get<0>(lin_solver_output) << "  "
               << std::get<1>(lin_solver_output) << "  "
               << std::get<2>(lin_solver_output) << "  "
-              << error_residual_norm.norm << "  " << error_residual_norm.u
+              << error_residual_norm.norm << "  "
+              << (parameters.output_abs_norms ? error_residual.u :
+                                                error_residual_norm.u)
               << "  "
-              << "  " << error_update_norm.norm << "  " << error_update_norm.u
+              << "  " << error_update_norm.norm << "  "
+              << (parameters.output_abs_norms ? error_update.u :
+                                                error_update_norm.u)
               << "  " << std::endl;
       }
 
