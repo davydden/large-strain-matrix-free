@@ -121,6 +121,8 @@ namespace Cook_Membrane
     {
       std::string output_folder;
       bool output_solution;
+      bool always_assemble_tangent;
+      bool output_abs_norms;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -142,6 +144,14 @@ namespace Cook_Membrane
                           "true",
                           Patterns::Bool(),
                           "Output solution and mesh");
+        prm.declare_entry("Always assemble tangent",
+                          "true",
+                          Patterns::Bool(),
+                          "Always assemble tangent matrix regardless of the solver");
+        prm.declare_entry("Output absolute norms",
+                          "false",
+                          Patterns::Bool(),
+                          "Output absolute norms during convergence");
       }
       prm.leave_subsection();
     }
@@ -156,6 +166,8 @@ namespace Cook_Membrane
           output_folder += "/";
 
         output_solution = prm.get_bool("Output solution");
+        always_assemble_tangent = prm.get_bool("Always assemble tangent");
+        output_abs_norms = prm.get_bool("Output absolute norms");
       }
       prm.leave_subsection();
     }
@@ -215,6 +227,8 @@ namespace Cook_Membrane
       double       scale;
       unsigned int dim;
       unsigned int n_global_refinement;
+      unsigned int extrusion_slices;
+      double       extrusion_height;
       std::string  type;
 
       static void
@@ -244,6 +258,16 @@ namespace Cook_Membrane
                           Patterns::Double(0.0),
                           "Global grid scaling factor");
 
+        prm.declare_entry("Extrusion height",
+                          "1",
+                          Patterns::Double(0.0),
+                          "Extrusion height");
+
+        prm.declare_entry("Extrusion slices",
+                          "5",
+                          Patterns::Integer(0),
+                          "Number of extrusion slices");
+
         prm.declare_entry("Dimension",
                           "2",
                           Patterns::Integer(2, 3),
@@ -268,6 +292,8 @@ namespace Cook_Membrane
         dim                 = prm.get_integer("Dimension");
         n_global_refinement = prm.get_integer("Global refinement");
         type                = prm.get("Type");
+        extrusion_slices    = prm.get_integer("Extrusion slices");
+        extrusion_height    = prm.get_double("Extrusion height");
       }
       prm.leave_subsection();
     }
@@ -426,7 +452,9 @@ namespace Cook_Membrane
     {
       unsigned int max_iterations_NR;
       double       tol_f;
+      double       tol_f_abs;
       double       tol_u;
+      double       tol_u_abs;
 
       static void
       declare_parameters(ParameterHandler &prm);
@@ -450,6 +478,16 @@ namespace Cook_Membrane
                           Patterns::Double(0.0),
                           "Force residual tolerance");
 
+        prm.declare_entry("Absolute tolerance force",
+                          "0.",
+                          Patterns::Double(0.0),
+                          "Force residual absolute tolerance");
+
+        prm.declare_entry("Absolute tolerance displacement",
+                          "0.",
+                          Patterns::Double(0.0),
+                          "Displacement update absolute tolerance");
+
         prm.declare_entry("Tolerance displacement",
                           "1.0e-6",
                           Patterns::Double(0.0),
@@ -465,7 +503,9 @@ namespace Cook_Membrane
       {
         max_iterations_NR = prm.get_integer("Max iterations Newton-Raphson");
         tol_f             = prm.get_double("Tolerance force");
+        tol_f_abs         = prm.get_double("Absolute tolerance force");
         tol_u             = prm.get_double("Tolerance displacement");
+        tol_u_abs         = prm.get_double("Absolute tolerance displacement");
       }
       prm.leave_subsection();
     }
@@ -531,6 +571,8 @@ namespace Cook_Membrane
                            public Misc
 
     {
+      bool skip_tangent_assembly;
+
       AllParameters(const std::string &input_file);
 
       static void
@@ -546,6 +588,8 @@ namespace Cook_Membrane
       declare_parameters(prm);
       prm.parse_input(input_file);
       parse_parameters(prm);
+
+      skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
 
     void
@@ -889,6 +933,9 @@ namespace Cook_Membrane
     MGConstrainedDoFs mg_constrained_dofs;
 
     bool print_mf_memory;
+
+    unsigned long int total_n_cg_iterations;
+    unsigned int total_n_cg_solve;
   };
 
   // @sect3{Implementation of the <code>Solid</code> class}
@@ -1001,6 +1048,8 @@ namespace Cook_Membrane
     , n_q_points(qf_cell.size())
     , n_q_points_f(qf_face.size())
     , print_mf_memory(true)
+    , total_n_cg_iterations(0)
+    , total_n_cg_solve(0)
   {
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
@@ -1134,6 +1183,9 @@ namespace Cook_Membrane
     // Lastly, we print the vertical tip displacement of the Cook cantilever
     // after the full load is applied
     print_vertical_tip_displacement();
+
+    // for post-processing, print average CG iterations over the whole run:
+    timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
   }
 
 
@@ -1178,7 +1230,9 @@ namespace Cook_Membrane
     const double                                                scale,
     const Point<3> &                                            center_dim_1,
     const Point<3> &                                            center_dim_2,
-    const Point<3> &                                            center_dim_3)
+    const Point<3> &                                            center_dim_3,
+    const double                                                extrusion_height,
+    const unsigned int                                          extrusion_slices)
   {
     Triangulation<2> triangulation_2d;
     GridGenerator::merge_triangulations(triangulations,
@@ -1187,7 +1241,7 @@ namespace Cook_Membrane
                                         true);
 
     GridGenerator::extrude_triangulation(
-      triangulation_2d, 5, 1.0 * scale, dst, true);
+      triangulation_2d, extrusion_slices, extrusion_height * scale, dst, true);
 
     for (const auto& cell: dst.active_cell_iterators())
       for (unsigned int face_no=0; face_no < GeometryInfo<3>::faces_per_cell; ++face_no)
@@ -1215,7 +1269,10 @@ namespace Cook_Membrane
     const double                                                scale,
     const Point<2> &                                            center_dim_1,
     const Point<2> &                                            center_dim_2,
-    const Point<2> &                                            center_dim_3)
+    const Point<2> &                                            center_dim_3,
+    const double                                                /*extrusion_height*/,
+    const unsigned int                                          /*extrusion_slices*/)
+
   {
     GridGenerator::merge_triangulations(triangulations,
                                         dst,
@@ -1439,7 +1496,9 @@ namespace Cook_Membrane
            parameters.scale,
            center_dim_1,
            center_dim_2,
-           center_dim_3);
+           center_dim_3,
+           parameters.extrusion_height,
+           parameters.extrusion_slices);
 
          for (unsigned int i = 4; i <= 8; ++i)
            {
@@ -1985,6 +2044,16 @@ namespace Cook_Membrane
 
     print_conv_header();
 
+    // auxiliary vectors to test vmult()
+    TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
+      dst_mb(newton_update_trilinos);
+    for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
+      src_trilinos(locally_owned_dofs.nth_index_in_set(i)) =
+        ((double)std::rand()) / RAND_MAX;
+
+    LinearAlgebra::distributed::Vector<double> src(newton_update),
+      dst_mf(newton_update);
+
     // We now perform a number of Newton iterations to iteratively solve the
     // nonlinear problem.  Since the problem is fully nonlinear and we are
     // using a full Newton method, the data stored in the tangent matrix and
@@ -2018,16 +2087,7 @@ namespace Cook_Membrane
 
         // check vmult of matrix-based and matrix-free for a random vector:
         {
-          TrilinosWrappers::MPI::Vector src_trilinos(newton_update_trilinos),
-            dst_mb(newton_update_trilinos);
-          for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
-            src_trilinos(locally_owned_dofs.nth_index_in_set(i)) =
-              ((double)std::rand()) / RAND_MAX;
-
           constraints.set_zero(src_trilinos);
-
-          LinearAlgebra::distributed::Vector<double> src(newton_update),
-            dst_mf(newton_update);
           copy_trilinos(src, src_trilinos);
 
           const unsigned int n_times = 10;
@@ -2046,44 +2106,47 @@ namespace Cook_Membrane
             }
 
 #ifdef DEBUG
-          LinearAlgebra::distributed::Vector<double> diff(newton_update);
+          if (!parameters.skip_tangent_assembly)
+            {
+              LinearAlgebra::distributed::Vector<double> diff(newton_update);
 
-          copy_trilinos(diff, dst_mb);
-          diff.add(-1, dst_mf);
+              copy_trilinos(diff, dst_mb);
+              diff.add(-1, dst_mf);
 
-          // FIXME: looks like there are some severe round-off errors.
-          const unsigned int ulp = std::pow(10, 9);
+              // FIXME: looks like there are some severe round-off errors.
+              const unsigned int ulp = std::pow(10, 9);
 
-          for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert(std::abs(diff.local_element(i)) <=
-                     std::numeric_limits<double>::epsilon() * ulp *
-                       std::abs(dst_mf.local_element(i)),
-                   ExcMessage("MF and MB are different on local element " +
-                              std::to_string(i) + ": " +
-                              std::to_string(dst_mf.local_element(i)) +
-                              " diff " + std::to_string(diff.local_element(i)) +
-                              " at Newton iteration " +
-                              std::to_string(newton_iteration)));
+              for (unsigned int i = 0; i < diff.local_size(); ++i)
+                Assert(std::abs(diff.local_element(i)) <=
+                        std::numeric_limits<double>::epsilon() * ulp *
+                          std::abs(dst_mf.local_element(i)),
+                      ExcMessage("MF and MB are different on local element " +
+                                  std::to_string(i) + ": " +
+                                  std::to_string(dst_mf.local_element(i)) +
+                                  " diff " + std::to_string(diff.local_element(i)) +
+                                  " at Newton iteration " +
+                                  std::to_string(newton_iteration)));
 
-          // now check Jacobi preconditioner
-          TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
-          trilinos_jacobi.initialize(tangent_matrix, 0.8);
-          trilinos_jacobi.vmult(dst_mb, src_trilinos);
-          mf_nh_operator.precondition_Jacobi(dst_mf, src, 0.8);
+              // now check Jacobi preconditioner
+              TrilinosWrappers::PreconditionJacobi trilinos_jacobi;
+              trilinos_jacobi.initialize(tangent_matrix, 0.8);
+              trilinos_jacobi.vmult(dst_mb, src_trilinos);
+              mf_nh_operator.precondition_Jacobi(dst_mf, src, 0.8);
 
-          copy_trilinos(diff, dst_mb);
-          diff.add(-1, dst_mf);
-          for (unsigned int i = 0; i < diff.local_size(); ++i)
-            Assert(std::abs(diff.local_element(i)) <=
-                     10000. * std::numeric_limits<double>::epsilon() *
-                       std::abs(dst_mf.local_element(i)),
-                   ExcMessage(
-                     "MF and MB Jacobi are different on local element " +
-                     std::to_string(i) + ": " +
-                     std::to_string(dst_mf.local_element(i)) + " diff " +
-                     std::to_string(diff.local_element(i)) +
-                     " at Newton iteration " +
-                     std::to_string(newton_iteration)));
+              copy_trilinos(diff, dst_mb);
+              diff.add(-1, dst_mf);
+              for (unsigned int i = 0; i < diff.local_size(); ++i)
+                Assert(std::abs(diff.local_element(i)) <=
+                        10000. * std::numeric_limits<double>::epsilon() *
+                          std::abs(dst_mf.local_element(i)),
+                      ExcMessage(
+                        "MF and MB Jacobi are different on local element " +
+                        std::to_string(i) + ": " +
+                        std::to_string(dst_mf.local_element(i)) + " diff " +
+                        std::to_string(diff.local_element(i)) +
+                        " at Newton iteration " +
+                        std::to_string(newton_iteration)));
+            }
 #endif
         }
 
@@ -2095,17 +2158,34 @@ namespace Cook_Membrane
         error_residual_norm = error_residual;
         error_residual_norm.normalise(error_residual_0);
 
-        if (newton_iteration > 0 && error_update_norm.u <= parameters.tol_u &&
-            error_residual_norm.u <= parameters.tol_f)
+        // do at least 3 NR iterations before converging,
+        if (newton_iteration > 2)
           {
-            pcout << " CONVERGED! " << std::endl;
-            print_conv_footer();
+            bool converged = false;
+            // first check abosolute tolerance
+            if (error_residual.u <= parameters.tol_f_abs ||
+                error_update.u <= parameters.tol_u_abs)
+              converged = true;
 
-            break;
+
+            if (error_residual_norm.u <= parameters.tol_f &&
+                error_update_norm.u <= parameters.tol_u)
+              converged = true;
+
+            if (converged)
+              {
+                pcout << " CONVERGED! " << std::endl;
+                print_conv_footer();
+
+                break;
+              }
           }
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
           solve_linear_system(newton_update, newton_update_trilinos);
+
+        total_n_cg_iterations += std::get<0>(lin_solver_output);
+        total_n_cg_solve++;
 
         if (newton_iteration == 0)
           error_update_0 = error_update;
@@ -2123,9 +2203,13 @@ namespace Cook_Membrane
               << std::scientific << std::get<0>(lin_solver_output) << "  "
               << std::get<1>(lin_solver_output) << "  "
               << std::get<2>(lin_solver_output) << "  "
-              << error_residual_norm.norm << "  " << error_residual_norm.u
+              << error_residual_norm.norm << "  "
+              << (parameters.output_abs_norms ? error_residual.u :
+                                                error_residual_norm.u)
               << "  "
-              << "  " << error_update_norm.norm << "  " << error_update_norm.u
+              << "  " << error_update_norm.norm << "  "
+              << (parameters.output_abs_norms ? error_update.u :
+                                                error_update_norm.u)
               << "  " << std::endl;
       }
 
@@ -2214,9 +2298,7 @@ namespace Cook_Membrane
         soln_pt[0] = 0. * parameters.scale;
         soln_pt[1] = 0. * parameters.scale;
         if (dim == 3)
-          // we extrude by 1.0 * scale:
-          soln_pt[2] = 0.5 * parameters.scale;
-
+          soln_pt[2] = 0.5 * parameters.extrusion_height * parameters.scale;
       }
 
     double vertical_tip_displacement = 0.0;
@@ -2308,6 +2390,13 @@ namespace Cook_Membrane
         {
           const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
 
+          bool skip_assembly_on_this_cell = parameters.skip_tangent_assembly;
+          // be conservative and do not skip assembly of boundary cells regardless of BC
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+               ++face)
+            if (cell->face(face)->at_boundary())
+              skip_assembly_on_this_cell = false;
+
           fe_values_ref.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
@@ -2358,6 +2447,9 @@ namespace Cook_Membrane
                 {
                   cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
 
+                  if (skip_assembly_on_this_cell)
+                    continue;
+
                   for (unsigned int j = 0; j <= i; ++j)
                     {
                       // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
@@ -2382,9 +2474,10 @@ namespace Cook_Membrane
 
           // Finally, we need to copy the lower half of the local matrix into
           // the upper half:
-          for (unsigned int i = 0; i < dofs_per_cell; ++i)
-            for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
-              cell_matrix(i, j) = cell_matrix(j, i);
+          if (!skip_assembly_on_this_cell)
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+                cell_matrix(i, j) = cell_matrix(j, i);
 
           // Next we assemble the Neumann contribution. We first check to see it
           // the cell face exists on a boundary on which a traction is applied

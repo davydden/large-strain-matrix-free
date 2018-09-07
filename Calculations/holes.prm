@@ -30,6 +30,7 @@ subsection Nonlinear solver
   set Max iterations Newton-Raphson = 10
   set Tolerance displacement        = 1.0e-5
   set Tolerance force               = 1.0e-8
+  set Absolute tolerance force      = 1.0e-9
 end
 
 
@@ -42,4 +43,5 @@ end
 
 subsection Misc
   set Output solution = false
+  set Always assemble tangent = false
 end
