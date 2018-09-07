@@ -28,7 +28,8 @@ sections = [
     'vmult (MF)',
     'vmult (Trilinos)',
     'Linear solver',
-    'Assemble linear system'
+    'Assemble linear system',
+    'Coarse solve level 0'
 ]
 
 start_line = 'Total wallclock time elapsed since start'
@@ -85,8 +86,12 @@ for f in files:
         if ready:
             for idx, s in enumerate(sections):
                 if s in line:
-                    nums = re.findall(pattern, line)
-                    timing[idx] = float(nums[1]) / int(nums[0]) # total / how many times
+                    nums = re.findall(pattern, "".join(line.rsplit(s)))
+                    # do time of a single vmult and the reset -- total time
+                    n = int(nums[0]) if 'vmult (' in s else int(1)  # how many times
+                    t = float(nums[1]) # total time
+                    print '  {0} {1} {2} {3}'.format(s,idx,n,t)
+                    timing[idx] = t / n
 
     # finish processing the file, put the data
     tp = tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations))
@@ -144,11 +149,13 @@ solver2d_tr = [tup[4][2]/tup[1] for tup in mb2d_data]
 solver2d_sc = [tup[4][2]/tup[1] for tup in mf2d_data_scalar]
 solver2d_t2 = [tup[4][2]/tup[1] for tup in mf2d_data_tensor2]
 solver2d_t4 = [tup[4][2]/tup[1] for tup in mf2d_data_tensor4]
+solver2d_t4_coarse = [tup[4][4]/tup[1] for tup in mf2d_data_tensor4]
 
 solver3d_tr = [tup[4][2]/tup[1] for tup in mb3d_data]
 solver3d_sc = [tup[4][2]/tup[1] for tup in mf3d_data_scalar]
 solver3d_t2 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor2]
 solver3d_t4 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor4]
+solver3d_t4_coarse = [tup[4][4]/tup[1] for tup in mf3d_data_tensor4]
 
 assembly2d_tr = [tup[4][3]/tup[1] for tup in mb2d_data]
 assembly3d_tr = [tup[4][3]/tup[1] for tup in mb3d_data]
@@ -223,9 +230,10 @@ plt.savefig(fig_prefix + 'memory3d.eps', format='eps')
 plt.clf()
 
 plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos')
-plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
-plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
-plt.plot(deg2d,solver2d_t4, 'cv--', label='MF tensor4')
+# plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
+# plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg2d,solver2d_t4, 'cv--', label='MF')  # tensor4')
+plt.plot(deg2d,solver2d_t4_coarse, 'g^--', label='coarse level solver')
 plt.xlabel('degree')
 plt.ylabel('solver wall time (s) / DoF')
 plt.plot(deg2d,assembly2d_tr, 'mp--', label='assembly')
@@ -236,9 +244,10 @@ plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
 plt.clf()
 
 plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos')
-plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
-plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
+# plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
+# plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,solver3d_t4, 'cv--', label='MF tensor4')
+plt.plot(deg3d,solver3d_t4_coarse, 'g^--', label='coarse level solver')
 plt.xlabel('degree')
 plt.ylabel('solver wall time (s) / DoF')
 plt.plot(deg3d,assembly3d_tr, 'mp--', label='assembly')
