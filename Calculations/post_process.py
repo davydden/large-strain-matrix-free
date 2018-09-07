@@ -51,6 +51,8 @@ for f in files:
     # timing = ['-' for i in range(2*len(sections))]
     timing = [np.nan for i in range(len(sections))]
 
+    # reset CG iterations in case AMG did not have enough memory
+    cg_iterations = np.nan
     for line in fin:
         if 'dim   =' in line:
             dim = int(re.findall(pattern,line)[0])
@@ -73,6 +75,9 @@ for f in files:
         elif 'MF cache memory =' in line:
             mf_memory = float(re.findall(pattern,line)[0])
 
+        elif 'Average CG iter =' in line:
+            cg_iterations = int(re.findall(pattern,line)[0])
+
         if start_line in line:
             print 'p={0} q={1} cells={2} dofs={3} tr_memory={4} mf_memory={5} file={6}'.format(p, q, cells, dofs, tr_memory, mf_memory, f)
             ready = True
@@ -84,7 +89,7 @@ for f in files:
                     timing[idx] = float(nums[1]) / int(nums[0]) # total / how many times
 
     # finish processing the file, put the data
-    tp = tuple((p, dofs, tr_memory, mf_memory, timing))
+    tp = tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations))
     if 'MF_CG' in f:
         if '_scalar' in f:
             if dim == 2:
@@ -144,6 +149,16 @@ solver3d_tr = [tup[4][2]/tup[1] for tup in mb3d_data]
 solver3d_sc = [tup[4][2]/tup[1] for tup in mf3d_data_scalar]
 solver3d_t2 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor2]
 solver3d_t4 = [tup[4][2]/tup[1] for tup in mf3d_data_tensor4]
+
+assembly2d_tr = [tup[4][3]/tup[1] for tup in mb2d_data]
+assembly3d_tr = [tup[4][3]/tup[1] for tup in mb3d_data]
+
+# CG iterations
+cg2d_tr = [tup[5] for tup in mb2d_data]
+cg2d_t4 = [tup[5] for tup in mf2d_data_tensor4]
+
+cg3d_tr = [tup[5] for tup in mb3d_data]
+cg3d_t4 = [tup[5] for tup in mf3d_data_tensor4]
 
 # Mb per dof
 mem2d_tr = [tup[2]/tup[1] for tup in mf2d_data_scalar]
@@ -213,6 +228,7 @@ plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg2d,solver2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('solver wall time (s) / DoF')
+plt.plot(deg2d,assembly2d_tr, 'mp--', label='assembly')
 leg = plt.legend(loc='best', ncol=1)
 plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
 
@@ -225,5 +241,26 @@ plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,solver3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('solver wall time (s) / DoF')
+plt.plot(deg3d,assembly3d_tr, 'mp--', label='assembly')
 leg = plt.legend(loc='best', ncol=1)
 plt.savefig(fig_prefix + 'solver3d.eps', format='eps')
+
+# clear
+plt.clf()
+
+plt.plot(deg2d,cg2d_tr, 'rs--', label='Trilinos')
+plt.plot(deg2d,cg2d_t4, 'cv--', label='MF')  # tensor4')
+plt.xlabel('degree')
+plt.ylabel('average number of CG iterations')
+leg = plt.legend(loc='best', ncol=1)
+plt.savefig(fig_prefix + 'cg2d.eps', format='eps')
+
+# clear
+plt.clf()
+
+plt.plot(deg3d,cg3d_tr, 'rs--', label='Trilinos')
+plt.plot(deg3d,cg3d_t4, 'cv--', label='MF')  # tensor4')
+plt.xlabel('degree')
+plt.ylabel('average number of CG iterations')
+leg = plt.legend(loc='best', ncol=1)
+plt.savefig(fig_prefix + 'cg3d.eps', format='eps')
