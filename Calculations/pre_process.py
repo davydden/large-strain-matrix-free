@@ -21,16 +21,20 @@ args = parser.parse_args()
 
 # parameters (list of tuples):
 
-# FE degree, quadrature and global refinement
-poly_quad_ref = [
-    (1,2,7),
-    (2,3,6),
-    (3,4,5),
-    (4,5,5),
-    (5,6,5),
-    (6,7,4),
-    (7,8,4),
-    (8,9,4)
+# FE degree, quadrature, global refinement, dim
+poly_quad_ref_dim = [
+    (1,2,7,2),
+    (2,3,6,2),
+    (3,4,5,2),
+    (4,5,5,2),
+    (5,6,5,2),
+    (6,7,4,2),
+    (7,8,4,2),
+    (8,9,4,2),
+    (1,2,4,3),
+    (2,3,3,3),
+    (3,4,2,3),
+    (4,5,2,3),
 ]
 
 # Solvers (type, preconditioner and caching)
@@ -38,6 +42,7 @@ solvers = [
     ('MF_CG', 'gmg', 'scalar'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
+    ('CG',    'amg', 'scalar'),
 ]
 
 # MPI run command
@@ -57,12 +62,14 @@ end
 
 subsection Geometry
   set Global refinement  = {3}
+  set Dimension          = {8}
 end
 
 subsection Linear solver
   set Solver type                = {4}
   set Preconditioner type        = {5}
   set MF caching                 = {6}
+  set Preconditioner AMG aggregation threshold = 1e-4
 end
 
 subsection Misc
@@ -84,21 +91,22 @@ print 'mpi comand:\n{0}'.format(mpicmd)
 filenames = []
 
 # write parameter file
-for pqr in poly_quad_ref:
+for pqrd in poly_quad_ref_dim:
     for s in solvers:
-        name = base_name + '_p{0}q{1}r{2}_{3}_{4}_{5}'.format(pqr[0],pqr[1],pqr[2],s[0],s[1],s[2])
+        name = base_name + '_{6}d_p{0}q{1}r{2}_{3}_{4}_{5}'.format(pqrd[0],pqrd[1],pqrd[2],s[0],s[1],s[2],pqrd[3])
         fname = name + '.prm'
         print '{0}'.format(fname)
         fout = open(fname, 'w')
         fout.write(parameter_file.format(
             base_prm,
-            pqr[0],
-            pqr[1],
-            pqr[2],
+            pqrd[0],
+            pqrd[1],
+            pqrd[2],
             s[0],
             s[1],
             s[2],
-            out_dir + name
+            out_dir + name,
+            pqrd[3]
         ))
         filenames.append(name)
 

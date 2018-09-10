@@ -9,6 +9,8 @@
  */
 static const unsigned int debug_level = 0;
 
+//#define COMPONENT_LESS_GEOM_TANGENT
+
 // We start by including all the necessary deal.II header files and some C++
 // related ones. They have been discussed in detail in previous tutorial
 // programs, so you need only refer to past tutorials for details.
@@ -2424,13 +2426,16 @@ namespace Cook_Membrane
                 Physics::Elasticity::Kinematics::F(grad_u);
               const SymmetricTensor<2, dim, NumberType> b =
                 Physics::Elasticity::Kinematics::b(F);
+
               const NumberType                 det_F = determinant(F);
-              const Tensor<2, dim, NumberType> F_bar =
-                Physics::Elasticity::Kinematics::F_iso(F);
-              const SymmetricTensor<2, dim, NumberType> b_bar =
-                Physics::Elasticity::Kinematics::b(F_bar);
-              const Tensor<2, dim, NumberType> F_inv = invert(F);
               Assert(det_F > NumberType(0.0), ExcInternalError());
+              const Tensor<2, dim, NumberType> F_inv = invert(F);
+
+              // don't calculate b_bar if we don't need to:
+              const SymmetricTensor<2, dim, NumberType> b_bar =
+                cell_mat->formulation == 0 ?
+                Physics::Elasticity::Kinematics::b(Physics::Elasticity::Kinematics::F_iso(F)) :
+                SymmetricTensor<2, dim, NumberType>();
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
                 {
@@ -2443,14 +2448,26 @@ namespace Cook_Membrane
               const Tensor<2, dim, NumberType> tau_ns(tau);
               const double                     JxW = fe_values_ref.JxW(q_point);
 
-              for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              // loop over j first to make caching a bit more
+              // straight-forward without recourse to symmetry
+              for (unsigned int j = 0; j < dofs_per_cell; ++j)
                 {
-                  cell_rhs(i) -= (symm_grad_Nx[i] * tau) * JxW;
+                  cell_rhs(j) -= (symm_grad_Nx[j] * tau) * JxW;
 
                   if (skip_assembly_on_this_cell)
                     continue;
 
-                  for (unsigned int j = 0; j <= i; ++j)
+                  const SymmetricTensor<2, dim> Jc_symm_grad_Nx_j =
+                    cell_mat->act_Jc(det_F, b_bar, b, symm_grad_Nx[j]);
+
+#ifdef COMPONENT_LESS_GEOM_TANGENT
+                  const Tensor<2, dim> Jg_grad_Nx_j =
+                    egeo_grad(grad_Nx[j], tau_ns);
+#else
+                  const unsigned int component_j = fe.system_to_component_index(j).first;
+                  const Tensor<1,dim> tau_grad_Nx_j_comp_j = tau_ns * grad_Nx[j][component_j];
+#endif
+                  for (unsigned int i = 0; i <= j; ++i)
                     {
                       // This is the $\mathsf{\mathbf{k}}_{\mathbf{u}
                       // \mathbf{u}}$ contribution. It comprises a material
@@ -2458,16 +2475,18 @@ namespace Cook_Membrane
                       // which is only added along the local matrix diagonals:
                       cell_matrix(i, j) +=
                         (symm_grad_Nx[i] *
-                         cell_mat->act_Jc(
-                           det_F,
-                           b_bar,
-                           b,
-                           symm_grad_Nx[j])) // The material contribution:
+                         Jc_symm_grad_Nx_j) // The material contribution:
                         * JxW;
+
+#ifdef COMPONENT_LESS_GEOM_TANGENT
                       // geometrical stress contribution
-                      const Tensor<2, dim> geo = egeo_grad(grad_Nx[j], tau_ns);
                       cell_matrix(i, j) +=
-                        double_contract<0, 0, 1, 1>(grad_Nx[i], geo) * JxW;
+                        scalar_product(grad_Nx[i], Jg_grad_Nx_j) * JxW;
+#else
+                      const unsigned int component_i = fe.system_to_component_index(i).first;
+                      if (component_i == component_j) // geometrical stress contribution
+                        cell_matrix(i, j) += (grad_Nx[i][component_i] * tau_grad_Nx_j_comp_j) * JxW;
+#endif
                     }
                 }
             } // end loop over quadrature points
@@ -2475,8 +2494,8 @@ namespace Cook_Membrane
           // Finally, we need to copy the lower half of the local matrix into
           // the upper half:
           if (!skip_assembly_on_this_cell)
-            for (unsigned int i = 0; i < dofs_per_cell; ++i)
-              for (unsigned int j = i + 1; j < dofs_per_cell; ++j)
+            for (unsigned int j = 0; j < dofs_per_cell; ++j)
+              for (unsigned int i = j + 1; i < dofs_per_cell; ++i)
                 cell_matrix(i, j) = cell_matrix(j, i);
 
           // Next we assemble the Neumann contribution. We first check to see it

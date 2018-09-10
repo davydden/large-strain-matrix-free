@@ -398,31 +398,97 @@ TODO: switch head to quasi-static load instead of dynamics?
 
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.45\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{Emmy_RRZE_timing.eps}
-      \caption{vmult}
+      \includegraphics[width=\textwidth]{Emmy_RRZE_timing2d.eps}
+      \caption{vmult 2D}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_timing3d.eps}
+    \caption{vmult 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{Emmy_RRZE_memory.eps}
-      \caption{memory consumption}
+      \includegraphics[width=\textwidth]{Emmy_RRZE_memory2d.eps}
+      \caption{memory consumption 2D}
   \end{subfigure}
-  \caption{Heterogeneous 2D large-strain example (Emmy cluster, RRZE).}%
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_memory3d.eps}
+    \caption{memory consumption 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_cg2d.eps}
+    \caption{CG iterations 2D}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_cg3d.eps}
+    \caption{CG iterations 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_solver2d.eps}
+    \caption{CG solution time 2D}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_solver3d.eps}
+    \caption{CG solution time 3D}
+  \end{subfigure}
+  \caption{Heterogeneous large-strain example (Emmy cluster, RRZE).}%
   \label{fig:benchmark_2d_miehe}
 \end{figure}
 
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.45\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_timing.eps}
-      \caption{vmult}
+      \includegraphics[width=\textwidth]{IWR_timing2d.eps}
+      \caption{vmult 2D}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_timing3d.eps}
+    \caption{vmult 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_memory.eps}
-      \caption{memory consumption}
+      \includegraphics[width=\textwidth]{IWR_memory2d.eps}
+      \caption{memory consumption 2D}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_memory3d.eps}
+    \caption{memory consumption 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_cg2d.eps}
+    \caption{CG iterations 2D}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_cg3d.eps}
+    \caption{CG iterations 3D}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_solver2d.eps}
+    \caption{CG solution time 2D}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_solver3d.eps}
+    \caption{CG solution time 3D}
   \end{subfigure}
   \caption{Heterogeneous 2D large-strain example (IWR cluster).}%
   \label{fig:benchmark_2d_miehe_IWR}

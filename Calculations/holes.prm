@@ -30,18 +30,18 @@ subsection Nonlinear solver
   set Max iterations Newton-Raphson = 10
   set Tolerance displacement        = 1.0e-5
   set Tolerance force               = 1.0e-8
-  set Absolute tolerance force      = 1.0e-9
+  set Absolute tolerance force      = 1.0e-8
 end
 
 
 subsection Time
-  # Do a single loading step:
-  set End time         = 0.1
-  set Force multiplier = 0.1 # N
+  set End time         = 0.5
+  set Force multiplier = 0.5   # N
   set Time step size   = 0.1
 end
 
 subsection Misc
   set Output solution = false
   set Always assemble tangent = false
+  set Output absolute norms = true
 end
