@@ -2919,17 +2919,8 @@ namespace Cook_Membrane
     data_out.add_data_vector(material_id, "material_id");
     data_out.add_data_vector(manifold_id, "manifold_id");
 
-    // Since we are dealing with a large deformation problem, it would be nice
-    // to display the result on a displaced grid!  The MappingQEulerian class
-    // linked with the DataOut class provides an interface through which this
-    // can be achieved without physically moving the grid points in the
-    // Triangulation object ourselves.  We first need to copy the solution to
-    // a temporary vector and then create the Eulerian mapping. We also
-    // specify the polynomial degree to the DataOut object in order to produce
-    // a more refined output data set when higher order polynomials are used.
-    MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>> q_mapping(
-      degree, dof_handler_ref, solution_n);
-    data_out.build_patches(q_mapping, degree, DataOut<dim>::curved_inner_cells);
+    const MappingQGeneric<dim> mapping(degree);
+    data_out.build_patches(mapping, degree, DataOut<dim>::curved_inner_cells);
 
     auto name_func = [&](const unsigned int proc) -> std::string {
       return "solution-" + std::to_string(time.get_timestep()) + "_" +
