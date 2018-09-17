@@ -440,9 +440,7 @@ The results of the matrix-free approach with geometric-multigrid preconditioner 
 The aggregation threshold for AMG is taken as $10^{-4}$.
 Computations are done on a single node of two clusters.
 A node on ``Emmy'' cluster has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB Shared Cache per chip and 64 GB of RAM. Intel compilers version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
-A node on ``IWR'' cluster
-{\color{red}Daniel please add...}
-
+The ``IWR'' results were obtained ona single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB Shared Cache per chip. For the simulation, GNU 8.1.0 with flags ``-O3 -march=native'' and OpenMPI 3.0.0 were used.
 
 Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the benchmarks as performed on the two clusters.
 As expected the matrix-vector multiplication becomes very expensive for higher order discretization for matrix-based approaches.
