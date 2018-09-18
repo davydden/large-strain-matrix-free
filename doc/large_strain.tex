@@ -321,14 +321,36 @@ J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
 
 We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
 the associated FE space of continuous piecewise elements of a fixed polynomial degree. % : $V^h \subset H^1 (\mcl B_0)$.
-The deformation map are given in a
-a vector space spanned by standard vector--valued FE basis functions $\gz N^i(\gz x)$ (e.g. polynomials with local support):
+The displacement fields are given in a
+a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support):
 \begin{alignat}{2}
-       \gz \varphi^h &=:  \sum_{i \in \mcl I_\varphi}       \varphi_i \gz N^i_\varphi (\gz X) \quad \quad \quad
-\delta \gz \varphi^h &&=: \sum_{i \in \mcl I_\varphi} \delta \varphi_i \gz N^i_\varphi (\gz X) \,,
+       \gz u^h &=:  \sum_{i \in \mcl I_\varphi} u^i \gz N_i (\gz X) \quad \quad \quad
+\delta \gz u^h &&=: \sum_{i \in \mcl I_\varphi} \delta u^i \gz N_i (\gz X) \,,
 \end{alignat}
 where superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the sets of unknown degrees of freedom (DoF).
-For the sake of this study $\gz N^i_\varphi (\gz X)$ are such that only one component of the vector-valued shape function is non-zero for each $i$.
+For the sake of this study $\gz N_i (\gz X)$ are such that only one component of the vector-valued shape function is non-zero for each $i$.
+
+The Newton-Raphson solution approach is adopted for the here considered nonlinear problem.
+Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is to be obtained as a solution to the following system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent})
+\begin{align}
+  K_{ij} \Delta u_j &= - F_i \\
+  K_{ij} &=
+  \int_{\mcl B_0} \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j \d V
+  +
+  \int_{\mcl B_0}
+  \overline{\grad}\gz N_i :
+  \left[
+  \overline{\grad} \gz N_j \cdot
+  \overline{\gz \tau}
+  \right]
+  \d V
+  \\
+  F_i &=
+  \int_{\mcl B_0} \overline{\gz \tau} : \grad^{s} \, \gz N_i \d V \,
+  -
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \d S
+\end{align}
+Here $\gz K$ is the discrete tangent operator and $\gz F$ is the discrete gradient.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
