@@ -150,7 +150,7 @@
 The performance of finite element (FEM) solvers on modern computer architectures is typically memory bound.
 The main cause for this is that loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
 In order to improve the performance of the iterative solver, so-called matrix-free methods are
-widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly \cite{kronbichler12}.
+widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017}. Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016}.
 
 To the best of our knowledge, the matrix-free methods are not widely adopted within the solid mechanics community.
 A possible reason is that tangent operators (coming from linearization of the nonlinear balance equations) are
