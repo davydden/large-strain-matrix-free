@@ -72,11 +72,11 @@
 % \DeclareMathAlphabet{\bsf}{OT1}{cmss}{bx}{n}
 % \def\msf  #1{           \mbox{\!\!      $\sf #1$}}
 \def\Grad #1 {{\rm Grad} #1}
-\def\grad #1 {{\rm grad} #1}
+\def\grad {\mbox{grad}}
 \def\Div {\mbox{Div\,}}
 \def\div {\mbox{div\,}}
-\def\d {\,\mbox{d}}
-\def\D {\,\mbox{D}}
+\def\d {\mbox{d}}
+\def\D {\mbox{D}}
 % \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
 %\newcommand\normDouble[1]{\left\lVert#1\right\rVert}
 %\newcommand{\normXY}[1]{\lvert #1 \rvert_{2d}}
@@ -170,6 +170,7 @@ The paper is organized as follows. In Section \ref{sec:theory} we briefly introd
 \section{Theoretical background}
 \label{sec:theory}
 
+\subsection{Weak form}
 %
 % Kinematics
 %
@@ -186,6 +187,14 @@ $\d \gz x = \gz F \cdot \d \gz X$,
 where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient.
 The mapping has to be one-to-one and exclude a self penetration, consequently the Jacobian has to be positive $J = \det \gz F > 0$.
 Deformation gradient can be split in the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors as $\gz F = \gz R \gz U = \gz V \gz R$.
+We shall denote the Piola transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by
+\begin{align}
+  \chi\left( \mathbf{A} \right)_{ij}
+  &= F_{iA} A_{AB} F_{jB} \\
+\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
+  &= F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
+\end{align}
+
 %
 % strain measures
 %
@@ -220,7 +229,7 @@ The double contraction in the first term can be re-written in terms of the symme
 \begin{align}
 \gz P : \Grad \, \delta \gz u =
 (\gz \tau \cdot \gz F^{-T}) : \Grad \, \delta \gz u =
-\gz \tau : (\Grad \, \delta \gz u : \gz F^{-1}) =
+\gz \tau : (\Grad \, \delta \gz u \cdot \gz F^{-1}) =
 \gz \tau : \grad \, \delta \gz u \, ,
 \end{align}
 and therefore
@@ -230,44 +239,61 @@ and therefore
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
   = 0 \, ,
+\label{eq:weak_form}
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
 Note that $\gz \tau$ is the Piola transformation of the second Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
-that is $\gz \tau = \gz F \cdot \gz S \cdot \gz F^T$.
+that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
-{\color{red}TODO: JP add the linearization and material/geometric tangents.
-}
+In order to apply the Newton method, linearization of \eqref{eq:weak_form} around a given solution field $\overline{\gz u}$ is required. This is given by
+\begin{align}
+F(\overline{\gz u} + \Delta \gz u, \delta \gz u) \approx
+F(\overline{\gz u}, \delta \gz u) + \D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u)
+\end{align}
+For conservative traction boundary conditions, the directional derivative is given by
+\begin{align}
+\D_{\Delta \gz u}  F(\overline{\gz u}, \delta \gz u)
+=
+\int_{\mcl B_0} \D_{\Delta \gz u} \gz \tau : \overline{\grad^s} \, \delta \gz u \d V
++
+\int_{\mcl B_0} \overline{\gz \tau} : \left[ \Grad \, \delta \gz u \cdot \D_{\Delta \gz u}  \gz F^{-1} \right] \d V
+\end{align}
+This can be simplified \cite{Wriggers2008} to
+\begin{align}
+\D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u)
+  =
+  \int_{\mcl B_0} \overline{\grad^s} \Delta \gz u : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \delta \gz u \d V
+  +
+  \int_{\mcl B_0}
+  \overline{\grad}\delta \gz u :
+  \left[
+  \overline{\grad} \Delta \gz u \cdot
+  \overline{\gz \tau}
+  \right]
+  \d V
+\label{eq:tangent}
+\end{align}
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$ and the fourth order tangent tensor is push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is called material part of the tangent operator as it is related to the linearization of the Kirchhoff stress. Whereas the second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from linearization of the deformation gradient $\gz F$.
 
 \subsection{Constitutive modelling}
 
-Neo-Hookean model
+For the current study we use the Neo-Hookean model
 \begin{gather}
 \psi \left( \mathbf{C} \right)
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
   + \lambda \ln^{2}\left( J \right)
 \end{gather}
-where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter,
-and the volumetric Jacobian $J = \det\left(\mathbf{F}\right) = \sqrt{\det\left(\mathbf{C}\right)}$.
-\begin{gather}
+where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter. It can be shown that the first and second derivatives of the strain energy function are given by
+\begin{align}
 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}}
-  = \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1}
-\end{gather}
-\begin{gather}
+  &= \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1} \\
 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}}
-  = \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
+  &= \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
   + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
-\end{gather}
-
-Denoting $\chi\left( \bullet \right)$ as the Piola transformation, which implies
-\begin{gather}
-\chi\left( \mathbf{A} \right)_{ij}
-  = F_{iA} A_{AB} F_{jB} \\
-\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
-  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
-\end{gather}
-for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then the Kirchhoff stress and its associated material tangent are
+\end{align}
+The Kirchhoff stress and its associated material tangent are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
@@ -287,6 +313,7 @@ The action that $J \boldsymbol{\mathcal{C}}$ performs when contracted with an ar
 J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
   = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \left( \bullet \right)
   + 2 \lambda \trace\left( \bullet \right) \mathbf{I}
+\label{eq:simplified_action}
 \end{gather}
 
 \section{Finite Element discretization}
@@ -424,7 +451,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of
   \label{alg:mf_tensor2}
 \end{algorithm}
 
-In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. This also avoid the need to evaluate gradients of displacement field with respect to the undeformed configuration. This algorithm utilize the chosen constitutive relationship and therefore the action of the material fourth order tangent $\boldsymbol{\mathcal{C}}$ on the second order symmetric tensor $\gz g_s$ can be evaluated by taking a linear combination this tensor and its trace times identity tensor. To that end we also cache two scalars that depend on the Jacobian $J$.
+In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. This also avoid the need to evaluate gradients of displacement field with respect to the undeformed configuration. This algorithm utilize the chosen constitutive relationship and therefore the action of the material fourth order tangent $J \boldsymbol{\mathcal{C}}$ on the second order symmetric tensor $\gz g_s$ is cheap to evaluate, see \eqref{eq:simplified_action}. Here we also cache two scalars that depend on the Jacobian $J$.
 
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
