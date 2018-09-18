@@ -195,15 +195,15 @@ Deformation gradient can be split in the proper orthogonal rotation tensor $\gz 
 %
 % strain measures
 %
-In what follows we characterize the material behavior using the Green-Lagrange strain tensor $\gz E:=\frac{1}{2}\left[\gz C - \gz I\right]$, where $\gz C$ is right Cauchy-Green tensor $\gz C := \gz F^T \cdot \gz F = \gz U^2$. Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \partial (\bullet)/\partial \gz C$.
+In what follows we characterize the material behavior using the Green-Lagrange strain tensor $\gz E:=\frac{1}{2}\left[\gz C - \gz I\right]$, where $\gz C$ is right Cauchy-Green tensor $\gz C := \gz F^T \cdot \gz F = \gz U^2$. Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \partial (\bullet)/\partial \gz C$. We will also use the left Cauchy-Green tensor $\gz b := \gz F \cdot \gz F^T = \gz V^2$.
 
 For conservative systems without the volumetric load the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
-\int_{\mcl B_0} \mcl \psi(\gz C) \d V \,
-- \int_{\partial \mcl B_0^N} \gz T \cdot \gz u \d S \, ,
+\int_{\mcl B_0} \mcl \psi(\gz F) \d V \,
+- \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz u \d S \, ,
 \end{align}
-where $\gz T$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \gz u^D$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
+where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
 
 The principal of stationary potential energy requires that at the equilibriums the directional derivative with respect to the displacement $\gz u$
 \begin{align}
@@ -213,16 +213,32 @@ The principal of stationary potential energy requires that at the equilibriums t
 \end{align}
 vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet boundary conditions.
 %
-This leads to the following non-linear equation
+This leads to the following scalar non-linear equation
 \begin{align}
 F(\gz u, \delta \gz u) =
-\int_{\mcl B_0} \gz S : \delta \gz E \d V \,
+\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \d V \,
 -
-\int_{\partial \mcl B_0^N} \gz T \cdot \delta \gz u \d S
+\int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
 = 0 \, ,
 \end{align}
-where $\gz S := 2\, \partial \mcl \psi / \partial \gz C$ is the second Piola-Kirchhoff stress tensor.
-
+where $\gz P := \partial \mcl \psi / \partial \gz F$ is the first Piola-Kirchhoff stress tensor.
+The double contraction in the first term can be re-written in terms of the symmetric Kirchhoff stress tensor $\gz \tau := \gz P \cdot \gz F^T$ as
+\begin{align}
+\gz P : \Grad \, \delta \gz u =
+(\gz \tau \cdot \gz F^{-T}) : \Grad \, \delta \gz u =
+\gz \tau : (\Grad \, \delta \gz u : \gz F^{-1}) =
+\gz \tau : \grad \, \delta \gz u \, ,
+\end{align}
+and therefore
+\begin{align}
+  F(\gz u, \delta \gz u) =
+  \int_{\mcl B_0} \gz \tau : \grad \, \delta \gz u \d V \,
+  -
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
+  = 0 \, .
+\end{align}
+Note that $\gz \tau$ is the Piola transformation of the second Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
+that is $\gz \tau = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
