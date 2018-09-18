@@ -155,7 +155,7 @@ In order to improve the performance of the iterative solver, so-called matrix-fr
 widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016}. Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016}.
 
 To the best of our knowledge, the matrix-free methods are not yet widely adopted within the solid mechanics community.
-We are only aware of a single paper in preparation that deals with small strain linear elasticity \cite{Clevenger2018}.
+We are only aware of a single paper in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a master thesis of a student of two of the authors \cite{Mentler2017}.
 A possible reason is that tangent operators (coming from linearization of the nonlinear balance equations) are
 more elaborate as compared to the fluid mechanics and it is not obvious whether the matrix-free methods can be advantageous in this case. Another reason could be the smoothness of the underlying solution. FEM with linear or quadratic elements (to avoid locking) are often adopted in solid mechanics community. However we note that large scale computations with $10^{12}$ unknowns even with linear FEM inevitably require matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore we believe that for large scale computations in solid mechanics it is crucial to adopt matrix-free approaches and develop efficient multigrid solvers.
 
