@@ -71,8 +71,8 @@
 \def\gz  #1{           \mbox{$\boldsymbol{#1}$}}
 % \DeclareMathAlphabet{\bsf}{OT1}{cmss}{bx}{n}
 % \def\msf  #1{           \mbox{\!\!      $\sf #1$}}
-% \def\Grad #1 {{\rm Grad} #1}
-% \def\grad #1 {{\rm grad} #1}
+\def\Grad #1 {{\rm Grad} #1}
+\def\grad #1 {{\rm grad} #1}
 \def\Div {\mbox{Div\,}}
 \def\div {\mbox{div\,}}
 \def\d {\,\mbox{d}}
@@ -181,22 +181,34 @@ is defined via the mapping $\gz x = \gz \varphi (\gz X,t)$.
 %
 Linear deformation map is assumed
 $\d \gz x = \gz F \cdot \d \gz X$,
-where $\gz F := \gz \nabla_{X} \, \gz \varphi$ is the deformation gradient.
+where $\gz F := \Grad \, \gz \varphi$ is the deformation gradient.
 For conservative systems without the volumetric load the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
-\int_{\mcl B_0} \mcl \psi(\gz \varphi, \gz F; \gz X) \,
+\int_{\mcl B_0} \mcl \psi(\gz \varphi, \gz F; \gz X) \d V \,
 - \int_{\partial \mcl B_0^N} \gz T \cdot \gz u \d S \, ,
 \end{align}
 where $\gz T$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, and $\mcl \psi$ denotes the strain-energy per unit reference volume.
 
 The principal of stationary potential energy requires that the directional derivative with respect to the displacement $\gz u$
 \begin{align}
-\delta \mcl E = \frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0 \, .
+\delta \mcl E =
+\frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0 \, .
 \label{eq:stationary}
 \end{align}
 vanishes for all directions $\delta \gz u$ at the equilibrium state.
 The vector field $\delta \gz u$ should be equal to zero at the Dirichlet boundary $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N$.
+
+The stationary conditions yield
+\begin{align}
+F(\gz u, \delta \gz u) =
+\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \d V \,
+-
+\int_{\partial \mcl B_0^N} \gz T \cdot \delta \gz u \d S
+= 0 \, ,
+\end{align}
+where $\gz P := \partial \mcl \psi / \partial \gz F$ is the Piola stress.
+
 
 \subsection{Linearization}
 
