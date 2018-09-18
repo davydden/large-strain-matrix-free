@@ -226,11 +226,12 @@ The double contraction in the first term can be re-written in terms of the symme
 and therefore
 \begin{align}
   F(\gz u, \delta \gz u) =
-  \int_{\mcl B_0} \gz \tau : \grad \, \delta \gz u \d V \,
+  \int_{\mcl B_0} \gz \tau : \grad^{s} \, \delta \gz u \d V \,
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
-  = 0 \, .
+  = 0 \, ,
 \end{align}
+where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
 Note that $\gz \tau$ is the Piola transformation of the second Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
 that is $\gz \tau = \gz F \cdot \gz S \cdot \gz F^T$.
 
