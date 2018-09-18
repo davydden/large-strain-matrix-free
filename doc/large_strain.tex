@@ -649,6 +649,20 @@ This indicates that the matrix-free implementation of tangent operator can be ap
 
 We also studies the performance of the GMG preconditioner with standard geometric transfer operations between each level. The GMG was applied to heterogeneous material assuming that the coarsest level can provide adequate discretization of heterogeneity. The numerical studies indicate that the proposed preconditioner lead to the solution approach that is faster than the matrix-based algebraic multigrid preconditioner for moderate polynomial degrees. However the considerable amount of time is spent in the coarse level solver. Therefore our future work will be focused on extending this proposed here matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}.
 
+\section*{Acknowledgements}
+
+DD acknowledge the financial support of the German Science Foundation (Deutsche Forschungs-Gemeinschaft, DFG), grant DA 1664/2-1
+and the Competence Network for Technical and Scientific High Performance Computing in Bavaria (KONWIHR).
+DD, DA and JPP are grateful to Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for a fruitful discussion on matrix-free operator evaluation approaches.
+%
+{\color{red}
+DA was supported ...
+%
+JPP was supported by ...
+}
+%
+PS acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible.
+
 \bibliographystyle{elsarticle-num}
 \bibliography{bibliography}
 
