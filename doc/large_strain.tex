@@ -170,23 +170,37 @@ The paper is organized as follows. In Section \ref{sec:theory} we briefly introd
 \section{Theoretical background}
 \label{sec:theory}
 
-In this section we briefly summarize balance equations of fine-strain hyperelastic continuum.
+In this section we briefly summarize balance equations of fine-strain hyperelastic continuum in Lagrangian (also known as referential) description.
 
 {\color{red}
 TODO: JP please adjust this part to your liking
 }
 
-Deformation of the body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$
-is defined via the mapping $\gz x = \gz \varphi (\gz X,t)$.
+%
+% Kinematics
+%
+Deformation of the body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$ at time $t$
+is defined via the mapping $\gz \varphi_t: \mcl B \rightarrow \mathbb E^3$, which places material points of $\mcl B$ in Euclidean space $\mathbb E^3$.
+The location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
 The displacement field reads $\gz u = \gz x - \gz X$.
+
+%
+% Deformation gradient
 %
 Linear deformation map is assumed
 $\d \gz x = \gz F \cdot \d \gz X$,
-where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is the deformation gradient.
+where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient.
+The mapping has to be one-to-one and exclude a self penetration, consequently the Jacobian has to be positive $J = \det \gz F > 0$.
+Deformation gradient can be split in the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors as $\gz F = \gz R \gz U = \gz V \gz R$.
+%
+% strain measures
+%
+In what follows we characterize the material behavior using the Green-Lagrange strain tensor $\gz E:=\frac{1}{2}\left[\gz C - \gz I\right]$, where $\gz C$ is right Cauchy-Green tensor $\gz C := \gz F^T \cdot \gz F = \gz U^2$. Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \partial (\bullet)/\partial \gz C$.
+
 For conservative systems without the volumetric load the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
-\int_{\mcl B_0} \mcl \psi(\gz F; \gz X) \d V \,
+\int_{\mcl B_0} \mcl \psi(\gz C) \d V \,
 - \int_{\partial \mcl B_0^N} \gz T \cdot \gz u \d S \, ,
 \end{align}
 where $\gz T$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \gz u^D$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
@@ -202,12 +216,12 @@ vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet b
 This leads to the following non-linear equation
 \begin{align}
 F(\gz u, \delta \gz u) =
-\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \d V \,
+\int_{\mcl B_0} \gz S : \delta \gz E \d V \,
 -
 \int_{\partial \mcl B_0^N} \gz T \cdot \delta \gz u \d S
 = 0 \, ,
 \end{align}
-where $\gz P := \partial \mcl \psi / \partial \gz F$ is the Piola stress.
+where $\gz S := 2\, \partial \mcl \psi / \partial \gz C$ is the second Piola-Kirchhoff stress tensor.
 
 
 \subsection{Linearization}
