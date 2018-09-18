@@ -203,8 +203,8 @@ In what follows we characterize the material behavior using the Green-Lagrange s
 For conservative systems without the volumetric load the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
-\int_{\mcl B_0} \mcl \psi(\gz F) \d V \,
-- \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz u \d S \, ,
+\int_{\mcl B_0} \mcl \psi(\gz F) \, \d V \,
+- \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz u \, \d S \, ,
 \end{align}
 where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
 
@@ -219,9 +219,9 @@ vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet b
 This leads to the following scalar non-linear equation
 \begin{align}
 F(\gz u, \delta \gz u) =
-\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \d V \,
+\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \, \d V \,
 -
-\int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
+\int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
 = 0 \, ,
 \end{align}
 where $\gz P := \partial \mcl \psi / \partial \gz F$ is the first Piola-Kirchhoff stress tensor.
@@ -235,9 +235,9 @@ The double contraction in the first term can be re-written in terms of the symme
 and therefore
 \begin{align}
   F(\gz u, \delta \gz u) =
-  \int_{\mcl B_0} \gz \tau : \grad^{s} \, \delta \gz u \d V \,
+  \int_{\mcl B_0} \gz \tau : \grad^{s} \, \delta \gz u \, \d V \,
   -
-  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \d S
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
   = 0 \, ,
 \label{eq:weak_form}
 \end{align}
@@ -256,7 +256,7 @@ For conservative traction boundary conditions, the directional derivative is giv
 \begin{align}
 \D_{\Delta \gz u}  F(\overline{\gz u}, \delta \gz u)
 =
-\int_{\mcl B_0} \D_{\Delta \gz u} \gz \tau : \overline{\grad^s} \, \delta \gz u \d V
+\int_{\mcl B_0} \D_{\Delta \gz u} \gz \tau : \overline{\grad^s} \, \delta \gz u \, \d V
 +
 \int_{\mcl B_0} \overline{\gz \tau} : \left[ \Grad \, \delta \gz u \cdot \D_{\Delta \gz u}  \gz F^{-1} \right] \d V
 \end{align}
@@ -264,7 +264,7 @@ This can be simplified \cite{Wriggers2008} to
 \begin{align}
 \D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u)
   =
-  \int_{\mcl B_0} \overline{\grad^s} \Delta \gz u : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \delta \gz u \d V
+  \int_{\mcl B_0} \overline{\grad^s} \Delta \gz u : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \delta \gz u \, \d V
   +
   \int_{\mcl B_0}
   \overline{\grad}\delta \gz u :
@@ -335,7 +335,7 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
 \begin{align}
   K_{ij} \Delta u_j &= - F_i \\
   K_{ij} &=
-  \int_{\mcl B_0} \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j \d V
+  \int_{\mcl B_0} \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j \, \d V
   +
   \int_{\mcl B_0}
   \overline{\grad}\gz N_i :
@@ -346,9 +346,9 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
   \d V
   \\
   F_i &=
-  \int_{\mcl B_0} \overline{\gz \tau} : \grad^{s} \, \gz N_i \d V \,
+  \int_{\mcl B_0} \overline{\gz \tau} : \grad^{s} \, \gz N_i \, \d V \,
   -
-  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \d S
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S
 \end{align}
 Here $\gz K$ is the discrete tangent operator and $\gz F$ is the discrete gradient.
 
