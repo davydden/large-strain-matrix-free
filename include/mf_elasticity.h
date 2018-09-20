@@ -638,7 +638,7 @@ namespace Cook_Membrane
     // cell and the extractor objects used to retrieve information from the
     // solution vectors:
     const FESystem<dim>              fe;
-    DoFHandler<dim>                  dof_handler_ref;
+    DoFHandler<dim>                  dof_handler;
     const unsigned int               dofs_per_cell;
     const FEValuesExtractors::Vector u_fe;
 
@@ -870,7 +870,7 @@ namespace Cook_Membrane
     // DOFs.
     fe(FE_Q<dim>(degree), dim)
     , // displacement
-    dof_handler_ref(triangulation)
+    dof_handler(triangulation)
     , dofs_per_cell(fe.dofs_per_cell)
     , u_fe(first_u_component)
     , material(std::make_shared<
@@ -996,7 +996,7 @@ namespace Cook_Membrane
     mf_data_reference.reset();
     eulerian_mapping.reset();
 
-    dof_handler_ref.clear();
+    dof_handler.clear();
 
     multigrid_preconditioner.reset();
     multigrid.reset();
@@ -1421,19 +1421,19 @@ namespace Cook_Membrane
 
     // The DOF handler is then initialised and we renumber the grid in an
     // efficient manner. We also record the number of DOFs per block.
-    dof_handler_ref.distribute_dofs(fe);
-    dof_handler_ref.distribute_mg_dofs();
-    DoFRenumbering::Cuthill_McKee(dof_handler_ref);
+    dof_handler.distribute_dofs(fe);
+    dof_handler.distribute_mg_dofs();
+    DoFRenumbering::Cuthill_McKee(dof_handler);
 
     pcout << "Triangulation:"
           << "\n\t Number of active cells: "
           << triangulation.n_global_active_cells()
-          << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
+          << "\n\t Number of degrees of freedom: " << dof_handler.n_dofs()
           << std::endl;
 
-    locally_owned_dofs = dof_handler_ref.locally_owned_dofs();
+    locally_owned_dofs = dof_handler.locally_owned_dofs();
     locally_relevant_dofs.clear();
-    DoFTools::extract_locally_relevant_dofs(dof_handler_ref,
+    DoFTools::extract_locally_relevant_dofs(dof_handler,
                                             locally_relevant_dofs);
 
     tangent_matrix.clear();
@@ -1442,7 +1442,7 @@ namespace Cook_Membrane
       TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
                                            mpi_communicator);
 
-      DoFTools::make_sparsity_pattern(dof_handler_ref,
+      DoFTools::make_sparsity_pattern(dof_handler,
                                       sp,
                                       constraints,
                                       /* keep_constrained_dofs */ false,
@@ -1486,7 +1486,7 @@ namespace Cook_Membrane
       << "p     = " << degree << std::endl
       << "q     = " << n_q_points_1d << std::endl
       << "cells = " << triangulation.n_global_active_cells() << std::endl
-      << "dofs  = " << dof_handler_ref.n_dofs() << std::endl
+      << "dofs  = " << dof_handler.n_dofs() << std::endl
       << std::endl
       << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
 
@@ -1564,7 +1564,7 @@ namespace Cook_Membrane
         mg_transfer =
           std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
             mg_constrained_dofs);
-        mg_transfer->build(dof_handler_ref);
+        mg_transfer->build(dof_handler);
 
         mg_mf_data_current.resize(triangulation.n_global_levels());
         mg_mf_data_reference.resize(triangulation.n_global_levels());
@@ -1574,7 +1574,7 @@ namespace Cook_Membrane
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
     solution_total_transfer = solution_total;
-    mg_transfer->interpolate_to_mg(dof_handler_ref,
+    mg_transfer->interpolate_to_mg(dof_handler,
                                    mg_solution_total,
                                    solution_total_transfer);
 
@@ -1583,14 +1583,14 @@ namespace Cook_Membrane
         // solution_total is the point around which we linearize
         eulerian_mapping = std::make_shared<
           MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>(
-          degree, dof_handler_ref, solution_total);
+          degree, dof_handler, solution_total);
 
         mf_data_current   = std::make_shared<MatrixFree<dim, double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim, double>>();
 
-        mf_data_reference->reinit(dof_handler_ref, constraints, quad, data);
+        mf_data_reference->reinit(dof_handler, constraints, quad, data);
         mf_data_current->reinit(
-          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
+          *eulerian_mapping, dof_handler, constraints, quad, data);
 
         mf_nh_operator.initialize(mf_data_current,
                                   mf_data_reference,
@@ -1612,7 +1612,7 @@ namespace Cook_Membrane
           {
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
@@ -1633,14 +1633,14 @@ namespace Cook_Membrane
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler_ref, mg_solution_total[level], level);
+                  degree, dof_handler, mg_solution_total[level], level);
 
-            mg_mf_data_reference[level]->reinit(dof_handler_ref,
+            mg_mf_data_reference[level]->reinit(dof_handler,
                                                 level_constraints,
                                                 quad,
                                                 mg_additional_data[level]);
             mg_mf_data_current[level]->reinit(*euler_level,
-                                              dof_handler_ref,
+                                              dof_handler,
                                               level_constraints,
                                               quad,
                                               mg_additional_data[level]);
@@ -1662,7 +1662,7 @@ namespace Cook_Membrane
         // same
         data.initialize_indices = false;
         mf_data_current->reinit(
-          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
+          *eulerian_mapping, dof_handler, constraints, quad, data);
 
         for (unsigned int level = 0; level <= max_level; ++level)
           {
@@ -1670,7 +1670,7 @@ namespace Cook_Membrane
 
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
@@ -1681,9 +1681,9 @@ namespace Cook_Membrane
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler_ref, mg_solution_total[level], level);
+                  degree, dof_handler, mg_solution_total[level], level);
             mg_mf_data_current[level]->reinit(*euler_level,
-                                              dof_handler_ref,
+                                              dof_handler,
                                               level_constraints,
                                               quad,
                                               mg_additional_data[level]);
@@ -1884,7 +1884,7 @@ namespace Cook_Membrane
     // and a preconditioner object which uses GMG
     multigrid_preconditioner = std::make_shared<
       PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>(
-      dof_handler_ref, *multigrid, *mg_transfer);
+      dof_handler, *multigrid, *mg_transfer);
 
     timer.leave_subsection();
   }
@@ -2176,7 +2176,7 @@ namespace Cook_Membrane
         const MappingQ<dim> mapping(degree);
         const auto          cell_point =
           GridTools::find_active_cell_around_point(mapping,
-                                                   dof_handler_ref,
+                                                   dof_handler,
                                                    soln_pt);
         // we may find artifical cells here:
         if (cell_point.first->is_locally_owned())
@@ -2245,14 +2245,12 @@ namespace Cook_Membrane
     std::vector<SymmetricTensor<2, dim, NumberType>> symm_grad_Nx(
       dofs_per_cell);
 
-    FEValues<dim>     fe_values_ref(fe,
-                                qf_cell,
-                                update_gradients | update_JxW_values);
-    FEFaceValues<dim> fe_face_values_ref(fe,
-                                         qf_face,
-                                         update_values | update_JxW_values);
+    FEValues<dim> fe_values(fe, qf_cell, update_gradients | update_JxW_values);
+    FEFaceValues<dim> fe_face_values(fe,
+                                     qf_face,
+                                     update_values | update_JxW_values);
 
-    for (const auto &cell : dof_handler_ref.active_cell_iterators())
+    for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
         {
           const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
@@ -2264,7 +2262,7 @@ namespace Cook_Membrane
             if (cell->face(face)->at_boundary())
               skip_assembly_on_this_cell = false;
 
-          fe_values_ref.reinit(cell);
+          fe_values.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
           cell->get_dof_indices(local_dof_indices);
@@ -2272,7 +2270,7 @@ namespace Cook_Membrane
           // We first need to find the solution gradients at quadrature points
           // inside the current cell and then we update each local QP using the
           // displacement gradient:
-          fe_values_ref[u_fe].get_function_gradients(solution_total,
+          fe_values[u_fe].get_function_gradients(solution_total,
                                                      solution_grads_u_total);
 
           // Now we build the local cell stiffness matrix. Since the global and
@@ -2304,14 +2302,14 @@ namespace Cook_Membrane
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
                 {
-                  grad_Nx[k] = fe_values_ref[u_fe].gradient(k, q_point) * F_inv;
+                  grad_Nx[k] = fe_values[u_fe].gradient(k, q_point) * F_inv;
                   symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
                 }
 
               SymmetricTensor<2, dim, NumberType> tau;
               cell_mat->get_tau(tau, det_F, b_bar, b);
               const Tensor<2, dim, NumberType> tau_ns(tau);
-              const double                     JxW = fe_values_ref.JxW(q_point);
+              const double                     JxW = fe_values.JxW(q_point);
 
               // loop over j first to make caching a bit more
               // straight-forward without recourse to symmetry
@@ -2371,7 +2369,7 @@ namespace Cook_Membrane
             if (cell->face(face)->at_boundary() == true &&
                 cell->face(face)->boundary_id() == 11)
               {
-                fe_face_values_ref.reinit(cell, face);
+                fe_face_values.reinit(cell, face);
                 for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
                      ++f_q_point)
                   {
@@ -2413,8 +2411,8 @@ namespace Cook_Membrane
                         const unsigned int component_i =
                           fe.system_to_component_index(i).first;
                         const double Ni =
-                          fe_face_values_ref.shape_value(i, f_q_point);
-                        const double JxW = fe_face_values_ref.JxW(f_q_point);
+                          fe_face_values.shape_value(i, f_q_point);
+                        const double JxW = fe_face_values.JxW(f_q_point);
                         cell_rhs(i) += (Ni * traction[component_i]) * JxW;
                       }
                   }
@@ -2468,7 +2466,7 @@ namespace Cook_Membrane
     constraints.reinit(locally_relevant_dofs);
 
     mg_constrained_dofs.clear();
-    mg_constrained_dofs.initialize(dof_handler_ref);
+    mg_constrained_dofs.initialize(dof_handler);
 
     const bool apply_dirichlet_bc = (it_nr == 0);
 
@@ -2496,19 +2494,19 @@ namespace Cook_Membrane
       const int  boundary_id = 1;
       const auto mask        = fe.component_mask(u_fe);
 
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
                                                          {boundary_id},
                                                          mask);
 
       if (apply_dirichlet_bc == true)
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
+        VectorTools::interpolate_boundary_values(dof_handler,
                                                  boundary_id,
                                                  ZeroFunction<dim>(
                                                    n_components),
                                                  constraints,
                                                  fe.component_mask(u_fe));
       else
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
+        VectorTools::interpolate_boundary_values(dof_handler,
                                                  boundary_id,
                                                  ZeroFunction<dim>(
                                                    n_components),
@@ -2524,19 +2522,19 @@ namespace Cook_Membrane
         const FEValuesExtractors::Scalar z_displacement(2);
         const auto mask = fe.component_mask(z_displacement);
 
-        mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+        mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
                                                            {boundary_id},
                                                            mask);
 
         if (apply_dirichlet_bc == true)
-          VectorTools::interpolate_boundary_values(dof_handler_ref,
+          VectorTools::interpolate_boundary_values(dof_handler,
                                                    boundary_id,
                                                    ZeroFunction<dim>(
                                                      n_components),
                                                    constraints,
                                                    mask);
         else
-          VectorTools::interpolate_boundary_values(dof_handler_ref,
+          VectorTools::interpolate_boundary_values(dof_handler,
                                                    boundary_id,
                                                    ZeroFunction<dim>(
                                                      n_components),
@@ -2634,8 +2632,8 @@ namespace Cook_Membrane
 
               // Build constant modes
               std::vector< std::vector<bool> > constant_modes;
-              const ComponentMask component_mask (dof_handler_ref.get_fe_collection().n_components(), true);
-              DoFTools::extract_constant_modes (dof_handler_ref, component_mask, constant_modes);
+              const ComponentMask component_mask (dof_handler.get_fe_collection().n_components(), true);
+              DoFTools::extract_constant_modes (dof_handler, component_mask, constant_modes);
               additional_data.constant_modes = constant_modes;
 
               TrilinosWrappers::PreconditionAMG* p_preconditioner = new TrilinosWrappers::PreconditionAMG ();
@@ -2760,7 +2758,7 @@ namespace Cook_Membrane
 
     std::vector<std::string> solution_name(dim, "displacement");
 
-    data_out.attach_dof_handler(dof_handler_ref);
+    data_out.attach_dof_handler(dof_handler);
     data_out.add_data_vector(solution_n,
                              solution_name,
                              DataOut<dim>::type_dof_data,
