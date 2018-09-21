@@ -2,6 +2,8 @@
 %\documentclass[12pt]{article}
 \documentclass[preprint,12pt,times]{elsarticle}
 
+\biboptions{sort&compress,comma,square}
+
 % \usepackage{url}
 
 % \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
@@ -69,12 +71,12 @@
 \def\gz  #1{           \mbox{$\boldsymbol{#1}$}}
 % \DeclareMathAlphabet{\bsf}{OT1}{cmss}{bx}{n}
 % \def\msf  #1{           \mbox{\!\!      $\sf #1$}}
-% \def\Grad #1 {{\rm Grad} #1}
-% \def\grad #1 {{\rm grad} #1}
+\def\Grad #1 {{\rm Grad} #1}
+\def\grad {\mbox{grad}}
 \def\Div {\mbox{Div\,}}
 \def\div {\mbox{div\,}}
-\def\d {\,\mbox{d}}
-\def\D {\,\mbox{D}}
+\def\d {\mbox{d}}
+\def\D {\mbox{D}}
 % \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
 %\newcommand\normDouble[1]{\left\lVert#1\right\rVert}
 %\newcommand{\normXY}[1]{\lvert #1 \rvert_{2d}}
@@ -137,7 +139,7 @@
 
   \begin{keyword}
       adaptive finite element method \sep
-      geometric multigrids \sep
+      geometric multigrid \sep
       finite-strain \sep
       matrix-free \sep
       hyperelasticity
@@ -147,68 +149,151 @@
 
 \section{Introduction}
 
-TODO: elasticity and no matrix-free. fluids used a lot.
+The performance of finite element (FEM) solvers on modern computer architectures is typically memory bound.
+The main cause for this is that loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
+In order to improve the performance of the iterative solver, so-called matrix-free methods are
+widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016}. Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016}.
+
+To the best of our knowledge, the matrix-free methods are not yet widely adopted within the solid mechanics community.
+We are only aware of a single paper in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a master thesis of a student of two of the authors \cite{Mentler2017}.
+A possible reason is that tangent operators (coming from linearization of the nonlinear balance equations) are
+more elaborate as compared to the fluid mechanics and it is not obvious whether the matrix-free methods can be advantageous in this case. Another reason could be the smoothness of the underlying solution. FEM with linear or quadratic elements (to avoid locking) are often adopted in solid mechanics community. However we note that large scale computations with $10^{12}$ unknowns even with linear FEM inevitably require matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore we believe that for large scale computations in solid mechanics it is crucial to adopt matrix-free approaches and develop efficient multigrid solvers.
+
+In this work, we advance the application of matrix-free approaches to problems in solid mechanics.
+We propose and numerically investigate different implementations of the finite-strain hyper-elastic tangent operator.
+In order to improve the convergence of iterative solvers, we also propose a way to construct level tangent operators
+and employ them to define a geometric multigrid preconditioner.
+Our implementation employs MPI and Intel Threading Building Blocks parallelization and SIMD vectorization.
+
+The paper is organized as follows. In Section \ref{sec:theory} we briefly introduce partial differential equations of finite-strain solid mechanics. Sections \ref{sec:fe} and \ref{sec:mf} cover the finite element discretization and the proposed matrix-free operator evaluation approaches. In Section \ref{sec:gmg} we propose a geometric multigrid preconditioner suitable for finite-strain linear elasticity. The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of heterogeneous hyper-elastic material in two and three dimensions in Section \ref{sec:example}. Summary is presented in Section \ref{sec:summary}.
 
 \section{Theoretical background}
+\label{sec:theory}
 
-A brief summary of balance equations in large strain hyperelastic continuum.
+\subsection{Weak form}
+%
+% Kinematics
+%
+Deformation of the body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$ at time $t$
+is defined via the mapping $\gz \varphi_t: \mcl B \rightarrow \mathbb E^3$, which places material points of $\mcl B$ in Euclidean space $\mathbb E^3$.
+The location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
+The displacement field reads $\gz u = \gz x - \gz X$.
 
-\subsection{Kinematics}
-
-Deformation of the body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$
-is defined via the mapping $\gz x = \gz \varphi (\gz X,t)$.
-
-Linear deformation map is assumed for the macroscopic point
+%
+% Deformation gradient
+%
+Linear deformation map is assumed
+$\d \gz x = \gz F \cdot \d \gz X$,
+where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient.
+The mapping has to be one-to-one and exclude a self penetration, consequently the Jacobian has to be positive $J = \det \gz F > 0$.
+Deformation gradient can be split in the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors as $\gz F = \gz R \gz U = \gz V \gz R$.
+We shall denote the Piola transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by
 \begin{align}
-\d \gz x = \gz F \cdot \d \gz X,
+  \chi\left( \mathbf{A} \right)_{ij}
+  &= F_{iA} A_{AB} F_{jB} \\
+\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
+  &= F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
 \end{align}
-where $\gz F := \gz \nabla_{X} \, \gz \varphi$ is the deformation gradient.
 
-\subsection{Kinetics}
+%
+% strain measures
+%
+In what follows we characterize the material behavior using the Green-Lagrange strain tensor $\gz E:=\frac{1}{2}\left[\gz C - \gz I\right]$, where $\gz C$ is right Cauchy-Green tensor $\gz C := \gz F^T \cdot \gz F = \gz U^2$. Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \partial (\bullet)/\partial \gz C$. We will also use the left Cauchy-Green tensor $\gz b := \gz F \cdot \gz F^T = \gz V^2$.
 
-For conservative systems the total potential energy is introduced as
+For conservative systems without the volumetric load the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
-\mcl E = \int_{\mcl B_0} \mcl U_0(\gz \varphi, \gz F; \gz X) \,
+\mcl E =
+\int_{\mcl B_0} \mcl \psi(\gz F) \, \d V \,
+- \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz u \, \d S \, ,
 \end{align}
-that must be stationary in order for the system to be in equilibrium:
+where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
+
+The principal of stationary potential energy requires that at the equilibriums the directional derivative with respect to the displacement $\gz u$
 \begin{align}
-\delta \mcl E = 0 \, .
+\delta \mcl E =
+\frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0 \, .
 \label{eq:stationary}
 \end{align}
+vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet boundary conditions.
+%
+This leads to the following scalar non-linear equation
+\begin{align}
+F(\gz u, \delta \gz u) =
+\int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \, \d V \,
+-
+\int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
+= 0 \, ,
+\end{align}
+where $\gz P := \partial \mcl \psi / \partial \gz F$ is the first Piola-Kirchhoff stress tensor.
+The double contraction in the first term can be re-written in terms of the symmetric Kirchhoff stress tensor $\gz \tau := \gz P \cdot \gz F^T$ as
+\begin{align}
+\gz P : \Grad \, \delta \gz u =
+(\gz \tau \cdot \gz F^{-T}) : \Grad \, \delta \gz u =
+\gz \tau : (\Grad \, \delta \gz u \cdot \gz F^{-1}) =
+\gz \tau : \grad \, \delta \gz u \, ,
+\end{align}
+and therefore
+\begin{align}
+  F(\gz u, \delta \gz u) =
+  \int_{\mcl B_0} \gz \tau : \grad^{s} \, \delta \gz u \, \d V \,
+  -
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
+  = 0 \, ,
+\label{eq:weak_form}
+\end{align}
+where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
+Note that $\gz \tau$ is the Piola transformation of the second Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
+that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
-TODO: linearize and show how tangent look like.
-Also show what it boils down in the case of small strain.
+In order to apply the Newton method, linearization of \eqref{eq:weak_form} around a given solution field $\overline{\gz u}$ is required. This is given by
+\begin{align}
+F(\overline{\gz u} + \Delta \gz u, \delta \gz u) \approx
+F(\overline{\gz u}, \delta \gz u) + \D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u)
+\end{align}
+For conservative traction boundary conditions, the directional derivative is given by
+\begin{align}
+\D_{\Delta \gz u}  F(\overline{\gz u}, \delta \gz u)
+=
+\int_{\mcl B_0} \D_{\Delta \gz u} \gz \tau : \overline{\grad^s} \, \delta \gz u \, \d V
++
+\int_{\mcl B_0} \overline{\gz \tau} : \left[ \Grad \, \delta \gz u \cdot \D_{\Delta \gz u}  \gz F^{-1} \right] \d V
+\end{align}
+This can be simplified \cite{Wriggers2008} to
+\begin{align}
+\D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u)
+  =
+  \int_{\mcl B_0} \overline{\grad^s} \Delta \gz u : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \delta \gz u \, \d V
+  +
+  \int_{\mcl B_0}
+  \overline{\grad}\delta \gz u :
+  \left[
+  \overline{\grad} \Delta \gz u \cdot
+  \overline{\gz \tau}
+  \right]
+  \d V
+\label{eq:tangent}
+\end{align}
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$ and the fourth order tangent tensor is push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is called material part of the tangent operator as it is related to the linearization of the Kirchhoff stress. Whereas the second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from linearization of the deformation gradient $\gz F$.
 
 \subsection{Constitutive modelling}
 
-Neo-Hookean model
+For the current study we use the Neo-Hookean model
 \begin{gather}
 \psi \left( \mathbf{C} \right)
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
   + \lambda \ln^{2}\left( J \right)
 \end{gather}
-where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter,
-and the volumetric Jacobian $J = \det\left(\mathbf{F}\right) = \sqrt{\det\left(\mathbf{C}\right)}$.
-\begin{gather}
+where $\mu$ and $\lambda$ respectively denote the shear modulus and Lam\'{e} parameter. It can be shown that the first and second derivatives of the strain energy function are given by
+\begin{align}
 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}}
-  = \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1}
-\end{gather}
-\begin{gather}
+  &= \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1} \\
 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}}
-  = \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
+  &= \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
   + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
-\end{gather}
-
-Denoting $\chi\left( \bullet \right)$ as the Piola transformation, which implies
-\begin{gather}
-\chi\left( \mathbf{A} \right)_{ij}
-  = F_{iA} A_{AB} F_{jB} \\
-\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
-  = F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}
-\end{gather}
-for rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$, then the Kirchhoff stress and its associated material tangent are
+\end{align}
+The Kirchhoff stress and its associated material tangent are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
@@ -228,22 +313,47 @@ The action that $J \boldsymbol{\mathcal{C}}$ performs when contracted with an ar
 J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
   = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \left( \bullet \right)
   + 2 \lambda \trace\left( \bullet \right) \mathbf{I}
+\label{eq:simplified_action}
 \end{gather}
 
 \section{Finite Element discretization}
+\label{sec:fe}
 
 We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
 the associated FE space of continuous piecewise elements of a fixed polynomial degree. % : $V^h \subset H^1 (\mcl B_0)$.
-Macro- -deformation map are given in a
-a vector space spanned by standard vector--valued FE basis functions $\gz N^i(\gz x)$ (e.g. polynomials with local support):
+The displacement fields are given in a
+a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support):
 \begin{alignat}{2}
-       \gz \varphi^h &=:  \sum_{i \in \mcl I_\varphi}       \varphi_i \gz N^i_\varphi (\gz X) \quad \quad \quad
-\delta \gz \varphi^h &&=: \sum_{i \in \mcl I_\varphi} \delta \varphi_i \gz N^i_\varphi (\gz X) \,,
+       \gz u^h &=:  \sum_{i \in \mcl I_\varphi} u^i \gz N_i (\gz X) \quad \quad \quad
+\delta \gz u^h &&=: \sum_{i \in \mcl I_\varphi} \delta u^i \gz N_i (\gz X) \,,
 \end{alignat}
-where superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the sets of unknown degrees of freedom for the
-macroscopic fields. For the sake of this study $\gz N^i_\varphi (\gz X)$ are such that only one component of the vector shape function is non-zero for each $i$.
+where superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the sets of unknown degrees of freedom (DoF).
+For the sake of this study $\gz N_i (\gz X)$ are such that only one component of the vector-valued shape function is non-zero for each $i$.
+
+The Newton-Raphson solution approach is adopted for the here considered nonlinear problem.
+Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is to be obtained as a solution to the following system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent})
+\begin{align}
+  K_{ij} \Delta u_j &= - F_i \\
+  K_{ij} &=
+  \int_{\mcl B_0} \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j \, \d V
+  +
+  \int_{\mcl B_0}
+  \overline{\grad}\gz N_i :
+  \left[
+  \overline{\grad} \gz N_j \cdot
+  \overline{\gz \tau}
+  \right]
+  \d V
+  \\
+  F_i &=
+  \int_{\mcl B_0} \overline{\gz \tau} : \grad^{s} \, \gz N_i \, \d V \,
+  -
+  \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S
+\end{align}
+Here $\gz K$ is the discrete tangent operator and $\gz F$ is the discrete gradient.
 
 \section{Matrix-free operator evaluation}
+\label{sec:mf}
 Classically the approach for finding a discrete solution to a linearized partial differential equation can be described as follows:
 First, ansatz spaces and a suitable bilinear form is defined. Then, a matrix and force vector corresponding to the discretization are assembled.
 Finally, a direct or iterative solver is used to solve the linear system for the discretized solution.
@@ -304,10 +414,17 @@ void evaluate_dof_vector_in_all_quadrature_points
 in three space dimensions. In general, this reordering reduces the arithmetic complexity to $\mathcal{O}(dn^{d+1})$ and is called sum factorization.
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-base especially for 3D and high polynomial degree.
 More information on techniques to increase the computational density can be found in \cite{kronbichler12,vos10}.
+We briefly note that the SIMD vectorization is applied at the element level, that is the operator is applied simultaneously on several several elements (called ``block'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
 
-Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, when performing contraction with gradient of shape functions in current (deformed) configuration, the integration is also done over the deformed configuration. Therefore in order to arrive at the integral in undeformed configuration, additionally we have to divide by Jacobian $J$ of the mapping at a given quadrature point.
+Given that the matrix-free operators are applied on-the-fly, it's crucial to find a good balance between pre-calculation of certain values (caching) and performance of the algorithm.
+Below we propose three algorithms to implement tangent operator of finite-strain linear elasticity using matrix-free approach, that employ different caching strategies.
+%
+In order to obtain gradients with respect to the deformed configuration we adopted \textit{MappingQEulerian} class from \texttt{deal.II} library.
+In addition to the standard mapping from the reference (unit / isoparametric) element to the element in real space, this class adds mapping to the deformed configuration given a displacement field.
+%
+Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, when performing contraction with gradient of shape functions in current (deformed) configuration, the integration is also done over the deformed configuration. Therefore in order to arrive at the integral in undeformed configuration, additionally we have to divide by Jacobian $J$ of the mapping at a given quadrature point.
 
-\begin{algorithm}[h]
+\begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$, current FE solution $\gz u$,
@@ -332,7 +449,9 @@ Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, whe
   \label{alg:mf_scalar}
 \end{algorithm}
 
-\begin{algorithm}[h]
+Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of Jacobian -- a computationally demanding operation compared to addition and multiplications. As evident from Section \ref{sec:theory}, in order to apply the operator we need to re-evaluate Kirchhoff stress at each quadrature point. This in turn requires evaluation of deformation gradient $\gz F$ and therefore gradients with respect to the undeformed configuration.
+
+\begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$,
@@ -354,7 +473,9 @@ Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, whe
   \label{alg:mf_tensor2}
 \end{algorithm}
 
-\begin{algorithm}[h]
+In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. This also avoid the need to evaluate gradients of displacement field with respect to the undeformed configuration. This algorithm utilize the chosen constitutive relationship and therefore the action of the material fourth order tangent $J \boldsymbol{\mathcal{C}}$ on the second order symmetric tensor $\gz g_s$ is cheap to evaluate, see \eqref{eq:simplified_action}. Here we also cache two scalars that depend on the Jacobian $J$.
+
+\begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$,
@@ -374,27 +495,132 @@ Due to the specifics of matrix-free operator evaluation in \texttt{deal.II}, whe
   \label{alg:mf_tensor4}
 \end{algorithm}
 
-The primary difference between Algorithm \ref{alg:mf_tensor2} and Algorithm \ref{alg:mf_tensor4}, is that the former utilizes the chosen structure of free energy function and thereby ends up with a computationally cheap way of evaluation of $\boldsymbol{\mathcal{C}} \gz g_s $, whereas the latter performs the double contraction between the fourth order and second order tensors.
-
-TODO[DD]: summary of what's happening, how operator is evaluated, what we do, what operations (determinant, etc), count number of FLOPS
+Finally Algorithm \ref{alg:mf_tensor4} represents the most general algorithm which does not assume specific constitutive relationship.
+Clearly in this case we have to cache the fourth order symmetric tensor $\boldsymbol{\mathcal{C}}$ for each element and quadrature point and perform the double contraction with the second-order symmetric tensor on-the-fly.
 
 \section{Geometric multigrid preconditioning}
+\label{sec:gmg}
 
-TODO[DD]: explain how this works with GMG (eulerian mapping on fine level gets restricted onto the coarse levels, the rest works as-is).
-Hopefully we can still use some mappings on coarse level to better represent geometric of inclusions (pores).
+Efficient and scalable matrix-vector products is not enough to obtain a method with linear scaling with respect to the number of unknown DoFs $N$.
+Efficiency of standard iterative solvers deteriorate for large systems of linear equations.
+It has been widely accepted that the geometric multigrid (GMG) preconditioners \cite{Bramble1990, Briggs2000, Janssen2011,May2015} can greatly improve the performance of iterative solvers by smoothing the defect on a hierarchy of levels.
+As a result the number of iterations for convergence becomes independent of the number of mesh refinements and thus leads to the $\mathcal O (N)$ solution method. For further information about geometric multigrid methods we refer the reader to \cite{Briggs2000,Hackbusch1985,Wesseling1992}.
+
+For this work we adopt the matrix-free level operators within the GMG and Chebyshev pre- and post-smoothing on each level. Given a generally heterogeneous non-linear material, definition of transfer operations (restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1985, Hill1972,Hashin1983,Castaneda1997} to design specific transfer operators \cite{Miehe2007}\footnote{
+  We note that this approach is limited to the case where for each quadrature point within an element the fourth order tangent operator is the same.
+}.
+In this approach the fine-scale displacement is decomposed into long-wave and short-wave contributions by additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch. In the case of a homogeneous patch, the transfer operators reduce to the standard geometric transfer. Based on this observation we adopt the following approach. It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous fine-strain elastic material. In this case the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators. We define the level operators as follows. Recall that the fine scale tangent is obtain by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}. Essentially level operators correspond to the linearization around smoothed representation of displacement field.
+Note that by doing so the operator (tangent) $K^{l+1}$ on level $l+1$ is not directly related to the operator (tangent) $K^{l}$ on level $l$ via $K^{l+1}=I^{l+1}_{l}  K^l I^l_{l+1}$, where $I^l_{l+1}$ and $I^{l+1}_l$ are prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
+Finally, at the coarsest level we adopt CG solver which shall reduce residual by three orders of magnitude within at most hundred of steps.
+The classical multigrid V-cycle approach with two pre- and post-smoothing is adopted. For other approaches that combine homogenization and multigrid methods for small strain elastic materials, see \cite{Bayreuther2003,Fish1995}.
 
 \section{Numerical examples}
+\label{sec:example}
 
-TODO: question to answer -- how much to cache? At least $detF ^ {2/3}$. Other options is stress and strain at quadrature points.
-Run benchmarks and see.
+In this section we apply the proposed matrix-free operator algorithms for finite-strain hyper-elastic material as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. Coarse mesh for 2D and 3D problems is depicted in Figure \ref{fig:miehe}. The 2D material consists of a matrix (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
+The matrix material is taken to have Poisson's ratio of $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is take to be $100$ times harder.
+The 3D material is obtained by extrusion in the third direction.
+Note that a relatively coarse mesh is adopted at the coarsest multigrid level, however the geometry of inclusions is captured accurately by employing manifold description of the boundaries and interfaces.
+Both domains are fixed at the bottom surface and the distributed load is applied at the top in $(1,0)$ and $(1,1,0)$ direction for 2D and 3D problems, respectively.
+The load of $0.5\,\rm{N}$ is applied in 5 steps. The displacement tolerance for Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for forces $10^{-8}$. The relative convergence criteria for linear solver is $10^{-6}$.
+%
+Figure \ref{fig:miehe_gmg} illustrates the multigrid mesh for the 2D problem after two global refinements.
+%
+The benchmark calculations are performed for 2D and 3D problems with various combination of polynomial degrees and number of global refinements, see Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
+%
+We are interested in the following metrics:
+(i) walltime per DoF of matrix-vector multiplication;
+(ii) memory requirement per DoF;
+(iii) average number of CG iterations throughout the whole run (i.e. each Newton-Raphson iteration and each loading step);
+(iv) walltime per DoF of CG solver;
+%
+The results of the matrix-free approach with geometric-multigrid preconditioner are compared to the matrix-based approach with algebraic multigrid (AMG) preconditioner using Trilinos \cite{Heroux2005} library.
+The aggregation threshold for AMG is taken as $10^{-4}$.
+Computations are done on a single node of two clusters.
+A node on ``Emmy'' cluster has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB Shared Cache per chip and 64 GB of RAM. Intel compilers version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
+The ``IWR'' results were obtained ona single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB Shared Cache per chip. For the simulation, GNU 8.1.0 with flags ``-O3 -march=native'' and OpenMPI 3.0.0 were used.
 
-\subsection{Small strain linear elasticity}
+Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the benchmarks as performed on the two clusters.
+As expected the matrix-vector multiplication becomes very expensive for higher order discretization for matrix-based approaches.
+The matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
+Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly shows the influence of different caching strategies.
+Two conclusions can be drawn: scalar caching implementation is the most time consuming at each step we additionally evaluate the gradient of displacement field in reference configuration, required to evaluate the Kirchhoff stress $\gz \tau$. On another hand there is little difference between the approach where the fourth order material tangent tensor is cached (``tensor4'') and the one where we only cache the second order Kirchhoff tensor and use the chosen hyper-elastic constitutive equation to efficiently implement the action of the material tangent on the second order symmetric tensor.
+This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
+Consequently we can apply matrix-free approach to any fine-strain material model by caching the fourth order material tangent in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
 
-TODO: summarize Mathias results (head and Cook's membrane)
+As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind the matrix-free methods.
+Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} show that even with caching of one fourth order symmetric tensor and one second order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
 
-TODO: switch head to quasi-static load instead of dynamics?
+Next we evaluate the performance of the proposed geometric multigrid preconditioner. First we consider the number of CG iterations.
+Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iteration for different polynomial degrees. On another hand the black-box AGM preconditioner require much more iterations for convergence.
+Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution time polynomial degrees up to $p=5$. For higher orders in 2D the walltime is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
+The reason for that is the coarse level solver within the GMG preconditioner. Evidently the adopted here Chebyshev smoother with the CG solver have unsatisfactory performance for higher degrees.
+A possible solution is to perform further coarsening combined with the homogenization-based transfer operators \cite{Miehe2007}. This should also improve the performance of the preconditioner for lower degrees.
 
-\subsection{Large strain Neo-Hook elasticity}
+\begin{table}
+  \centering
+  \begin{tabular}{ccccc}
+  \hline
+    $p$ & $q$ & $N_{gref}$ & $N_{el}$ & $N_{DoF}$ \\
+  \hline
+    1 & 2 & 7 & 1441792 & 2887680 \\
+    2 & 3 & 6 & 360448 & 2887680 \\
+    3 & 4 & 5 & 90112 & 1625088 \\
+    4 & 5 & 5 & 90112 & 2887680 \\
+    5 & 6 & 5 & 90112 & 4510720 \\
+    6 & 7 & 4 & 22528 & 1625088 \\
+    7 & 8 & 4 & 22528 & 2211328 \\
+    8 & 9 & 4 & 22528 & 2887680 \\
+  \hline
+  \end{tabular}
+  \caption{Parameters for 2D benchmark.
+  }
+  \label{tab:input_parameters_2d}
+\end{table}
+
+\begin{table}
+  \centering
+  \begin{tabular}{ccccc}
+  \hline
+    $p$ & $q$ & $N_{gref}$ & $N_{el}$ & $N_{DoF}$ \\
+  \hline
+    1 & 2 & 4 & 1441792 & 4442880 \\
+    2 & 3 & 3 & 180224 & 4442880 \\
+    3 & 4 & 2 & 22528 & 1891008 \\
+    4 & 5 & 2 & 22528 & 4442880 \\
+  \hline
+  \end{tabular}
+  \caption{Parameters for 3D benchmark.
+  }
+  \label{tab:input_parameters_3d}
+\end{table}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.45\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{coarse_mesh.png}
+      \caption{2D coarse mesh}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{coarse_mesh_3d.png}
+    \caption{3D coarse mesh}
+  \end{subfigure}
+  \caption{Heterogeneous material.}%
+  \label{fig:miehe}
+\end{figure}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{gmg_2d.png}
+    % \caption{2D multigrid mesh with 2 global refinements}
+  \end{subfigure}
+  \caption{2D multigrid mesh after two global refinements distributed into three MPI processes. Color indicate the process owning the element.}%
+  \label{fig:miehe_gmg}
+\end{figure}
 
 \begin{figure}[!ht]
   \centering
@@ -402,47 +628,55 @@ TODO: switch head to quasi-static load instead of dynamics?
       \centering
       \includegraphics[width=\textwidth]{Emmy_RRZE_timing2d.eps}
       \caption{vmult 2D}
+      \label{fig:benchmark_miehe_Emmy_vmult2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_timing3d.eps}
     \caption{vmult 3D}
+    \label{fig:benchmark_miehe_Emmy_vmult3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
       \centering
       \includegraphics[width=\textwidth]{Emmy_RRZE_memory2d.eps}
       \caption{memory consumption 2D}
+      \label{fig:benchmark_miehe_Emmy_memory2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_memory3d.eps}
     \caption{memory consumption 3D}
+    \label{fig:benchmark_miehe_Emmy_memory3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_cg2d.eps}
     \caption{CG iterations 2D}
+    \label{fig:benchmark_miehe_Emmy_cg2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_cg3d.eps}
     \caption{CG iterations 3D}
+    \label{fig:benchmark_miehe_Emmy_cg3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_solver2d.eps}
     \caption{CG solution time 2D}
+    \label{fig:benchmark_miehe_Emmy_sol2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_solver3d.eps}
     \caption{CG solution time 3D}
+    \label{fig:benchmark_miehe_Emmy_sol3}
   \end{subfigure}
-  \caption{Heterogeneous large-strain example (Emmy cluster, RRZE).}%
-  \label{fig:benchmark_2d_miehe}
+  \caption{Emmy cluster, RRZE.}%
+  \label{fig:benchmark_miehe_Emmy}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -451,57 +685,86 @@ TODO: switch head to quasi-static load instead of dynamics?
       \centering
       \includegraphics[width=\textwidth]{IWR_timing2d.eps}
       \caption{vmult 2D}
+      \label{fig:benchmark_miehe_IWR_vmult2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_timing3d.eps}
     \caption{vmult 3D}
+    \label{fig:benchmark_miehe_IWR_vmult3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
       \centering
       \includegraphics[width=\textwidth]{IWR_memory2d.eps}
       \caption{memory consumption 2D}
+      \label{fig:benchmark_miehe_IWR_memory2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_memory3d.eps}
     \caption{memory consumption 3D}
+    \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_cg2d.eps}
     \caption{CG iterations 2D}
+    \label{fig:benchmark_miehe_IWR_cg2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_cg3d.eps}
     \caption{CG iterations 3D}
+    \label{fig:benchmark_miehe_IWR_cg3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_solver2d.eps}
     \caption{CG solution time 2D}
+    \label{fig:benchmark_miehe_IWR_sol2}
   \end{subfigure}
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_solver3d.eps}
     \caption{CG solution time 3D}
+    \label{fig:benchmark_miehe_IWR_sol3}
   \end{subfigure}
-  \caption{Heterogeneous 2D large-strain example (IWR cluster).}%
-  \label{fig:benchmark_2d_miehe_IWR}
+  \caption{IWR cluster.}%
+  \label{fig:benchmark_miehe_IWR}
 \end{figure}
 
 
-TODO: add new results from Cook's and some matrix-inclusion (matrix-pore).
-Elliptical holes are easier as we don't need heterogeneous operator.
-
 \section{Summary and Conclusions}
+\label{sec:summary}
 
-TODO: summarize results, good/bad, where can be applied,...
-Bio-med fluid-structure ?
+In this contribution we proposed and numerically investigated several matrix-free implementations of tangent operators for fine-strain elasticity of heterogeneous materials.
+The implementation which caches the fourth order material tangent together with the second order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic in 3D.
+This indicates that the matrix-free implementation of tangent operator can be applied any constitutive model which operates with the material tangent on quadrature point level.
+
+We also studies the performance of the GMG preconditioner with standard geometric transfer operations between each level. The GMG was applied to heterogeneous material assuming that the coarsest level can provide adequate discretization of heterogeneity. The numerical studies indicate that the proposed preconditioner lead to the solution approach that is faster than the matrix-based algebraic multigrid preconditioner for moderate polynomial degrees. However the considerable amount of time is spent in the coarse level solver. Therefore our future work will be focused on extending this proposed here matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}. We are also interested  extending these methods to incompressible three-field formulation.
+
+\section*{Acknowledgements}
+
+D.~Davydov acknowledge the financial support of the German Research Foundation (DFG), grant DA 1664/2-1
+and the Competence Network for Technical and Scientific High Performance Computing in Bavaria (KONWIHR).
+
+D.~Davydov, D.~Arndt and J-P.~Pelteret are grateful to Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for a fruitful discussion on matrix-free operator evaluation approaches.
+
+D.~Arndt was supported by the German Research Foundation (DFG) under the project ``High-order discontinuous
+Galerkin for the exa-scale'' (\mbox{ExaDG}) within the priority program ``Software
+for Exascale Computing'' (SPPEXA).
+
+{\color{red}
+J-P.~Pelteret was supported by the European Research Council (ERC) through
+the Advanced Grant 289049 MOCOPOLY.(?)
+}
+
+P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible.
+
+\section*{Bibliography}
 
 \bibliographystyle{elsarticle-num}
 \bibliography{bibliography}
