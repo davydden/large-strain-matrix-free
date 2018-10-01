@@ -165,6 +165,42 @@ namespace Cook_Membrane
       prm.leave_subsection();
     }
 
+    template <int dim>
+    class BoundaryConditions
+    {
+    public:
+      std::map<types::boundary_id, std::unique_ptr<FunctionParser<dim>>>
+                                                  dirichlet;
+      std::map<types::boundary_id, ComponentMask> dirichlet_mask;
+
+      std::map<types::boundary_id, std::unique_ptr<FunctionParser<dim>>>
+        neumann;
+
+      void
+      add_bc_parameters(ParameterHandler &prm);
+    };
+
+
+    template <int dim>
+    void
+    BoundaryConditions<dim>::add_bc_parameters(ParameterHandler &prm)
+    {
+      prm.enter_subsection("Boundary conditions");
+      prm.add_parameter("Dirichlet IDs and expressions",
+                        dirichlet,
+                        "Dirichlet functions for each boundary ID");
+
+      prm.add_parameter("Dirichlet IDs and component mask",
+                        dirichlet_mask,
+                        "Dirichlet component mask for each boundary ID");
+
+      prm.add_parameter("Neumann IDs and expressions",
+                        neumann,
+                        "Neumann functions for each boundary ID");
+
+      prm.leave_subsection();
+    }
+
     // @sect4{Finite Element system}
 
     // Here we specify the polynomial order used to approximate the solution.
@@ -451,21 +487,39 @@ namespace Cook_Membrane
 
     // Finally we consolidate all of the above structures into a single
     // container that holds all of our run-time selections.
-    struct AllParameters : public FESystem,
-                           public Geometry,
-                           public Materials,
-                           public LinearSolver,
-                           public NonlinearSolver,
-                           public Time,
-                           public Misc
+    template <int dim>
+    class AllParameters : public FESystem,
+                          public Geometry,
+                          public Materials,
+                          public LinearSolver,
+                          public NonlinearSolver,
+                          public Time,
+                          public Misc,
+                          BoundaryConditions<dim>
 
     {
+    public:
       bool skip_tangent_assembly;
 
       AllParameters(const std::string &input_file);
+
+      void
+      set_time(const double time) const;
     };
 
-    AllParameters::AllParameters(const std::string &input_file)
+    template <int dim>
+    void AllParameters<dim>::set_time(const double time) const
+    {
+      // here we have to cast away constness so that we can modify the time-dependent BC
+      for (const auto & d : this->dirichlet)
+        d.second->set_time(time);
+
+      for (const auto & n : this->neumann)
+        n.second->set_time(time);
+    }
+
+    template <int dim>
+    AllParameters<dim>::AllParameters(const std::string &input_file)
     {
       ParameterHandler prm;
 
@@ -476,6 +530,8 @@ namespace Cook_Membrane
       NonlinearSolver::add_parameters(prm);
       Time::add_parameters(prm);
       Misc::add_parameters(prm);
+
+      this->add_bc_parameters(prm);
 
       prm.parse_input(input_file);
 
@@ -552,7 +608,7 @@ namespace Cook_Membrane
     using LevelVectorType = LinearAlgebra::distributed::Vector<LevelNumberType>;
     using VectorType      = LinearAlgebra::distributed::Vector<double>;
 
-    Solid(const Parameters::AllParameters &parameters);
+    Solid(const Parameters::AllParameters<dim> &parameters);
 
     virtual ~Solid();
 
@@ -616,7 +672,7 @@ namespace Cook_Membrane
 
     // Finally, some member variables that describe the current state: A
     // collection of the parameters used to describe the problem setup...
-    const Parameters::AllParameters &parameters;
+    const Parameters::AllParameters<dim> &parameters;
 
     // ...the volume of the reference and current configurations...
     double vol_reference;
@@ -842,7 +898,7 @@ namespace Cook_Membrane
   // We initialise the Solid class using data extracted from the parameter file.
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   Solid<dim, degree, n_q_points_1d, NumberType>::Solid(
-    const Parameters::AllParameters &parameters)
+    const Parameters::AllParameters<dim> &parameters)
     : mpi_communicator(MPI_COMM_WORLD)
     , pcout(std::cout, Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
     , parameters(parameters)
@@ -1033,6 +1089,7 @@ namespace Cook_Membrane
     // At the beginning, we reset the solution update for this time step...
     while (time.current() <= time.end())
       {
+        parameters.set_time(time.current());
         solution_delta = 0.0;
 
         // ...solve the current time step and update total solution vector
