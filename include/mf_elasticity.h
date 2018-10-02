@@ -121,20 +121,17 @@ namespace Cook_Membrane
   {
     struct Misc
     {
-      std::string output_folder;
-      bool output_solution;
-      bool always_assemble_tangent;
-      bool output_abs_norms;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      std::string output_folder           = "";
+      bool        output_solution         = true;
+      bool        always_assemble_tangent = true;
+      bool        output_abs_norms        = false;
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    Misc::declare_parameters(ParameterHandler &prm)
+    Misc::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Misc");
       {
@@ -142,35 +139,65 @@ namespace Cook_Membrane
                           "",
                           Patterns::Anything(),
                           "Output folder (must exist)");
-        prm.declare_entry("Output solution",
-                          "true",
-                          Patterns::Bool(),
-                          "Output solution and mesh");
-        prm.declare_entry("Always assemble tangent",
-                          "true",
-                          Patterns::Bool(),
-                          "Always assemble tangent matrix regardless of the solver");
-        prm.declare_entry("Output absolute norms",
-                          "false",
-                          Patterns::Bool(),
-                          "Output absolute norms during convergence");
+
+        prm.add_action("Output folder", [&](const std::string &value) {
+          output_folder = value;
+          if (!output_folder.empty() && output_folder.back() != '/')
+            output_folder += "/";
+        });
+
+        prm.add_parameter("Output solution",
+                          output_solution,
+                          "Output solution and mesh",
+                          Patterns::Bool());
+
+        prm.add_parameter("Always assemble tangent",
+                          always_assemble_tangent,
+                          "Always assemble tangent matrix "
+                          "regardless of the solver",
+                          Patterns::Bool());
+
+        prm.add_parameter("Output absolute norms",
+                          output_abs_norms,
+                          "Output absolute norms during convergence",
+                          Patterns::Bool());
       }
       prm.leave_subsection();
     }
 
-    void
-    Misc::parse_parameters(ParameterHandler &prm)
+    template <int dim>
+    class BoundaryConditions
     {
-      prm.enter_subsection("Misc");
-      {
-        output_folder = prm.get("Output folder");
-        if (!output_folder.empty() && output_folder.back() != '/')
-          output_folder += "/";
+    public:
+      std::map<types::boundary_id, std::unique_ptr<FunctionParser<dim>>>
+                                                  dirichlet;
+      std::map<types::boundary_id, ComponentMask> dirichlet_mask;
 
-        output_solution = prm.get_bool("Output solution");
-        always_assemble_tangent = prm.get_bool("Always assemble tangent");
-        output_abs_norms = prm.get_bool("Output absolute norms");
-      }
+      std::map<types::boundary_id, std::unique_ptr<FunctionParser<dim>>>
+        neumann;
+
+      void
+      add_bc_parameters(ParameterHandler &prm);
+    };
+
+
+    template <int dim>
+    void
+    BoundaryConditions<dim>::add_bc_parameters(ParameterHandler &prm)
+    {
+      prm.enter_subsection("Boundary conditions");
+      prm.add_parameter("Dirichlet IDs and expressions",
+                        dirichlet,
+                        "Dirichlet functions for each boundary ID");
+
+      prm.add_parameter("Dirichlet IDs and component mask",
+                        dirichlet_mask,
+                        "Dirichlet component mask for each boundary ID");
+
+      prm.add_parameter("Neumann IDs and expressions",
+                        neumann,
+                        "Neumann functions for each boundary ID");
+
       prm.leave_subsection();
     }
 
@@ -180,42 +207,28 @@ namespace Cook_Membrane
     // The quadrature order should be adjusted accordingly.
     struct FESystem
     {
-      unsigned int poly_degree;
-      unsigned int quad_order;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      unsigned int poly_degree = 2;
+      unsigned int quad_order  = 3;
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
 
     void
-    FESystem::declare_parameters(ParameterHandler &prm)
+    FESystem::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Finite element system");
       {
-        prm.declare_entry("Polynomial degree",
-                          "2",
-                          Patterns::Integer(0),
-                          "Displacement system polynomial order");
+        prm.add_parameter("Polynomial degree",
+                          poly_degree,
+                          "Displacement system polynomial order",
+                          Patterns::Integer(1));
 
-        prm.declare_entry("Quadrature order",
-                          "3",
-                          Patterns::Integer(0),
-                          "Gauss quadrature order");
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    FESystem::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Finite element system");
-      {
-        poly_degree = prm.get_integer("Polynomial degree");
-        quad_order  = prm.get_integer("Quadrature order");
+        prm.add_parameter("Quadrature order",
+                          quad_order,
+                          "Gauss quadrature order",
+                          Patterns::Integer(1));
       }
       prm.leave_subsection();
     }
@@ -225,77 +238,57 @@ namespace Cook_Membrane
     // Make adjustments to the problem geometry and its discretisation.
     struct Geometry
     {
-      unsigned int elements_per_edge;
-      double       scale;
-      unsigned int dim;
-      unsigned int n_global_refinement;
-      unsigned int extrusion_slices;
-      double       extrusion_height;
-      std::string  type;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      unsigned int elements_per_edge   = 32;
+      double       scale               = 1e-3;
+      unsigned int dim                 = 2;
+      unsigned int n_global_refinement = 0;
+      unsigned int extrusion_slices    = 5;
+      double       extrusion_height    = 1;
+      std::string  type                = "Cook";
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    Geometry::declare_parameters(ParameterHandler &prm)
+    Geometry::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Geometry");
       {
-        prm.declare_entry("Elements per edge",
-                          "32",
-                          Patterns::Integer(0),
-                          "Number of elements per long edge of the beam");
+        prm.add_parameter("Elements per edge",
+                          elements_per_edge,
+                          "Number of elements per long edge of the beam",
+                          Patterns::Integer(0));
 
-        prm.declare_entry("Global refinement",
-                          "0",
-                          Patterns::Integer(0),
-                          "Number of global refinements");
+        prm.add_parameter("Global refinement",
+                          n_global_refinement,
+                          "Number of global refinements",
+                          Patterns::Integer(0));
 
-        prm.declare_entry("Grid scale",
-                          "1e-3",
-                          Patterns::Double(0.0),
-                          "Global grid scaling factor");
+        prm.add_parameter("Grid scale",
+                          scale,
+                          "Global grid scaling factor",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Extrusion height",
-                          "1",
-                          Patterns::Double(0.0),
-                          "Extrusion height");
+        prm.add_parameter("Extrusion height",
+                          extrusion_height,
+                          "Extrusion height",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Extrusion slices",
-                          "5",
-                          Patterns::Integer(0),
-                          "Number of extrusion slices");
+        prm.add_parameter("Extrusion slices",
+                          extrusion_slices,
+                          "Number of extrusion slices",
+                          Patterns::Integer(0));
 
-        prm.declare_entry("Dimension",
-                          "2",
-                          Patterns::Integer(2, 3),
-                          "Dimension of the problem");
+        prm.add_parameter("Dimension",
+                          dim,
+                          "Dimension of the problem",
+                          Patterns::Integer(2, 3));
 
-        prm.declare_entry("Type",
-                  "Cook",
-                  Patterns::Selection("Cook|Holes"),
-                  "Type of the problem");
-
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    Geometry::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Geometry");
-      {
-        elements_per_edge   = prm.get_integer("Elements per edge");
-        scale               = prm.get_double("Grid scale");
-        dim                 = prm.get_integer("Dimension");
-        n_global_refinement = prm.get_integer("Global refinement");
-        type                = prm.get("Type");
-        extrusion_slices    = prm.get_integer("Extrusion slices");
-        extrusion_height    = prm.get_double("Extrusion height");
+        prm.add_parameter("Type",
+                          type,
+                          "Type of the problem",
+                          Patterns::Selection("Cook|Holes"));
       }
       prm.leave_subsection();
     }
@@ -306,48 +299,33 @@ namespace Cook_Membrane
     // neo-Hookean material.
     struct Materials
     {
-      double       nu;
-      double       mu;
-      unsigned int material_formulation;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      double       nu                   = 0.3;
+      double       mu                   = 0.4225e6;
+      unsigned int material_formulation = 0;
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    Materials::declare_parameters(ParameterHandler &prm)
+    Materials::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Material properties");
       {
-        prm.declare_entry("Poisson's ratio",
-                          "0.3",
-                          Patterns::Double(-1.0, 0.5),
-                          "Poisson's ratio");
+        prm.add_parameter("Poisson's ratio",
+                          nu,
+                          "Poisson's ratio",
+                          Patterns::Double(-1.0, 0.5));
 
-        prm.declare_entry("Shear modulus",
-                          "0.4225e6",
-                          Patterns::Double(),
-                          "Shear modulus");
+        prm.add_parameter("Shear modulus",
+                          mu,
+                          "Shear modulus",
+                          Patterns::Double(0.));
 
-        prm.declare_entry("Formulation",
-                          "0",
-                          Patterns::Integer(0, 1),
-                          "Formulation of the energy function");
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    Materials::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Material properties");
-      {
-        nu                   = prm.get_double("Poisson's ratio");
-        mu                   = prm.get_double("Shear modulus");
-        material_formulation = prm.get_integer("Formulation");
+        prm.add_parameter("Formulation",
+                          material_formulation,
+                          "Formulation of the energy function",
+                          Patterns::Integer(0, 1));
       }
       prm.leave_subsection();
     }
@@ -359,88 +337,65 @@ namespace Cook_Membrane
     // nonlinear motion occurs within a Newton increment.
     struct LinearSolver
     {
-      std::string  type_lin;
-      double       tol_lin;
-      double       max_iterations_lin;
-      std::string  preconditioner_type;
-      double       preconditioner_relaxation;
-      double       preconditioner_aggregation_threshold;
-      unsigned int cond_number_cg_iterations;
-      std::string  mf_caching;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      std::string  type_lin                             = "CG";
+      double       tol_lin                              = 1e-6;
+      unsigned int max_iterations_lin                   = 1;
+      std::string  preconditioner_type                  = "jacobi";
+      double       preconditioner_relaxation            = 0.65;
+      double       preconditioner_aggregation_threshold = 1e-4;
+      unsigned int cond_number_cg_iterations            = 20;
+      std::string  mf_caching                           = "scalar";
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    LinearSolver::declare_parameters(ParameterHandler &prm)
+    LinearSolver::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Linear solver");
       {
-        prm.declare_entry("Solver type",
-                          "CG",
-                          Patterns::Selection("CG|Direct|MF_CG|MF_AD_CG"),
-                          "Type of solver used to solve the linear system");
+        prm.add_parameter("Solver type",
+                          type_lin,
+                          "Type of solver used to solve the linear system",
+                          Patterns::Selection("CG|Direct|MF_CG|MF_AD_CG"));
 
-        prm.declare_entry("Residual",
-                          "1e-6",
-                          Patterns::Double(0.0),
-                          "Linear solver residual (scaled by residual norm)");
+        prm.add_parameter("Residual",
+                          tol_lin,
+                          "Linear solver residual (scaled by residual norm)",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry(
-          "Max iteration multiplier",
-          "1",
-          Patterns::Double(0.0),
-          "Linear solver iterations (multiples of the system matrix size)");
+        prm.add_parameter("Max iteration multiplier",
+                          max_iterations_lin,
+                          "Linear solver iterations "
+                          "(multiples of the system matrix size)",
+                          Patterns::Integer(1));
 
-        prm.declare_entry("Preconditioner type",
-                          "jacobi",
-                          Patterns::Selection("jacobi|ssor|amg|gmg|none"),
-                          "Type of preconditioner");
+        prm.add_parameter("Preconditioner type",
+                          preconditioner_type,
+                          "Type of preconditioner",
+                          Patterns::Selection("jacobi|ssor|amg|gmg|none"));
 
-        prm.declare_entry("Preconditioner relaxation",
-                          "0.65",
-                          Patterns::Double(0.0),
-                          "Preconditioner relaxation value");
+        prm.add_parameter("Preconditioner relaxation",
+                          preconditioner_relaxation,
+                          "Preconditioner relaxation value",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Preconditioner AMG aggregation threshold",
-                          "1e-4",
-                          Patterns::Double(0.0),
-                          "Preconditioner AMG aggregation threshold");
+        prm.add_parameter("Preconditioner AMG aggregation threshold",
+                          preconditioner_aggregation_threshold,
+                          "Preconditioner AMG aggregation threshold",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry(
-          "Condition number CG iterations",
-          "20",
-          Patterns::Integer(1),
-          "Number of CG iterations to estimate condition number");
+        prm.add_parameter("Condition number CG iterations",
+                          cond_number_cg_iterations,
+                          "Number of CG iterations to "
+                          "estimate condition number",
+                          Patterns::Integer(1));
 
-        prm.declare_entry("MF caching",
-                  "scalar",
-                  Patterns::Selection("scalar|tensor2|tensor4"),
-                  "Type of preconditioner");
-
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    LinearSolver::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Linear solver");
-      {
-        type_lin                  = prm.get("Solver type");
-        tol_lin                   = prm.get_double("Residual");
-        max_iterations_lin        = prm.get_double("Max iteration multiplier");
-        preconditioner_type       = prm.get("Preconditioner type");
-        preconditioner_relaxation = prm.get_double("Preconditioner relaxation");
-        preconditioner_aggregation_threshold =
-          prm.get_double("Preconditioner AMG aggregation threshold");
-        cond_number_cg_iterations =
-          prm.get_integer("Condition number CG iterations");
-        mf_caching                = prm.get("MF caching");
+        prm.add_parameter("MF caching",
+                          mf_caching,
+                          "Type of caching for matrix-free operator",
+                          Patterns::Selection("scalar|tensor2|tensor4"));
       }
       prm.leave_subsection();
     }
@@ -452,62 +407,45 @@ namespace Cook_Membrane
     // of iterations for the Newton-Raphson nonlinear solver.
     struct NonlinearSolver
     {
-      unsigned int max_iterations_NR;
-      double       tol_f;
-      double       tol_f_abs;
-      double       tol_u;
-      double       tol_u_abs;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      unsigned int max_iterations_NR = 10;
+      double       tol_f             = 1e-9;
+      double       tol_f_abs         = 0.;
+      double       tol_u             = 1e-6;
+      double       tol_u_abs         = 0;
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    NonlinearSolver::declare_parameters(ParameterHandler &prm)
+    NonlinearSolver::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Nonlinear solver");
       {
-        prm.declare_entry("Max iterations Newton-Raphson",
-                          "10",
-                          Patterns::Integer(0),
-                          "Number of Newton-Raphson iterations allowed");
+        prm.add_parameter("Max iterations Newton-Raphson",
+                          max_iterations_NR,
+                          "Number of Newton-Raphson iterations allowed",
+                          Patterns::Integer(0));
 
-        prm.declare_entry("Tolerance force",
-                          "1.0e-9",
-                          Patterns::Double(0.0),
-                          "Force residual tolerance");
+        prm.add_parameter("Tolerance force",
+                          tol_f,
+                          "Force residual tolerance",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Absolute tolerance force",
-                          "0.",
-                          Patterns::Double(0.0),
-                          "Force residual absolute tolerance");
+        prm.add_parameter("Absolute tolerance force",
+                          tol_f_abs,
+                          "Force residual absolute tolerance",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Absolute tolerance displacement",
-                          "0.",
-                          Patterns::Double(0.0),
-                          "Displacement update absolute tolerance");
+        prm.add_parameter("Absolute tolerance displacement",
+                          tol_u_abs,
+                          "Displacement update absolute tolerance",
+                          Patterns::Double(0.0));
 
-        prm.declare_entry("Tolerance displacement",
-                          "1.0e-6",
-                          Patterns::Double(0.0),
-                          "Displacement error tolerance");
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    NonlinearSolver::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Nonlinear solver");
-      {
-        max_iterations_NR = prm.get_integer("Max iterations Newton-Raphson");
-        tol_f             = prm.get_double("Tolerance force");
-        tol_f_abs         = prm.get_double("Absolute tolerance force");
-        tol_u             = prm.get_double("Tolerance displacement");
-        tol_u_abs         = prm.get_double("Absolute tolerance displacement");
+        prm.add_parameter("Tolerance displacement",
+                          tol_u,
+                          "Displacement error tolerance",
+                          Patterns::Double(0.0));
       }
       prm.leave_subsection();
     }
@@ -517,45 +455,30 @@ namespace Cook_Membrane
     // Set the timestep size $ \varDelta t $ and the simulation end-time.
     struct Time
     {
-      double delta_t;
-      double end_time;
-      double force_multiplier;
-
-      static void
-      declare_parameters(ParameterHandler &prm);
+      double delta_t          = 0.1;
+      double end_time         = 1.;
+      double force_multiplier = 1.;
 
       void
-      parse_parameters(ParameterHandler &prm);
+      add_parameters(ParameterHandler &prm);
     };
 
     void
-    Time::declare_parameters(ParameterHandler &prm)
+    Time::add_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Time");
       {
-        prm.declare_entry("End time", "1", Patterns::Double(), "End time");
+        prm.add_parameter("End time", end_time, "End time", Patterns::Double());
 
-        prm.declare_entry("Force multiplier",
-                          "1",
-                          Patterns::Double(),
-                          "Neumann BC force multiplier");
+        prm.add_parameter("Force multiplier",
+                          force_multiplier,
+                          "Neumann BC force multiplier",
+                          Patterns::Double());
 
-        prm.declare_entry("Time step size",
-                          "0.1",
-                          Patterns::Double(),
-                          "Time step size");
-      }
-      prm.leave_subsection();
-    }
-
-    void
-    Time::parse_parameters(ParameterHandler &prm)
-    {
-      prm.enter_subsection("Time");
-      {
-        end_time = prm.get_double("End time");
-        delta_t  = prm.get_double("Time step size");
-        force_multiplier = prm.get_double("Force multiplier");
+        prm.add_parameter("Time step size",
+                          delta_t,
+                          "Time step size",
+                          Patterns::Double(0.));
       }
       prm.leave_subsection();
     }
@@ -564,59 +487,58 @@ namespace Cook_Membrane
 
     // Finally we consolidate all of the above structures into a single
     // container that holds all of our run-time selections.
-    struct AllParameters : public FESystem,
-                           public Geometry,
-                           public Materials,
-                           public LinearSolver,
-                           public NonlinearSolver,
-                           public Time,
-                           public Misc
+    template <int dim>
+    class AllParameters : public FESystem,
+                          public Geometry,
+                          public Materials,
+                          public LinearSolver,
+                          public NonlinearSolver,
+                          public Time,
+                          public Misc,
+                          BoundaryConditions<dim>
 
     {
+    public:
       bool skip_tangent_assembly;
 
       AllParameters(const std::string &input_file);
 
-      static void
-      declare_parameters(ParameterHandler &prm);
-
       void
-      parse_parameters(ParameterHandler &prm);
+      set_time(const double time) const;
     };
 
-    AllParameters::AllParameters(const std::string &input_file)
+    template <int dim>
+    void AllParameters<dim>::set_time(const double time) const
+    {
+      for (const auto & d : this->dirichlet)
+        d.second->set_time(time);
+
+      for (const auto & n : this->neumann)
+        n.second->set_time(time);
+    }
+
+    template <int dim>
+    AllParameters<dim>::AllParameters(const std::string &input_file)
     {
       ParameterHandler prm;
-      declare_parameters(prm);
+
+      FESystem::add_parameters(prm);
+      Geometry::add_parameters(prm);
+      Materials::add_parameters(prm);
+      LinearSolver::add_parameters(prm);
+      NonlinearSolver::add_parameters(prm);
+      Time::add_parameters(prm);
+      Misc::add_parameters(prm);
+
+      this->add_bc_parameters(prm);
+
       prm.parse_input(input_file);
-      parse_parameters(prm);
+
+      AssertDimension (dim, this->dim);
 
       skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
 
-    void
-    AllParameters::declare_parameters(ParameterHandler &prm)
-    {
-      FESystem::declare_parameters(prm);
-      Geometry::declare_parameters(prm);
-      Materials::declare_parameters(prm);
-      LinearSolver::declare_parameters(prm);
-      NonlinearSolver::declare_parameters(prm);
-      Time::declare_parameters(prm);
-      Misc::declare_parameters(prm);
-    }
-
-    void
-    AllParameters::parse_parameters(ParameterHandler &prm)
-    {
-      FESystem::parse_parameters(prm);
-      Geometry::parse_parameters(prm);
-      Materials::parse_parameters(prm);
-      LinearSolver::parse_parameters(prm);
-      NonlinearSolver::parse_parameters(prm);
-      Time::parse_parameters(prm);
-      Misc::parse_parameters(prm);
-    }
   } // namespace Parameters
 
   // @sect3{Time class}
@@ -687,7 +609,7 @@ namespace Cook_Membrane
     using LevelVectorType = LinearAlgebra::distributed::Vector<LevelNumberType>;
     using VectorType      = LinearAlgebra::distributed::Vector<double>;
 
-    Solid(const Parameters::AllParameters &parameters);
+    Solid(const Parameters::AllParameters<dim> &parameters);
 
     virtual ~Solid();
 
@@ -751,7 +673,7 @@ namespace Cook_Membrane
 
     // Finally, some member variables that describe the current state: A
     // collection of the parameters used to describe the problem setup...
-    const Parameters::AllParameters &parameters;
+    const Parameters::AllParameters<dim> &parameters;
 
     // ...the volume of the reference and current configurations...
     double vol_reference;
@@ -773,7 +695,7 @@ namespace Cook_Membrane
     // cell and the extractor objects used to retrieve information from the
     // solution vectors:
     const FESystem<dim>              fe;
-    DoFHandler<dim>                  dof_handler_ref;
+    DoFHandler<dim>                  dof_handler;
     const unsigned int               dofs_per_cell;
     const FEValuesExtractors::Vector u_fe;
 
@@ -977,7 +899,7 @@ namespace Cook_Membrane
   // We initialise the Solid class using data extracted from the parameter file.
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   Solid<dim, degree, n_q_points_1d, NumberType>::Solid(
-    const Parameters::AllParameters &parameters)
+    const Parameters::AllParameters<dim> &parameters)
     : mpi_communicator(MPI_COMM_WORLD)
     , pcout(std::cout, Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
     , parameters(parameters)
@@ -1005,7 +927,7 @@ namespace Cook_Membrane
     // DOFs.
     fe(FE_Q<dim>(degree), dim)
     , // displacement
-    dof_handler_ref(triangulation)
+    dof_handler(triangulation)
     , dofs_per_cell(fe.dofs_per_cell)
     , u_fe(first_u_component)
     , material(std::make_shared<
@@ -1131,7 +1053,7 @@ namespace Cook_Membrane
     mf_data_reference.reset();
     eulerian_mapping.reset();
 
-    dof_handler_ref.clear();
+    dof_handler.clear();
 
     multigrid_preconditioner.reset();
     multigrid.reset();
@@ -1168,6 +1090,7 @@ namespace Cook_Membrane
     // At the beginning, we reset the solution update for this time step...
     while (time.current() <= time.end())
       {
+        parameters.set_time(time.current());
         solution_delta = 0.0;
 
         // ...solve the current time step and update total solution vector
@@ -1556,19 +1479,19 @@ namespace Cook_Membrane
 
     // The DOF handler is then initialised and we renumber the grid in an
     // efficient manner. We also record the number of DOFs per block.
-    dof_handler_ref.distribute_dofs(fe);
-    dof_handler_ref.distribute_mg_dofs();
-    DoFRenumbering::Cuthill_McKee(dof_handler_ref);
+    dof_handler.distribute_dofs(fe);
+    dof_handler.distribute_mg_dofs();
+    DoFRenumbering::Cuthill_McKee(dof_handler);
 
     pcout << "Triangulation:"
           << "\n\t Number of active cells: "
           << triangulation.n_global_active_cells()
-          << "\n\t Number of degrees of freedom: " << dof_handler_ref.n_dofs()
+          << "\n\t Number of degrees of freedom: " << dof_handler.n_dofs()
           << std::endl;
 
-    locally_owned_dofs = dof_handler_ref.locally_owned_dofs();
+    locally_owned_dofs = dof_handler.locally_owned_dofs();
     locally_relevant_dofs.clear();
-    DoFTools::extract_locally_relevant_dofs(dof_handler_ref,
+    DoFTools::extract_locally_relevant_dofs(dof_handler,
                                             locally_relevant_dofs);
 
     tangent_matrix.clear();
@@ -1577,7 +1500,7 @@ namespace Cook_Membrane
       TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
                                            mpi_communicator);
 
-      DoFTools::make_sparsity_pattern(dof_handler_ref,
+      DoFTools::make_sparsity_pattern(dof_handler,
                                       sp,
                                       constraints,
                                       /* keep_constrained_dofs */ false,
@@ -1621,7 +1544,7 @@ namespace Cook_Membrane
       << "p     = " << degree << std::endl
       << "q     = " << n_q_points_1d << std::endl
       << "cells = " << triangulation.n_global_active_cells() << std::endl
-      << "dofs  = " << dof_handler_ref.n_dofs() << std::endl
+      << "dofs  = " << dof_handler.n_dofs() << std::endl
       << std::endl
       << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
 
@@ -1699,7 +1622,7 @@ namespace Cook_Membrane
         mg_transfer =
           std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
             mg_constrained_dofs);
-        mg_transfer->build(dof_handler_ref);
+        mg_transfer->build(dof_handler);
 
         mg_mf_data_current.resize(triangulation.n_global_levels());
         mg_mf_data_reference.resize(triangulation.n_global_levels());
@@ -1709,7 +1632,7 @@ namespace Cook_Membrane
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
     solution_total_transfer = solution_total;
-    mg_transfer->interpolate_to_mg(dof_handler_ref,
+    mg_transfer->interpolate_to_mg(dof_handler,
                                    mg_solution_total,
                                    solution_total_transfer);
 
@@ -1718,14 +1641,14 @@ namespace Cook_Membrane
         // solution_total is the point around which we linearize
         eulerian_mapping = std::make_shared<
           MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>(
-          degree, dof_handler_ref, solution_total);
+          degree, dof_handler, solution_total);
 
         mf_data_current   = std::make_shared<MatrixFree<dim, double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim, double>>();
 
-        mf_data_reference->reinit(dof_handler_ref, constraints, quad, data);
+        mf_data_reference->reinit(dof_handler, constraints, quad, data);
         mf_data_current->reinit(
-          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
+          *eulerian_mapping, dof_handler, constraints, quad, data);
 
         mf_nh_operator.initialize(mf_data_current,
                                   mf_data_reference,
@@ -1747,7 +1670,7 @@ namespace Cook_Membrane
           {
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
@@ -1768,14 +1691,14 @@ namespace Cook_Membrane
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler_ref, mg_solution_total[level], level);
+                  degree, dof_handler, mg_solution_total[level], level);
 
-            mg_mf_data_reference[level]->reinit(dof_handler_ref,
+            mg_mf_data_reference[level]->reinit(dof_handler,
                                                 level_constraints,
                                                 quad,
                                                 mg_additional_data[level]);
             mg_mf_data_current[level]->reinit(*euler_level,
-                                              dof_handler_ref,
+                                              dof_handler,
                                               level_constraints,
                                               quad,
                                               mg_additional_data[level]);
@@ -1797,7 +1720,7 @@ namespace Cook_Membrane
         // same
         data.initialize_indices = false;
         mf_data_current->reinit(
-          *eulerian_mapping, dof_handler_ref, constraints, quad, data);
+          *eulerian_mapping, dof_handler, constraints, quad, data);
 
         for (unsigned int level = 0; level <= max_level; ++level)
           {
@@ -1805,7 +1728,7 @@ namespace Cook_Membrane
 
             AffineConstraints<double> level_constraints;
             IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler_ref,
+            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
                                                           level,
                                                           relevant_dofs);
             level_constraints.reinit(relevant_dofs);
@@ -1816,9 +1739,9 @@ namespace Cook_Membrane
             std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
               euler_level =
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler_ref, mg_solution_total[level], level);
+                  degree, dof_handler, mg_solution_total[level], level);
             mg_mf_data_current[level]->reinit(*euler_level,
-                                              dof_handler_ref,
+                                              dof_handler,
                                               level_constraints,
                                               quad,
                                               mg_additional_data[level]);
@@ -2019,7 +1942,7 @@ namespace Cook_Membrane
     // and a preconditioner object which uses GMG
     multigrid_preconditioner = std::make_shared<
       PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>(
-      dof_handler_ref, *multigrid, *mg_transfer);
+      dof_handler, *multigrid, *mg_transfer);
 
     timer.leave_subsection();
   }
@@ -2311,7 +2234,7 @@ namespace Cook_Membrane
         const MappingQ<dim> mapping(degree);
         const auto          cell_point =
           GridTools::find_active_cell_around_point(mapping,
-                                                   dof_handler_ref,
+                                                   dof_handler,
                                                    soln_pt);
         // we may find artifical cells here:
         if (cell_point.first->is_locally_owned())
@@ -2380,14 +2303,12 @@ namespace Cook_Membrane
     std::vector<SymmetricTensor<2, dim, NumberType>> symm_grad_Nx(
       dofs_per_cell);
 
-    FEValues<dim>     fe_values_ref(fe,
-                                qf_cell,
-                                update_gradients | update_JxW_values);
-    FEFaceValues<dim> fe_face_values_ref(fe,
-                                         qf_face,
-                                         update_values | update_JxW_values);
+    FEValues<dim> fe_values(fe, qf_cell, update_gradients | update_JxW_values);
+    FEFaceValues<dim> fe_face_values(fe,
+                                     qf_face,
+                                     update_values | update_JxW_values);
 
-    for (const auto &cell : dof_handler_ref.active_cell_iterators())
+    for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
         {
           const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
@@ -2399,7 +2320,7 @@ namespace Cook_Membrane
             if (cell->face(face)->at_boundary())
               skip_assembly_on_this_cell = false;
 
-          fe_values_ref.reinit(cell);
+          fe_values.reinit(cell);
           cell_rhs    = 0.;
           cell_matrix = 0.;
           cell->get_dof_indices(local_dof_indices);
@@ -2407,7 +2328,7 @@ namespace Cook_Membrane
           // We first need to find the solution gradients at quadrature points
           // inside the current cell and then we update each local QP using the
           // displacement gradient:
-          fe_values_ref[u_fe].get_function_gradients(solution_total,
+          fe_values[u_fe].get_function_gradients(solution_total,
                                                      solution_grads_u_total);
 
           // Now we build the local cell stiffness matrix. Since the global and
@@ -2439,14 +2360,14 @@ namespace Cook_Membrane
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
                 {
-                  grad_Nx[k] = fe_values_ref[u_fe].gradient(k, q_point) * F_inv;
+                  grad_Nx[k] = fe_values[u_fe].gradient(k, q_point) * F_inv;
                   symm_grad_Nx[k] = symmetrize(grad_Nx[k]);
                 }
 
               SymmetricTensor<2, dim, NumberType> tau;
               cell_mat->get_tau(tau, det_F, b_bar, b);
               const Tensor<2, dim, NumberType> tau_ns(tau);
-              const double                     JxW = fe_values_ref.JxW(q_point);
+              const double                     JxW = fe_values.JxW(q_point);
 
               // loop over j first to make caching a bit more
               // straight-forward without recourse to symmetry
@@ -2506,7 +2427,7 @@ namespace Cook_Membrane
             if (cell->face(face)->at_boundary() == true &&
                 cell->face(face)->boundary_id() == 11)
               {
-                fe_face_values_ref.reinit(cell, face);
+                fe_face_values.reinit(cell, face);
                 for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
                      ++f_q_point)
                   {
@@ -2548,8 +2469,8 @@ namespace Cook_Membrane
                         const unsigned int component_i =
                           fe.system_to_component_index(i).first;
                         const double Ni =
-                          fe_face_values_ref.shape_value(i, f_q_point);
-                        const double JxW = fe_face_values_ref.JxW(f_q_point);
+                          fe_face_values.shape_value(i, f_q_point);
+                        const double JxW = fe_face_values.JxW(f_q_point);
                         cell_rhs(i) += (Ni * traction[component_i]) * JxW;
                       }
                   }
@@ -2603,7 +2524,7 @@ namespace Cook_Membrane
     constraints.reinit(locally_relevant_dofs);
 
     mg_constrained_dofs.clear();
-    mg_constrained_dofs.initialize(dof_handler_ref);
+    mg_constrained_dofs.initialize(dof_handler);
 
     const bool apply_dirichlet_bc = (it_nr == 0);
 
@@ -2631,19 +2552,19 @@ namespace Cook_Membrane
       const int  boundary_id = 1;
       const auto mask        = fe.component_mask(u_fe);
 
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
                                                          {boundary_id},
                                                          mask);
 
       if (apply_dirichlet_bc == true)
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
+        VectorTools::interpolate_boundary_values(dof_handler,
                                                  boundary_id,
                                                  ZeroFunction<dim>(
                                                    n_components),
                                                  constraints,
                                                  fe.component_mask(u_fe));
       else
-        VectorTools::interpolate_boundary_values(dof_handler_ref,
+        VectorTools::interpolate_boundary_values(dof_handler,
                                                  boundary_id,
                                                  ZeroFunction<dim>(
                                                    n_components),
@@ -2659,19 +2580,19 @@ namespace Cook_Membrane
         const FEValuesExtractors::Scalar z_displacement(2);
         const auto mask = fe.component_mask(z_displacement);
 
-        mg_constrained_dofs.make_zero_boundary_constraints(dof_handler_ref,
+        mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
                                                            {boundary_id},
                                                            mask);
 
         if (apply_dirichlet_bc == true)
-          VectorTools::interpolate_boundary_values(dof_handler_ref,
+          VectorTools::interpolate_boundary_values(dof_handler,
                                                    boundary_id,
                                                    ZeroFunction<dim>(
                                                      n_components),
                                                    constraints,
                                                    mask);
         else
-          VectorTools::interpolate_boundary_values(dof_handler_ref,
+          VectorTools::interpolate_boundary_values(dof_handler,
                                                    boundary_id,
                                                    ZeroFunction<dim>(
                                                      n_components),
@@ -2769,8 +2690,8 @@ namespace Cook_Membrane
 
               // Build constant modes
               std::vector< std::vector<bool> > constant_modes;
-              const ComponentMask component_mask (dof_handler_ref.get_fe_collection().n_components(), true);
-              DoFTools::extract_constant_modes (dof_handler_ref, component_mask, constant_modes);
+              const ComponentMask component_mask (dof_handler.get_fe_collection().n_components(), true);
+              DoFTools::extract_constant_modes (dof_handler, component_mask, constant_modes);
               additional_data.constant_modes = constant_modes;
 
               TrilinosWrappers::PreconditionAMG* p_preconditioner = new TrilinosWrappers::PreconditionAMG ();
@@ -2895,7 +2816,7 @@ namespace Cook_Membrane
 
     std::vector<std::string> solution_name(dim, "displacement");
 
-    data_out.attach_dof_handler(dof_handler_ref);
+    data_out.attach_dof_handler(dof_handler);
     data_out.add_data_vector(solution_n,
                              solution_name,
                              DataOut<dim>::type_dof_data,

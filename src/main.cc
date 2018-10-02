@@ -33,19 +33,21 @@
 
 #define MF_DQ BOOST_PP_TUPLE_TO_LIST(8, ((1, 2), (2, 3), (3, 4), (4, 5), (5,6), (6,7), (7,8), (8,9)))
 
-#define DOIF2(R, L)                                            \
-  else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))   \
-  {                                                            \
-    Solid<2, GET_D(L), GET_Q(L), double> solid_2d(parameters); \
-    solid_2d.run();                                            \
+#define DOIF2(R, L)                                                      \
+  else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))             \
+  {                                                                      \
+    Parameters::AllParameters<2>         parameters(parameter_filename); \
+    Solid<2, GET_D(L), GET_Q(L), double> solid_2d(parameters);           \
+    solid_2d.run();                                                      \
   }
 
 
-#define DOIF3(R, L)                                            \
-  else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))   \
-  {                                                            \
-    Solid<3, GET_D(L), GET_Q(L), double> solid_3d(parameters); \
-    solid_3d.run();                                            \
+#define DOIF3(R, L)                                                      \
+  else if ((degree == GET_D(L)) && (n_q_points == GET_Q(L)))             \
+  {                                                                      \
+    Parameters::AllParameters<3>         parameters(parameter_filename); \
+    Solid<3, GET_D(L), GET_Q(L), double> solid_3d(parameters);           \
+    solid_3d.run();                                                      \
   }
 
 
@@ -63,7 +65,17 @@ main(int argc, char *argv[])
       deallog.depth_console(0);
       const std::string parameter_filename =
         argc > 1 ? argv[1] : "parameters.prm";
-      Parameters::AllParameters parameters(parameter_filename);
+
+      ParameterHandler prm;
+
+      Parameters::Geometry geometry;
+      geometry.add_parameters(prm);
+
+      Parameters::FESystem fesystem;
+      fesystem.add_parameters(prm);
+
+      prm.parse_input(parameter_filename, "", true);
+
       {
         // Disable multi-threading to have a better comparision with Trilinos
         Utilities::MPI::MPI_InitFinalize mpi_initialization(
@@ -75,9 +87,10 @@ main(int argc, char *argv[])
             << std::endl;
 
         typedef double     NumberType;
-        const unsigned int degree     = parameters.poly_degree;
-        const unsigned int n_q_points = parameters.quad_order;
-        if (parameters.dim == 2)
+        const unsigned int degree     = fesystem.poly_degree;
+        const unsigned int n_q_points = fesystem.quad_order;
+        const unsigned int dim        = geometry.dim;
+        if (dim == 2)
           {
             if (degree == 0)
               {
@@ -94,7 +107,7 @@ main(int argc, char *argv[])
                             " are not supported."));
             }
           }
-        else if (parameters.dim == 3)
+        else if (dim == 3)
           {
             if (degree == 0)
               {
