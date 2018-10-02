@@ -510,7 +510,6 @@ namespace Cook_Membrane
     template <int dim>
     void AllParameters<dim>::set_time(const double time) const
     {
-      // here we have to cast away constness so that we can modify the time-dependent BC
       for (const auto & d : this->dirichlet)
         d.second->set_time(time);
 
@@ -534,6 +533,8 @@ namespace Cook_Membrane
       this->add_bc_parameters(prm);
 
       prm.parse_input(input_file);
+
+      AssertDimension (dim, this->dim);
 
       skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
