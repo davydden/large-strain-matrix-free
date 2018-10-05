@@ -700,6 +700,8 @@ namespace Cook_Membrane
     ConditionalOStream  timer_out;
     mutable TimerOutput timer;
     std::ofstream       deallogfile;
+    std::ofstream       blessed_output_file;
+    ConditionalOStream  bcout;
 
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
@@ -934,6 +936,9 @@ namespace Cook_Membrane
             TimerOutput::summary,
             TimerOutput::wall_times)
     ,
+    bcout(blessed_output_file,
+          Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+    ,
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
     fe(FE_Q<dim>(degree), dim)
@@ -999,6 +1004,7 @@ namespace Cook_Membrane
         deallog.attach(deallogfile);
 
         timer_output_file.open(parameters.output_folder + "timings.txt");
+        blessed_output_file.open(parameters.output_folder + "output");
       }
 
     mf_nh_operator.set_material(material_vec, material_inclusion_vec);
@@ -1113,12 +1119,11 @@ namespace Cook_Membrane
         // ...and plot the results before moving on happily to the next time
         // step:
         output_results();
+
+        print_solution();
+
         time.increment();
       }
-
-    // Lastly, we print the vertical tip displacement of the Cook cantilever
-    // after the full load is applied
-    print_solution();
 
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
@@ -1473,7 +1478,8 @@ namespace Cook_Membrane
 
     vol_reference = GridTools::volume(triangulation);
     vol_current   = vol_reference;
-    pcout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
+    pcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
+    bcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
   }
 
 
@@ -1495,9 +1501,15 @@ namespace Cook_Membrane
     DoFRenumbering::Cuthill_McKee(dof_handler);
 
     pcout << "Triangulation:"
-          << "\n\t Number of active cells: "
+          << "\n  Number of active cells: "
           << triangulation.n_global_active_cells()
-          << "\n\t Number of degrees of freedom: " << dof_handler.n_dofs()
+          << "\n  Number of degrees of freedom: " << dof_handler.n_dofs()
+          << std::endl;
+
+    bcout << "Triangulation:"
+          << "\n  Number of active cells: "
+          << triangulation.n_global_active_cells()
+          << "\n  Number of degrees of freedom: " << dof_handler.n_dofs()
           << std::endl;
 
     locally_owned_dofs = dof_handler.locally_owned_dofs();
@@ -1971,6 +1983,10 @@ namespace Cook_Membrane
           << "Timestep " << time.get_timestep() << " @ " << time.current()
           << "s" << std::endl;
 
+    bcout << std::endl
+          << "Timestep " << time.get_timestep() << " @ " << time.current()
+          << "s" << std::endl;
+
     error_residual.reset();
     error_residual_0.reset();
     error_residual_norm.reset();
@@ -2113,6 +2129,8 @@ namespace Cook_Membrane
                 pcout << " CONVERGED! " << std::endl;
                 print_conv_footer();
 
+                bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
+
                 break;
               }
           }
@@ -2201,9 +2219,13 @@ namespace Cook_Membrane
     pcout << std::endl;
 
     pcout << "Relative errors:" << std::endl
-          << "Displacement:\t" << error_update.u / error_update_0.u << std::endl
-          << "Force: \t\t" << error_residual.u / error_residual_0.u << std::endl
-          << "v / V_0:\t" << vol_current << " / " << vol_reference << std::endl;
+          << "  Displacement: " << error_update_norm.u << std::endl
+          << "  Force:        " << error_residual_norm.u << std::endl
+          << "Absolute errors:" << std::endl
+          << "  Displacement: " << error_update.u << std::endl
+          << "  Force:        " << error_residual.u << std::endl
+          << "Volume:         " << vol_current << " / " << vol_reference
+          << std::endl;
   }
 
   // At the end we also output the result that can be compared to that found in
@@ -2259,8 +2281,9 @@ namespace Cook_Membrane
          AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
                      ExcMessage("Found no cell with point inside!"));
 
-         pcout << "Vertical tip displacement: " << displacement[1]
-               << "\t Check: " << displacement[1] << std::endl;
+         bcout
+           << "Solution @ " << soln_pt << std::endl
+           << "  displacement: " << displacement << std::endl;
 
        } // end loop over output points
   }
