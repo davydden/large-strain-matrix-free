@@ -71,4 +71,8 @@ subsection Time
   set Time step size = 0.1
 end
 
-
+subsection Boundary conditions
+  set Dirichlet IDs and expressions = 1:0,0
+  set Dirichlet IDs and component mask = 1:true,true
+  set Neumann IDs and expressions = 11:0,t/(16.0e-6)
+end

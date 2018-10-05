@@ -468,7 +468,6 @@ namespace Cook_Membrane
     {
       double delta_t          = 0.1;
       double end_time         = 1.;
-      double force_multiplier = 1.;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -480,11 +479,6 @@ namespace Cook_Membrane
       prm.enter_subsection("Time");
       {
         prm.add_parameter("End time", end_time, "End time", Patterns::Double());
-
-        prm.add_parameter("Force multiplier",
-                          force_multiplier,
-                          "Neumann BC force multiplier",
-                          Patterns::Double());
 
         prm.add_parameter("Time step size",
                           delta_t,
@@ -506,7 +500,7 @@ namespace Cook_Membrane
                           public NonlinearSolver,
                           public Time,
                           public Misc<dim>,
-                          BoundaryConditions<dim>
+                          public BoundaryConditions<dim>
 
     {
     public:
@@ -2329,7 +2323,7 @@ namespace Cook_Membrane
     FEValues<dim> fe_values(fe, qf_cell, update_gradients | update_JxW_values);
     FEFaceValues<dim> fe_face_values(fe,
                                      qf_face,
-                                     update_values | update_JxW_values);
+                                     update_values | update_quadrature_points | update_JxW_values);
 
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -2447,45 +2441,26 @@ namespace Cook_Membrane
           // and add the contribution if this is the case.
           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
                ++face)
-            if (cell->face(face)->at_boundary() == true &&
-                cell->face(face)->boundary_id() == 11)
+            if (cell->face(face)->at_boundary() == true)
               {
+                const auto &el =
+                  parameters.neumann.find(cell->face(face)->boundary_id());
+                if (el == parameters.neumann.end())
+                  continue;
+
                 fe_face_values.reinit(cell, face);
                 for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
                      ++f_q_point)
                   {
-                    // We specify the traction in reference configuration.
-                    // For this problem, a defined total vertical force is
-                    // applied in the reference configuration. The direction of
-                    // the applied traction is assumed not to evolve with the
-                    // deformation of the domain.
+                    // We specify the traction in reference configuration
+                    // according to the parameter file.
 
-                    // Note that the contributions to the right hand side vector
-                    // we compute here only exist in the displacement components
-                    // of the vector.
-                    const double time_ramp = (time.current() / time.end()) *
-                                             parameters.force_multiplier;
-                    const double area =
-                      (parameters.type == "Cook" ? 16.0 : 2.0) *
-                      parameters.scale * parameters.scale;
-                    const double force =
-                      (parameters.type == "Cook" ? 1.0 : 0.05);
-                    const double magnitude =
-                      (force / area) *
-                      time_ramp; // (Total force) / (RHS surface area)
-                    Tensor<1, dim> dir;
-                    if (parameters.type == "Cook")
-                      dir[1] = 1.0;
-                    else if (parameters.type == "Holes")
-                      {
-                        // apply simple shear force
-                        dir[0] = 1.0;
-                        if (dim == 3)
-                          // in 3D add component in Z direction
-                          dir[2] = 1.0;
-                      }
-
-                    const Tensor<1, dim> traction = magnitude * dir;
+                    // Note that the contributions to the right hand side
+                    // vector we compute here only exist in the displacement
+                    // components of the vector.
+                    Vector<double> traction(dim);
+                    (*el).second->vector_value(
+                      fe_face_values.quadrature_point(f_q_point), traction);
 
                     for (unsigned int i = 0; i < dofs_per_cell; ++i)
                       {
@@ -2551,76 +2526,32 @@ namespace Cook_Membrane
 
     const bool apply_dirichlet_bc = (it_nr == 0);
 
-    // The boundary conditions for the indentation problem are as follows: On
-    // the -x, -y and -z faces (ID's 0,2,4) we set up a symmetry condition to
-    // allow only planar movement while the +x and +y faces (ID's 1,3) are
-    // traction free. In this contrived problem, part of the +z face (ID 5) is
-    // set to have no motion in the x- and y-component. Finally, as described
-    // earlier, the other part of the +z face has an the applied pressure but
-    // is also constrained in the x- and y-directions.
-    //
-    // In the following, we will have to tell the function interpolation
-    // boundary values which components of the solution vector should be
-    // constrained (i.e., whether it's the x-, y-, z-displacements or
-    // combinations thereof). This is done using ComponentMask objects (see
-    // @ref GlossComponentMask) which we can get from the finite element if we
-    // provide it with an extractor object for the component we wish to
-    // select. To this end we first set up such extractor objects and later
-    // use it when generating the relevant component masks:
-
+    // Use constraints functions and parameters as given from the input file
     // We also setup GMG constraints
 
-    // Fixed left hand side of the beam
-    {
-      const int  boundary_id = 1;
-      const auto mask        = fe.component_mask(u_fe);
-
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
-                                                         {boundary_id},
-                                                         mask);
-
-      if (apply_dirichlet_bc == true)
-        VectorTools::interpolate_boundary_values(dof_handler,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(
-                                                   n_components),
-                                                 constraints,
-                                                 fe.component_mask(u_fe));
-      else
-        VectorTools::interpolate_boundary_values(dof_handler,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(
-                                                   n_components),
-                                                 constraints,
-                                                 fe.component_mask(u_fe));
-    }
-
-    // Zero Z-displacement through thickness direction
-    // This corresponds to a plane strain condition being imposed on the beam
-    if (dim == 3)
+    ZeroFunction<dim> zero(n_components);
+    for (const auto &el : parameters.dirichlet)
       {
-        const int                        boundary_id = 2;
-        const FEValuesExtractors::Scalar z_displacement(2);
-        const auto mask = fe.component_mask(z_displacement);
+        const auto &mask = parameters.dirichlet_mask.find(el.first);
+        Assert(mask != parameters.dirichlet_mask.end(),
+               ExcMessage("Could not find component mask for ID " +
+                          std::to_string(el.first)));
 
         mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
-                                                           {boundary_id},
-                                                           mask);
+                                                           {el.first},
+                                                           mask->second);
 
-        if (apply_dirichlet_bc == true)
-          VectorTools::interpolate_boundary_values(dof_handler,
-                                                   boundary_id,
-                                                   ZeroFunction<dim>(
-                                                     n_components),
-                                                   constraints,
-                                                   mask);
+        Function<dim> * func;
+        if (apply_dirichlet_bc)
+          func = el.second.get();
         else
-          VectorTools::interpolate_boundary_values(dof_handler,
-                                                   boundary_id,
-                                                   ZeroFunction<dim>(
-                                                     n_components),
-                                                   constraints,
-                                                   mask);
+          func = &zero;
+
+        VectorTools::interpolate_boundary_values(dof_handler,
+                                                 el.first,
+                                                 *func,
+                                                 constraints,
+                                                 mask->second);
       }
 
     constraints.close();
