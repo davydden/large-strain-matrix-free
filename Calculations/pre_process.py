@@ -74,6 +74,7 @@ end
 
 subsection Misc
   set Output folder = {7}
+  set Output points = 0,0{9}
 end
 """
 
@@ -106,7 +107,8 @@ for pqrd in poly_quad_ref_dim:
             s[1],
             s[2],
             out_dir + name,
-            pqrd[3]
+            pqrd[3],
+            "" if pqrd[3]==2 else ",0.5e-3"
         ))
         filenames.append(name)
 

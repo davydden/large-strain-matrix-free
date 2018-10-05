@@ -119,19 +119,25 @@ namespace Cook_Membrane
   // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
-    struct Misc
+
+    template <int dim>
+    class Misc
     {
+    public:
       std::string output_folder           = "";
       bool        output_solution         = true;
       bool        always_assemble_tangent = true;
       bool        output_abs_norms        = false;
 
+      std::vector<Point<dim>> output_points;
+
       void
-      add_parameters(ParameterHandler &prm);
+      add_misc_parameters(ParameterHandler &prm);
     };
 
+    template <int dim>
     void
-    Misc::add_parameters(ParameterHandler &prm)
+    Misc<dim>::add_misc_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Misc");
       {
@@ -161,6 +167,11 @@ namespace Cook_Membrane
                           output_abs_norms,
                           "Output absolute norms during convergence",
                           Patterns::Bool());
+
+        prm.add_parameter("Output points",
+                          output_points,
+                          "Points in undeformed configuration to "
+                          "output unknown fields");
       }
       prm.leave_subsection();
     }
@@ -494,7 +505,7 @@ namespace Cook_Membrane
                           public LinearSolver,
                           public NonlinearSolver,
                           public Time,
-                          public Misc,
+                          public Misc<dim>,
                           BoundaryConditions<dim>
 
     {
@@ -528,15 +539,15 @@ namespace Cook_Membrane
       LinearSolver::add_parameters(prm);
       NonlinearSolver::add_parameters(prm);
       Time::add_parameters(prm);
-      Misc::add_parameters(prm);
 
+      this->add_misc_parameters(prm);
       this->add_bc_parameters(prm);
 
       prm.parse_input(input_file);
 
       AssertDimension (dim, this->dim);
 
-      skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
+      skip_tangent_assembly = (!this->always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
 
   } // namespace Parameters
@@ -804,7 +815,7 @@ namespace Cook_Membrane
     print_conv_footer();
 
     void
-    print_vertical_tip_displacement();
+    print_solution();
 
     std::shared_ptr<
       MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>
@@ -1107,7 +1118,7 @@ namespace Cook_Membrane
 
     // Lastly, we print the vertical tip displacement of the Cook cantilever
     // after the full load is applied
-    print_vertical_tip_displacement();
+    print_solution();
 
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
@@ -2152,7 +2163,7 @@ namespace Cook_Membrane
 
 
   // @sect4{Solid::print_conv_header, Solid::print_conv_footer and
-  // Solid::print_vertical_tip_displacement}
+  // Solid::print_solution}
 
   // This program prints out data in a nice table that is updated
   // on a per-iteration basis. The next two functions set up the table
@@ -2201,7 +2212,7 @@ namespace Cook_Membrane
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::
-    print_vertical_tip_displacement()
+    print_solution()
   {
     static const unsigned int l_width = 87;
 
@@ -2209,60 +2220,49 @@ namespace Cook_Membrane
       pcout << "_";
     pcout << std::endl;
 
-    Point<dim> soln_pt;
-    if (parameters.type == "Cook")
-      {
-        soln_pt[0] = 48.0 * parameters.scale;
-        soln_pt[1] = 60.0 * parameters.scale;
-        if (dim == 3)
-          soln_pt[2] = 0.5 * parameters.scale;
-      }
-    else
-      {
-        // take center :
-        soln_pt[0] = 0. * parameters.scale;
-        soln_pt[1] = 0. * parameters.scale;
-        if (dim == 3)
-          soln_pt[2] = 0.5 * parameters.extrusion_height * parameters.scale;
-      }
+    for (const auto &soln_pt : parameters.output_points)
+       {
+         Tensor<1, dim> displacement;
+         unsigned int found = 0;
 
-    double vertical_tip_displacement = 0.0;
-    unsigned int found = 0;
+         try
+           {
+             const MappingQ<dim> mapping(degree);
+             const auto          cell_point =
+               GridTools::find_active_cell_around_point(mapping,
+                                                        dof_handler,
+                                                        soln_pt);
+             // we may find artifical cells here:
+             if (cell_point.first->is_locally_owned())
+               {
+                 found = 1;
 
-    try
-      {
-        const MappingQ<dim> mapping(degree);
-        const auto          cell_point =
-          GridTools::find_active_cell_around_point(mapping,
-                                                   dof_handler,
-                                                   soln_pt);
-        // we may find artifical cells here:
-        if (cell_point.first->is_locally_owned())
-          {
-            found = 1;
+                 const Quadrature<dim> soln_qrule(cell_point.second);
+                 AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+                 FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+                 fe_values_soln.reinit(cell_point.first);
 
-            const Quadrature<dim> soln_qrule(cell_point.second);
-            AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-            FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
-            fe_values_soln.reinit(cell_point.first);
+                 // Extract y-component of solution at given point
+                 std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+                 fe_values_soln[u_fe].get_function_values(solution_n,
+                                                          soln_values);
+                 displacement = soln_values[0];
+               }
+           }
+         catch (const GridTools::ExcPointNotFound<dim> &)
+           {}
 
-            // Extract y-component of solution at given point
-            std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-            fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
-            vertical_tip_displacement = soln_values[0][u_dof + 1];
-          }
-      }
-    catch (const GridTools::ExcPointNotFound<dim> &)
-      {}
+         for (unsigned int d = 0; d < dim; ++d)
+           displacement[d] =
+             Utilities::MPI::max(displacement[d], mpi_communicator);
 
-    vertical_tip_displacement =
-      Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
-    AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
-                ExcMessage("Found no cell with point inside!"))
+         AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
+                     ExcMessage("Found no cell with point inside!"));
 
-        pcout
-      << "Vertical tip displacement: " << vertical_tip_displacement
-      << "\t Check: " << vertical_tip_displacement << std::endl;
+         pcout << "Vertical tip displacement: " << displacement[1]
+               << "\t Check: " << displacement[1] << std::endl;
+
+       } // end loop over output points
   }
 
 

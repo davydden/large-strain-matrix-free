@@ -10,6 +10,9 @@ subsection Finite element system
   set Quadrature order  = 2
 end
 
+subsection Misc
+   set Output points = 0,0, 0.5e-3
+end
 
 subsection Geometry
   # Global grid scaling factor

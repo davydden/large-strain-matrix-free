@@ -9,6 +9,10 @@ subsection Finite element system
 end
 
 
+subsection Misc
+   set Output points = 0,0
+end
+
 subsection Geometry
   # Global grid scaling factor
   set Grid scale         = 1e-3
