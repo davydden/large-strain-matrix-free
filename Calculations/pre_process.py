@@ -74,6 +74,13 @@ end
 
 subsection Misc
   set Output folder = {7}
+  set Output points = 0,0{9}
+end
+
+subsection Boundary conditions
+  set Dirichlet IDs and expressions = 1:0,0{10}
+  set Dirichlet IDs and component mask = 1:true,true{11}
+  set Neumann IDs and expressions = 11:(0.05*t)/(2.0e-6),0{12}
 end
 """
 
@@ -106,7 +113,11 @@ for pqrd in poly_quad_ref_dim:
             s[1],
             s[2],
             out_dir + name,
-            pqrd[3]
+            pqrd[3],
+            "" if pqrd[3]==2 else ",0.5e-3",
+            "" if pqrd[3]==2 else ",0;2:0,0,0",
+            "" if pqrd[3]==2 else ",true;2:false,false,true",
+            "" if pqrd[3]==2 else ",(0.05*t)/(2.0e-6)"
         ))
         filenames.append(name)
 

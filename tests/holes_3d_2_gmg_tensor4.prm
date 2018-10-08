@@ -10,6 +10,16 @@ subsection Finite element system
   set Quadrature order  = 2
 end
 
+subsection Misc
+   set Output points = 0,0, 0.5e-3
+end
+
+subsection Boundary conditions
+  set Dirichlet IDs and expressions = 1:0,0,0;2:0,0,0
+  set Dirichlet IDs and component mask = 1:true,true,true;2:false,false,true
+  set Neumann IDs and expressions = 11:(0.05*t)/(2.0e-6),0,(0.05*t)/(2.0e-6)
+end
+
 
 subsection Geometry
   # Global grid scaling factor
@@ -70,6 +80,5 @@ end
 subsection Time
   # Do one step to save time:
   set End time         = 0.1
-  set Force multiplier = 0.1 # N
   set Time step size   = 0.1
 end

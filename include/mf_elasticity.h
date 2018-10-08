@@ -119,19 +119,25 @@ namespace Cook_Membrane
   // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
-    struct Misc
+
+    template <int dim>
+    class Misc
     {
+    public:
       std::string output_folder           = "";
       bool        output_solution         = true;
       bool        always_assemble_tangent = true;
       bool        output_abs_norms        = false;
 
+      std::vector<Point<dim>> output_points;
+
       void
-      add_parameters(ParameterHandler &prm);
+      add_misc_parameters(ParameterHandler &prm);
     };
 
+    template <int dim>
     void
-    Misc::add_parameters(ParameterHandler &prm)
+    Misc<dim>::add_misc_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Misc");
       {
@@ -161,6 +167,11 @@ namespace Cook_Membrane
                           output_abs_norms,
                           "Output absolute norms during convergence",
                           Patterns::Bool());
+
+        prm.add_parameter("Output points",
+                          output_points,
+                          "Points in undeformed configuration to "
+                          "output unknown fields");
       }
       prm.leave_subsection();
     }
@@ -457,7 +468,6 @@ namespace Cook_Membrane
     {
       double delta_t          = 0.1;
       double end_time         = 1.;
-      double force_multiplier = 1.;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -469,11 +479,6 @@ namespace Cook_Membrane
       prm.enter_subsection("Time");
       {
         prm.add_parameter("End time", end_time, "End time", Patterns::Double());
-
-        prm.add_parameter("Force multiplier",
-                          force_multiplier,
-                          "Neumann BC force multiplier",
-                          Patterns::Double());
 
         prm.add_parameter("Time step size",
                           delta_t,
@@ -494,8 +499,8 @@ namespace Cook_Membrane
                           public LinearSolver,
                           public NonlinearSolver,
                           public Time,
-                          public Misc,
-                          BoundaryConditions<dim>
+                          public Misc<dim>,
+                          public BoundaryConditions<dim>
 
     {
     public:
@@ -528,15 +533,15 @@ namespace Cook_Membrane
       LinearSolver::add_parameters(prm);
       NonlinearSolver::add_parameters(prm);
       Time::add_parameters(prm);
-      Misc::add_parameters(prm);
 
+      this->add_misc_parameters(prm);
       this->add_bc_parameters(prm);
 
       prm.parse_input(input_file);
 
       AssertDimension (dim, this->dim);
 
-      skip_tangent_assembly = (!always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
+      skip_tangent_assembly = (!this->always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
     }
 
   } // namespace Parameters
@@ -689,6 +694,8 @@ namespace Cook_Membrane
     ConditionalOStream  timer_out;
     mutable TimerOutput timer;
     std::ofstream       deallogfile;
+    std::ofstream       blessed_output_file;
+    ConditionalOStream  bcout;
 
     // A description of the finite-element system including the displacement
     // polynomial degree, the degree-of-freedom handler, number of DoFs per
@@ -804,7 +811,7 @@ namespace Cook_Membrane
     print_conv_footer();
 
     void
-    print_vertical_tip_displacement();
+    print_solution();
 
     std::shared_ptr<
       MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>
@@ -923,6 +930,9 @@ namespace Cook_Membrane
             TimerOutput::summary,
             TimerOutput::wall_times)
     ,
+    bcout(blessed_output_file,
+          Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+    ,
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
     fe(FE_Q<dim>(degree), dim)
@@ -988,6 +998,7 @@ namespace Cook_Membrane
         deallog.attach(deallogfile);
 
         timer_output_file.open(parameters.output_folder + "timings.txt");
+        blessed_output_file.open(parameters.output_folder + "output");
       }
 
     mf_nh_operator.set_material(material_vec, material_inclusion_vec);
@@ -1102,12 +1113,11 @@ namespace Cook_Membrane
         // ...and plot the results before moving on happily to the next time
         // step:
         output_results();
+
+        print_solution();
+
         time.increment();
       }
-
-    // Lastly, we print the vertical tip displacement of the Cook cantilever
-    // after the full load is applied
-    print_vertical_tip_displacement();
 
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
@@ -1462,7 +1472,8 @@ namespace Cook_Membrane
 
     vol_reference = GridTools::volume(triangulation);
     vol_current   = vol_reference;
-    pcout << "Grid:\n\t Reference volume: " << vol_reference << std::endl;
+    pcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
+    bcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
   }
 
 
@@ -1484,9 +1495,15 @@ namespace Cook_Membrane
     DoFRenumbering::Cuthill_McKee(dof_handler);
 
     pcout << "Triangulation:"
-          << "\n\t Number of active cells: "
+          << "\n  Number of active cells: "
           << triangulation.n_global_active_cells()
-          << "\n\t Number of degrees of freedom: " << dof_handler.n_dofs()
+          << "\n  Number of degrees of freedom: " << dof_handler.n_dofs()
+          << std::endl;
+
+    bcout << "Triangulation:"
+          << "\n  Number of active cells: "
+          << triangulation.n_global_active_cells()
+          << "\n  Number of degrees of freedom: " << dof_handler.n_dofs()
           << std::endl;
 
     locally_owned_dofs = dof_handler.locally_owned_dofs();
@@ -1960,6 +1977,10 @@ namespace Cook_Membrane
           << "Timestep " << time.get_timestep() << " @ " << time.current()
           << "s" << std::endl;
 
+    bcout << std::endl
+          << "Timestep " << time.get_timestep() << " @ " << time.current()
+          << "s" << std::endl;
+
     error_residual.reset();
     error_residual_0.reset();
     error_residual_norm.reset();
@@ -2102,6 +2123,8 @@ namespace Cook_Membrane
                 pcout << " CONVERGED! " << std::endl;
                 print_conv_footer();
 
+                bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
+
                 break;
               }
           }
@@ -2152,7 +2175,7 @@ namespace Cook_Membrane
 
 
   // @sect4{Solid::print_conv_header, Solid::print_conv_footer and
-  // Solid::print_vertical_tip_displacement}
+  // Solid::print_solution}
 
   // This program prints out data in a nice table that is updated
   // on a per-iteration basis. The next two functions set up the table
@@ -2190,9 +2213,13 @@ namespace Cook_Membrane
     pcout << std::endl;
 
     pcout << "Relative errors:" << std::endl
-          << "Displacement:\t" << error_update.u / error_update_0.u << std::endl
-          << "Force: \t\t" << error_residual.u / error_residual_0.u << std::endl
-          << "v / V_0:\t" << vol_current << " / " << vol_reference << std::endl;
+          << "  Displacement: " << error_update_norm.u << std::endl
+          << "  Force:        " << error_residual_norm.u << std::endl
+          << "Absolute errors:" << std::endl
+          << "  Displacement: " << error_update.u << std::endl
+          << "  Force:        " << error_residual.u << std::endl
+          << "Volume:         " << vol_current << " / " << vol_reference
+          << std::endl;
   }
 
   // At the end we also output the result that can be compared to that found in
@@ -2201,7 +2228,7 @@ namespace Cook_Membrane
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::
-    print_vertical_tip_displacement()
+    print_solution()
   {
     static const unsigned int l_width = 87;
 
@@ -2209,60 +2236,50 @@ namespace Cook_Membrane
       pcout << "_";
     pcout << std::endl;
 
-    Point<dim> soln_pt;
-    if (parameters.type == "Cook")
-      {
-        soln_pt[0] = 48.0 * parameters.scale;
-        soln_pt[1] = 60.0 * parameters.scale;
-        if (dim == 3)
-          soln_pt[2] = 0.5 * parameters.scale;
-      }
-    else
-      {
-        // take center :
-        soln_pt[0] = 0. * parameters.scale;
-        soln_pt[1] = 0. * parameters.scale;
-        if (dim == 3)
-          soln_pt[2] = 0.5 * parameters.extrusion_height * parameters.scale;
-      }
+    for (const auto &soln_pt : parameters.output_points)
+       {
+         Tensor<1, dim> displacement;
+         unsigned int found = 0;
 
-    double vertical_tip_displacement = 0.0;
-    unsigned int found = 0;
+         try
+           {
+             const MappingQ<dim> mapping(degree);
+             const auto          cell_point =
+               GridTools::find_active_cell_around_point(mapping,
+                                                        dof_handler,
+                                                        soln_pt);
+             // we may find artifical cells here:
+             if (cell_point.first->is_locally_owned())
+               {
+                 found = 1;
 
-    try
-      {
-        const MappingQ<dim> mapping(degree);
-        const auto          cell_point =
-          GridTools::find_active_cell_around_point(mapping,
-                                                   dof_handler,
-                                                   soln_pt);
-        // we may find artifical cells here:
-        if (cell_point.first->is_locally_owned())
-          {
-            found = 1;
+                 const Quadrature<dim> soln_qrule(cell_point.second);
+                 AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+                 FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+                 fe_values_soln.reinit(cell_point.first);
 
-            const Quadrature<dim> soln_qrule(cell_point.second);
-            AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-            FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
-            fe_values_soln.reinit(cell_point.first);
+                 // Extract y-component of solution at given point
+                 std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+                 fe_values_soln[u_fe].get_function_values(solution_n,
+                                                          soln_values);
+                 displacement = soln_values[0];
+               }
+           }
+         catch (const GridTools::ExcPointNotFound<dim> &)
+           {}
 
-            // Extract y-component of solution at given point
-            std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-            fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
-            vertical_tip_displacement = soln_values[0][u_dof + 1];
-          }
-      }
-    catch (const GridTools::ExcPointNotFound<dim> &)
-      {}
+         for (unsigned int d = 0; d < dim; ++d)
+           displacement[d] =
+             Utilities::MPI::max(displacement[d], mpi_communicator);
 
-    vertical_tip_displacement =
-      Utilities::MPI::max(vertical_tip_displacement, mpi_communicator);
-    AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
-                ExcMessage("Found no cell with point inside!"))
+         AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
+                     ExcMessage("Found no cell with point inside!"));
 
-        pcout
-      << "Vertical tip displacement: " << vertical_tip_displacement
-      << "\t Check: " << vertical_tip_displacement << std::endl;
+         bcout
+           << "Solution @ " << soln_pt << std::endl
+           << "  displacement: " << displacement << std::endl;
+
+       } // end loop over output points
   }
 
 
@@ -2306,7 +2323,7 @@ namespace Cook_Membrane
     FEValues<dim> fe_values(fe, qf_cell, update_gradients | update_JxW_values);
     FEFaceValues<dim> fe_face_values(fe,
                                      qf_face,
-                                     update_values | update_JxW_values);
+                                     update_values | update_quadrature_points | update_JxW_values);
 
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -2424,45 +2441,26 @@ namespace Cook_Membrane
           // and add the contribution if this is the case.
           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
                ++face)
-            if (cell->face(face)->at_boundary() == true &&
-                cell->face(face)->boundary_id() == 11)
+            if (cell->face(face)->at_boundary() == true)
               {
+                const auto &el =
+                  parameters.neumann.find(cell->face(face)->boundary_id());
+                if (el == parameters.neumann.end())
+                  continue;
+
                 fe_face_values.reinit(cell, face);
                 for (unsigned int f_q_point = 0; f_q_point < n_q_points_f;
                      ++f_q_point)
                   {
-                    // We specify the traction in reference configuration.
-                    // For this problem, a defined total vertical force is
-                    // applied in the reference configuration. The direction of
-                    // the applied traction is assumed not to evolve with the
-                    // deformation of the domain.
+                    // We specify the traction in reference configuration
+                    // according to the parameter file.
 
-                    // Note that the contributions to the right hand side vector
-                    // we compute here only exist in the displacement components
-                    // of the vector.
-                    const double time_ramp = (time.current() / time.end()) *
-                                             parameters.force_multiplier;
-                    const double area =
-                      (parameters.type == "Cook" ? 16.0 : 2.0) *
-                      parameters.scale * parameters.scale;
-                    const double force =
-                      (parameters.type == "Cook" ? 1.0 : 0.05);
-                    const double magnitude =
-                      (force / area) *
-                      time_ramp; // (Total force) / (RHS surface area)
-                    Tensor<1, dim> dir;
-                    if (parameters.type == "Cook")
-                      dir[1] = 1.0;
-                    else if (parameters.type == "Holes")
-                      {
-                        // apply simple shear force
-                        dir[0] = 1.0;
-                        if (dim == 3)
-                          // in 3D add component in Z direction
-                          dir[2] = 1.0;
-                      }
-
-                    const Tensor<1, dim> traction = magnitude * dir;
+                    // Note that the contributions to the right hand side
+                    // vector we compute here only exist in the displacement
+                    // components of the vector.
+                    Vector<double> traction(dim);
+                    (*el).second->vector_value(
+                      fe_face_values.quadrature_point(f_q_point), traction);
 
                     for (unsigned int i = 0; i < dofs_per_cell; ++i)
                       {
@@ -2528,76 +2526,32 @@ namespace Cook_Membrane
 
     const bool apply_dirichlet_bc = (it_nr == 0);
 
-    // The boundary conditions for the indentation problem are as follows: On
-    // the -x, -y and -z faces (ID's 0,2,4) we set up a symmetry condition to
-    // allow only planar movement while the +x and +y faces (ID's 1,3) are
-    // traction free. In this contrived problem, part of the +z face (ID 5) is
-    // set to have no motion in the x- and y-component. Finally, as described
-    // earlier, the other part of the +z face has an the applied pressure but
-    // is also constrained in the x- and y-directions.
-    //
-    // In the following, we will have to tell the function interpolation
-    // boundary values which components of the solution vector should be
-    // constrained (i.e., whether it's the x-, y-, z-displacements or
-    // combinations thereof). This is done using ComponentMask objects (see
-    // @ref GlossComponentMask) which we can get from the finite element if we
-    // provide it with an extractor object for the component we wish to
-    // select. To this end we first set up such extractor objects and later
-    // use it when generating the relevant component masks:
-
+    // Use constraints functions and parameters as given from the input file
     // We also setup GMG constraints
 
-    // Fixed left hand side of the beam
-    {
-      const int  boundary_id = 1;
-      const auto mask        = fe.component_mask(u_fe);
-
-      mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
-                                                         {boundary_id},
-                                                         mask);
-
-      if (apply_dirichlet_bc == true)
-        VectorTools::interpolate_boundary_values(dof_handler,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(
-                                                   n_components),
-                                                 constraints,
-                                                 fe.component_mask(u_fe));
-      else
-        VectorTools::interpolate_boundary_values(dof_handler,
-                                                 boundary_id,
-                                                 ZeroFunction<dim>(
-                                                   n_components),
-                                                 constraints,
-                                                 fe.component_mask(u_fe));
-    }
-
-    // Zero Z-displacement through thickness direction
-    // This corresponds to a plane strain condition being imposed on the beam
-    if (dim == 3)
+    ZeroFunction<dim> zero(n_components);
+    for (const auto &el : parameters.dirichlet)
       {
-        const int                        boundary_id = 2;
-        const FEValuesExtractors::Scalar z_displacement(2);
-        const auto mask = fe.component_mask(z_displacement);
+        const auto &mask = parameters.dirichlet_mask.find(el.first);
+        Assert(mask != parameters.dirichlet_mask.end(),
+               ExcMessage("Could not find component mask for ID " +
+                          std::to_string(el.first)));
 
         mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,
-                                                           {boundary_id},
-                                                           mask);
+                                                           {el.first},
+                                                           mask->second);
 
-        if (apply_dirichlet_bc == true)
-          VectorTools::interpolate_boundary_values(dof_handler,
-                                                   boundary_id,
-                                                   ZeroFunction<dim>(
-                                                     n_components),
-                                                   constraints,
-                                                   mask);
+        Function<dim> * func;
+        if (apply_dirichlet_bc)
+          func = el.second.get();
         else
-          VectorTools::interpolate_boundary_values(dof_handler,
-                                                   boundary_id,
-                                                   ZeroFunction<dim>(
-                                                     n_components),
-                                                   constraints,
-                                                   mask);
+          func = &zero;
+
+        VectorTools::interpolate_boundary_values(dof_handler,
+                                                 el.first,
+                                                 *func,
+                                                 constraints,
+                                                 mask->second);
       }
 
     constraints.close();

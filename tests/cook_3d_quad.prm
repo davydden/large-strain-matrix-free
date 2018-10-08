@@ -8,6 +8,15 @@ subsection Finite element system
   set Quadrature order  = 3
 end
 
+subsection Misc
+   set Output points = 48.0e-3, 60.0e-3, 0.5e-3
+end
+
+subsection Boundary conditions
+  set Dirichlet IDs and expressions = 1:0,0,0;2:0,0,0
+  set Dirichlet IDs and component mask = 1:true,true,true;2:false,false,true
+  set Neumann IDs and expressions = 11:0,t/(16.0e-6),0
+end
 
 subsection Geometry
   # Number of elements per long edge of the beam
@@ -65,8 +74,6 @@ end
 subsection Time
   # End time
   set End time       = 0.2
-
-  set Force multiplier = 0.2
 
   # Time step size
   set Time step size = 0.1
