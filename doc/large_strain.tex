@@ -153,15 +153,16 @@ The performance of finite element (FEM) solvers on modern computer architectures
 The main cause for this is that loading matrix elements is significantly slower than performing the arithmetic operations when solving the problem.
 In order to improve the performance of the iterative solver, so-called matrix-free methods are
 widely adopted in fluid mechanics community, where the matrix vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016}. Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016}.
+{\color{red}Daniel: please add more links if you want, maybe GPU related}.
 
 To the best of our knowledge, the matrix-free methods are not yet widely adopted within the solid mechanics community.
 We are only aware of a single paper in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a master thesis of a student of two of the authors \cite{Mentler2017}.
 A possible reason is that tangent operators (coming from linearization of the nonlinear balance equations) are
-more elaborate as compared to the fluid mechanics and it is not obvious whether the matrix-free methods can be advantageous in this case. Another reason could be the smoothness of the underlying solution. FEM with linear or quadratic elements (to avoid locking) are often adopted in solid mechanics community. However we note that large scale computations with $10^{12}$ unknowns even with linear FEM inevitably require matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore we believe that for large scale computations in solid mechanics it is crucial to adopt matrix-free approaches and develop efficient multigrid solvers.
+more elaborate as compared to the fluid mechanics and it is not obvious whether the matrix-free methods can be advantageous in this case. Another reason could be the smoothness of the underlying solution. FEM with linear or quadratic elements, that avoid locking, are often adopted in solid mechanics community. Higher order elements are rarely employed. However we note that large scale computations with $10^{12}$ unknowns even with linear FEM inevitably require matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore we believe that for large scale computations in solid mechanics it is crucial to adopt matrix-free approaches and develop efficient multigrid solvers.
 
 In this work, we advance the application of matrix-free approaches to problems in solid mechanics.
 We propose and numerically investigate different implementations of the finite-strain hyper-elastic tangent operator.
-In order to improve the convergence of iterative solvers, we also propose a way to construct level tangent operators
+In order to improve the convergence of iterative solvers, we also propose a way to construct level matrix-free tangent operators
 and employ them to define a geometric multigrid preconditioner.
 Our implementation employs MPI and Intel Threading Building Blocks parallelization and SIMD vectorization.
 
@@ -322,7 +323,7 @@ J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
 We now introduce a FE triangulation $\mathcal{T}^h$ of $\mcl B_0$ and
 the associated FE space of continuous piecewise elements of a fixed polynomial degree. % : $V^h \subset H^1 (\mcl B_0)$.
 The displacement fields are given in a
-a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support):
+a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support on a patch of elements):
 \begin{alignat}{2}
        \gz u^h &=:  \sum_{i \in \mcl I_\varphi} u^i \gz N_i (\gz X) \quad \quad \quad
 \delta \gz u^h &&=: \sum_{i \in \mcl I_\varphi} \delta u^i \gz N_i (\gz X) \,,
@@ -333,51 +334,47 @@ For the sake of this study $\gz N_i (\gz X)$ are such that only one component of
 The Newton-Raphson solution approach is adopted for the here considered nonlinear problem.
 Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is to be obtained as a solution to the following system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent})
 \begin{align}
-  K_{ij} \Delta u_j &= - F_i \\
-  K_{ij} &=
-  \int_{\mcl B_0} \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j \, \d V
-  +
+  A_{ij} \Delta u_j &= - F_i  \label{eq:linear_system} \\
+  A_{ij} &=
   \int_{\mcl B_0}
+  \underbrace{
+  \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j
+  +
   \overline{\grad}\gz N_i :
   \left[
   \overline{\grad} \gz N_j \cdot
   \overline{\gz \tau}
   \right]
+  }_{\tilde{a}(\gz N_i, \gz N_j)}
   \d V
+  \label{eq:algebraic_tangent}
   \\
   F_i &=
   \int_{\mcl B_0} \overline{\gz \tau} : \grad^{s} \, \gz N_i \, \d V \,
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S
 \end{align}
-Here $\gz K$ is the discrete tangent operator and $\gz F$ is the discrete gradient.
+Here $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
+and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the bilinear form for the trial solution field $\overline{\gz u^h}$.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
-Classically the approach for finding a discrete solution to a linearized partial differential equation can be described as follows:
-First, ansatz spaces and a suitable bilinear form is defined. Then, a matrix and force vector corresponding to the discretization are assembled.
-Finally, a direct or iterative solver is used to solve the linear system for the discretized solution.
+Classically in order to solve \eqref{eq:linear_system}, the matrix $\gz K$ and the force vector $\gz F$ corresponding to the discretization are assembled and
+a direct or iterative solver is used to solve the linear system.
 On modern computer architectures however, it turns out that loading data is significantly slower than performing the arithmetic operations when solving.
 For this reason, recent implementations often focus on so-called matrix-free approaches. The idea is to perform the operations in the solver on-the-fly
 rather than loading matrix elements from memory.
-For iterative solvers, this is possible since it is sufficient to compute matrix vector products. More precisely, the linear system corresponding to a bilinear form
-$a\colon V_h\times V_h\to\mathbb{R}$ and right-hand side $f\colon V_h\to\mathbb{R}$ defined with respect to the ansatz space $V_h$ can be represented by
+For iterative solvers, this is possible since it is sufficient to compute matrix vector products.
+%
+The matrix-vector product $A x$ can be expressed by
 \begin{align*}
- &&a(v,u) &= f(v) && \forall v\in V_h\\
- \Longleftrightarrow &&a(\varphi_i, u) &= f(\varphi_i) && \forall \varphi_i \\
- \Longleftrightarrow &&\sum_j a(\varphi_i,\varphi_j) u_j &= f(\varphi_i) && \forall \varphi_i \\
- \Longleftrightarrow &&A x &= b
+ (Ax)_i &= \sum_j a(\gz N_i,\gz N_j) x_j \\
+        &= \sum_K\sum_q \sum_j \tilde{a}(\gz N_i,\gz N_j)(\gz x_q) x_j w_q
 \end{align*}
-where $A_{i,j}=a(\varphi_i, \varphi_j)$ and $b_i= f(\varphi_i)$.
-Thus, the matrix-vector product $Ax$ can be expressed by
-\begin{align*}
- (Ax)_i &= \sum_j a(\varphi_i,\varphi_j) x_j \\
-        &= \sum_K\sum_q \sum_j \tilde{a}_K(\varphi_i,\varphi_j)(x_q) x_j w_q
-\end{align*}
-where in the last step $\tilde{a}_K(\varphi_i,\varphi_j)$ is a representation for the evaluation of the bilinear in one quadrature point and a quadrature rule is used.
+where in the last step $\tilde{a}_K(\varphi_i,\varphi_j)(\gz x_q)$ is a representation for the evaluation of the bilinear in one quadrature point and a quadrature rule is used.
 For the sake of demonstration, let us assume $A$ represents a mass matrix. In this case, it holds
 \begin{align*}
- \tilde{a}_K(\varphi_i,\varphi_j)(x_q) = \varphi_i(x_q)\varphi_j(x_q).
+ \tilde{a}_K(N_i,N_j)(\gz x_q) = N_i(\gz x_q)N_j(\gz x_q).
 \end{align*}
 Further assuming that the number of the one-dimensional quadrature points $n$ matches the degree of the ansatz space plus one, the evaluation of all the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in case we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$
@@ -414,13 +411,13 @@ void evaluate_dof_vector_in_all_quadrature_points
 in three space dimensions. In general, this reordering reduces the arithmetic complexity to $\mathcal{O}(dn^{d+1})$ and is called sum factorization.
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-base especially for 3D and high polynomial degree.
 More information on techniques to increase the computational density can be found in \cite{kronbichler12,vos10}.
-We briefly note that the SIMD vectorization is applied at the element level, that is the operator is applied simultaneously on several several elements (called ``block'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
+We briefly note that the SIMD vectorization is applied at the element level, that is the operator is applied simultaneously on several elements (called ``block'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
 
 Given that the matrix-free operators are applied on-the-fly, it's crucial to find a good balance between pre-calculation of certain values (caching) and performance of the algorithm.
-Below we propose three algorithms to implement tangent operator of finite-strain linear elasticity using matrix-free approach, that employ different caching strategies.
+Below we propose three algorithms to implement tangent operator of finite-strain linear elasticity (see \eqref{eq:algebraic_tangent}) using matrix-free approach.
 %
 In order to obtain gradients with respect to the deformed configuration we adopted \textit{MappingQEulerian} class from \texttt{deal.II} library.
-In addition to the standard mapping from the reference (unit / isoparametric) element to the element in real space, this class adds mapping to the deformed configuration given a displacement field.
+In addition to the standard mapping from the reference (unit / isoparametric) element to the element in real space, given a displacement field this class adds mapping to the deformed configuration.
 %
 Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, when performing contraction with gradient of shape functions in current (deformed) configuration, the integration is also done over the deformed configuration. Therefore in order to arrive at the integral in undeformed configuration, additionally we have to divide by Jacobian $J$ of the mapping at a given quadrature point.
 
@@ -429,7 +426,7 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$, current FE solution $\gz u$,
   cacheed $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
-  \Output{action of the FE tangent on $\gz x$}
+  \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\gz \nabla_X \gz u^h$ \tcp*{2nd order}
@@ -449,7 +446,7 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
   \label{alg:mf_scalar}
 \end{algorithm}
 
-Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of Jacobian -- a computationally demanding operation compared to addition and multiplications. As evident from Section \ref{sec:theory}, in order to apply the operator we need to re-evaluate Kirchhoff stress at each quadrature point. This in turn requires evaluation of deformation gradient $\gz F$ and therefore gradients with respect to the undeformed configuration.
+Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of Jacobian -- a computationally demanding operation compared to additions and multiplications. As evident from Section \ref{sec:theory}, in order to apply the operator we need to re-evaluate Kirchhoff stress at each quadrature point. This in turn requires evaluation of deformation gradient $\gz F$ and therefore gradients with respect to the undeformed configuration.
 
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
@@ -458,7 +455,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of
   cached
   $c_1 := 2\left[\mu - 2 \lambda \log(J)\right]/J$,
   $c_2 := 2\lambda/J$ and $\gz \tau/J$ for each cell and quadrature point}
-  \Output{action of the FE tangent on $\gz x$}
+  \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
@@ -473,14 +470,14 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves logarithm of
   \label{alg:mf_tensor2}
 \end{algorithm}
 
-In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. This also avoid the need to evaluate gradients of displacement field with respect to the undeformed configuration. This algorithm utilize the chosen constitutive relationship and therefore the action of the material fourth order tangent $J \boldsymbol{\mathcal{C}}$ on the second order symmetric tensor $\gz g_s$ is cheap to evaluate, see \eqref{eq:simplified_action}. Here we also cache two scalars that depend on the Jacobian $J$.
+In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. In this case we also avoid the need to evaluate gradients of displacement field with respect to the undeformed configuration. This algorithm utilizes the chosen constitutive relationship and therefore the action of the material fourth order tangent $J \boldsymbol{\mathcal{C}}$ on the second order symmetric tensor $\gz g_s$ is cheap to evaluate, see \eqref{eq:simplified_action}. To that end we cache two scalars that depend on the Jacobian $J$.
 
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$,
   cached $\gz \tau/J$ and $\boldsymbol{\mathcal{C}}$ for each cell and quadrature point}
-  \Output{action of the FE tangent on $\gz x$}
+  \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
@@ -495,7 +492,7 @@ In order to avoid re-calculation of the Kirchhoff stress, Algorithm \ref{alg:mf_
   \label{alg:mf_tensor4}
 \end{algorithm}
 
-Finally Algorithm \ref{alg:mf_tensor4} represents the most general algorithm which does not assume specific constitutive relationship.
+Finally Algorithm \ref{alg:mf_tensor4} represents the most general case which does not assume any form of the material tangent tensor.
 Clearly in this case we have to cache the fourth order symmetric tensor $\boldsymbol{\mathcal{C}}$ for each element and quadrature point and perform the double contraction with the second-order symmetric tensor on-the-fly.
 
 \section{Geometric multigrid preconditioning}
@@ -509,8 +506,8 @@ As a result the number of iterations for convergence becomes independent of the 
 For this work we adopt the matrix-free level operators within the GMG and Chebyshev pre- and post-smoothing on each level. Given a generally heterogeneous non-linear material, definition of transfer operations (restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1985, Hill1972,Hashin1983,Castaneda1997} to design specific transfer operators \cite{Miehe2007}\footnote{
   We note that this approach is limited to the case where for each quadrature point within an element the fourth order tangent operator is the same.
 }.
-In this approach the fine-scale displacement is decomposed into long-wave and short-wave contributions by additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch. In the case of a homogeneous patch, the transfer operators reduce to the standard geometric transfer. Based on this observation we adopt the following approach. It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous fine-strain elastic material. In this case the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators. We define the level operators as follows. Recall that the fine scale tangent is obtain by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}. Essentially level operators correspond to the linearization around smoothed representation of displacement field.
-Note that by doing so the operator (tangent) $K^{l+1}$ on level $l+1$ is not directly related to the operator (tangent) $K^{l}$ on level $l$ via $K^{l+1}=I^{l+1}_{l}  K^l I^l_{l+1}$, where $I^l_{l+1}$ and $I^{l+1}_l$ are prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
+In this approach the fine-scale displacement is decomposed into long-wave and short-wave contributions by additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch. However, for a homogeneous patch of elements, the transfer operators reduce to the standard geometric transfer. Based on this observation we adopt the following approach. It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous fine-strain elastic material. In this case the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators. We define the level operators as follows. Recall that the fine scale tangent \eqref{eq:algebraic_tangent} is obtain by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}. Essentially level operators correspond to the linearization around smoothed representation of displacement field.
+Note that by doing so the operator (tangent) $A^{l+1}$ on level $l+1$ is not directly related to the operator (tangent) $A^{l}$ on level $l$ via $A^{l+1}=I^{l+1}_{l}  A^l I^l_{l+1}$, where $I^l_{l+1}$ and $I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
 Finally, at the coarsest level we adopt CG solver which shall reduce residual by three orders of magnitude within at most hundred of steps.
 The classical multigrid V-cycle approach with two pre- and post-smoothing is adopted. For other approaches that combine homogenization and multigrid methods for small strain elastic materials, see \cite{Bayreuther2003,Fish1995}.
 
@@ -521,8 +518,9 @@ In this section we apply the proposed matrix-free operator algorithms for finite
 The matrix material is taken to have Poisson's ratio of $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is take to be $100$ times harder.
 The 3D material is obtained by extrusion in the third direction.
 Note that a relatively coarse mesh is adopted at the coarsest multigrid level, however the geometry of inclusions is captured accurately by employing manifold description of the boundaries and interfaces.
+{\color{red}Daniel: do we have any paper referencing manifolds in deal.II?}
 Both domains are fixed at the bottom surface and the distributed load is applied at the top in $(1,0)$ and $(1,1,0)$ direction for 2D and 3D problems, respectively.
-The load of $0.5\,\rm{N}$ is applied in 5 steps. The displacement tolerance for Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for forces $10^{-8}$. The relative convergence criteria for linear solver is $10^{-6}$.
+The load of $0.5\,\rm{N}$ is applied in 5 steps. The displacement tolerance for Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for forces is $10^{-8}$. The relative convergence criteria for linear solver is $10^{-6}$.
 %
 Figure \ref{fig:miehe_gmg} illustrates the multigrid mesh for the 2D problem after two global refinements.
 %
@@ -534,7 +532,7 @@ We are interested in the following metrics:
 (iii) average number of CG iterations throughout the whole run (i.e. each Newton-Raphson iteration and each loading step);
 (iv) walltime per DoF of CG solver;
 %
-The results of the matrix-free approach with geometric-multigrid preconditioner are compared to the matrix-based approach with algebraic multigrid (AMG) preconditioner using Trilinos \cite{Heroux2005} library.
+The results of the matrix-free approach with geometric-multigrid preconditioner are compared to the matrix-based approach with algebraic multigrid (AMG) preconditioner using Trilinos \cite{Heroux2005} library, version 12.12.1.
 The aggregation threshold for AMG is taken as $10^{-4}$.
 Computations are done on a single node of two clusters.
 A node on ``Emmy'' cluster has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB Shared Cache per chip and 64 GB of RAM. Intel compilers version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
@@ -544,7 +542,7 @@ Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show th
 As expected the matrix-vector multiplication becomes very expensive for higher order discretization for matrix-based approaches.
 The matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
 Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly shows the influence of different caching strategies.
-Two conclusions can be drawn: scalar caching implementation is the most time consuming at each step we additionally evaluate the gradient of displacement field in reference configuration, required to evaluate the Kirchhoff stress $\gz \tau$. On another hand there is little difference between the approach where the fourth order material tangent tensor is cached (``tensor4'') and the one where we only cache the second order Kirchhoff tensor and use the chosen hyper-elastic constitutive equation to efficiently implement the action of the material tangent on the second order symmetric tensor.
+Two conclusions can be drawn: scalar caching implementation is the most time consuming, at each step we additionally evaluate the gradient of displacement field in reference configuration, required to evaluate the Kirchhoff stress $\gz \tau$. On another hand there is little difference between the approach where the fourth order material tangent tensor is cached (``tensor4'') and the one where we only cache the second order Kirchhoff tensor and utilize the chosen hyper-elastic constitutive equation to efficiently implement the action of the material tangent on the second order symmetric tensor.
 This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
 Consequently we can apply matrix-free approach to any fine-strain material model by caching the fourth order material tangent in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
 
@@ -552,10 +550,11 @@ As outlined in the introduction, it is not only the performance of the matrix-fr
 Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} show that even with caching of one fourth order symmetric tensor and one second order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
 
 Next we evaluate the performance of the proposed geometric multigrid preconditioner. First we consider the number of CG iterations.
-Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iteration for different polynomial degrees. On another hand the black-box AGM preconditioner require much more iterations for convergence.
-Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution time polynomial degrees up to $p=5$. For higher orders in 2D the walltime is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
+Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iteration for different polynomial degrees. On another hand the black-box AGM preconditioner requires much more iterations for convergence.
+Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution time for polynomial degrees up to $p=5$. For higher orders in 2D the walltime is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
 The reason for that is the coarse level solver within the GMG preconditioner. Evidently the adopted here Chebyshev smoother with the CG solver have unsatisfactory performance for higher degrees.
 A possible solution is to perform further coarsening combined with the homogenization-based transfer operators \cite{Miehe2007}. This should also improve the performance of the preconditioner for lower degrees.
+An valid alternative is to employ matrix-based AMG at the coarsest level.
 
 \begin{table}
   \centering
@@ -742,9 +741,9 @@ A possible solution is to perform further coarsening combined with the homogeniz
 
 In this contribution we proposed and numerically investigated several matrix-free implementations of tangent operators for fine-strain elasticity of heterogeneous materials.
 The implementation which caches the fourth order material tangent together with the second order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic in 3D.
-This indicates that the matrix-free implementation of tangent operator can be applied any constitutive model which operates with the material tangent on quadrature point level.
+This gives hope that the matrix-free implementation of tangent operator can be applied to any constitutive model which operates with the material tangent on the quadrature point level.
 
-We also studies the performance of the GMG preconditioner with standard geometric transfer operations between each level. The GMG was applied to heterogeneous material assuming that the coarsest level can provide adequate discretization of heterogeneity. The numerical studies indicate that the proposed preconditioner lead to the solution approach that is faster than the matrix-based algebraic multigrid preconditioner for moderate polynomial degrees. However the considerable amount of time is spent in the coarse level solver. Therefore our future work will be focused on extending this proposed here matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}. We are also interested  extending these methods to incompressible three-field formulation.
+We also studied the performance of the GMG preconditioner with standard geometric transfer operations between each level. The GMG was applied to heterogeneous material assuming that the coarsest level can provide adequate discretization of a heterogeneity. The numerical studies indicate that the proposed preconditioner lead to the solution approach that is faster than the matrix-based algebraic multigrid preconditioner for moderate polynomial degrees. However the considerable amount of time is spent in the coarse level solver. Therefore our future work will be focused on extending the proposed here matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}. We are also interested  extending these methods to incompressible three-field formulation.
 
 \section*{Acknowledgements}
 
