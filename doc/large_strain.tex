@@ -355,7 +355,7 @@ and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the bilinear form for 
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
-Classically in order to solve \eqref{eq:linear_system}, the matrix $\gz K$ and the force vector $\gz F$ corresponding to the discretization are assembled and
+Classically in order to solve \eqref{eq:linear_system}, the matrix $\gz A$ and the force vector $\gz F$ corresponding to the discretization are assembled and
 a direct or iterative solver is used to solve the linear system.
 On modern computer architectures however, it turns out that loading data is significantly slower than performing the arithmetic operations when solving.
 For this reason, recent implementations often focus on so-called matrix-free approaches. The idea is to perform the operations in the solver on-the-fly
@@ -420,7 +420,7 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
-  \Input{RHS FE vector $\gz x$, current FE solution $\gz u$,
+  \Input{RHS FE vector $\gz x$, current FE solution $\overline{\gz u^h}$,
   cacheed $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
@@ -450,7 +450,8 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
   \Input{RHS FE vector $\gz x$,
   cached
   $c_1 := 2\left[\mu - 2 \lambda \log(J)\right]/J$,
-  $c_2 := 2\lambda/J$ and $\gz \tau/J$ for each cell and quadrature point}
+  $c_2 := 2\lambda/J$ and $\gz \tau/J$ for each cell and quadrature point,
+  evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
         \ForEach{quadrature point $q$ on $K$}{
@@ -472,7 +473,8 @@ In order to avoid recalculation of the Kirchhoff stress, Algorithm \ref{alg:mf_t
   \SetKwInOut{Input}{Given}
   \SetKwInOut{Output}{Return}
   \Input{RHS FE vector $\gz x$,
-  cached $\gz \tau/J$ and $\boldsymbol{\mathcal{C}}$ for each cell and quadrature point}
+  cached $\gz \tau/J$ and $\boldsymbol{\mathcal{C}}$ for each cell and quadrature point,
+  evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
         \ForEach{quadrature point $q$ on $K$}{
@@ -508,49 +510,6 @@ The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps. For
 
 \section{Numerical examples}
 \label{sec:example}
-
-In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyper-elastic material as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse mesh for 2D and 3D problems is depicted in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
-The matrix material is taken to have Poisson's ratio $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is take to be $100$ times harder.
-The 3D material is obtained by extrusion in the third direction.
-Note that although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
-{\color{red}Daniel: do we have any paper referencing manifolds in deal.II? No, I am not aware of any.}
-Both domains are fixed at the bottom surface and the distributed load is applied at the top in $(1,0)$ and $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
-The load of $0.5\,\rm{N}$ is applied in 5 steps. The displacement tolerance for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for 2the forces is $10^{-8}$. The relative convergence criteria for linear solver is $10^{-6}$.
-%
-Figure \ref{fig:miehe_gmg} illustrates the multigrid mesh for the 2D problem after two global refinements.
-%
-The benchmark calculations are performed for 2D and 3D problems with various combination of polynomial degrees and number of global refinements, see Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
-%
-We are interested in the following metrics:
-\begin{itemize}
-\item walltime and memory requirement per DoF of matrix-vector multiplication;
-\item average number of CG iterations throughout the whole run (i.e. each Newton-Raphson iteration and each loading step);
-\item walltime per DoF of CG solver;
-\end{itemize}
-%
-The results of the matrix-free approach with geometric-multigrid preconditioner are compared to the matrix-based approach with the algebraic multigrid (AMG) preconditioner using the package ML of the Trilinos \cite{Heroux2005} library, version 12.12.1.
-The aggregation threshold for AMG is taken as $10^{-4}$.
-Computations are done on a single node of two clusters.
-A node on ``Emmy'' cluster has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB Shared Cache per chip and 64 GB of RAM. Intel compilers version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
-The ``IWR'' results were obtained ona single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB Shared Cache per chip. For the simulation, GNU 8.1.0 with flags ``-O3 -march=native'' and OpenMPI 3.0.0 were used.
-
-Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the benchmarks as performed on the two clusters.
-As expected the matrix-vector multiplication becomes very expensive for higher order discretization for matrix-based approaches.
-The matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
-Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies.
-Two conclusions can be drawn: The scalar caching implementation is the most time consuming, at each step we additionally evaluate the gradient of the displacement field in the reference configuration required to evaluate the Kirchhoff stress $\gz \tau$. On the other hand, there is little difference between the approach where the fourth order material tangent tensor is cached (``tensor4'') and the one where we only cache the second order Kirchhoff tensor and utilize the chosen hyper-elastic constitutive equation to efficiently implement the action of the material tangent on the second order symmetric tensor.
-This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
-Consequently, we can apply the matrix-free approach to any fine-strain material model by caching the fourth order material tangent in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
-
-As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
-Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} show that even with caching one fourth order symmetric tensor and one second order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
-
-Next we evaluate the performance of the proposed geometric multigrid preconditioner. First we consider the number of CG iterations.
-Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iterations for different polynomial degrees. On the other hand, the black-box AGM preconditioner requires much more iterations for convergence.
-Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution time for polynomial degrees up to $p=5$. For higher orders in 2D the walltime is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
-The reason for that is the coarse level solver within the GMG preconditioner. Evidently, the combination of the Chebyshev smoother with the CG solver has unsatisfactory performance for higher degrees.
-A possible solution is to perform further coarsening combined with the homogenization-based transfer operators \cite{Miehe2007}. This should also improve the performance of the preconditioner for lower degrees.
-A valid alternative is to use matrix-based AMG at the coarsest level.
 
 \begin{table}
   \centering
@@ -617,120 +576,174 @@ A valid alternative is to use matrix-based AMG at the coarsest level.
   \label{fig:miehe_gmg}
 \end{figure}
 
+In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyper-elastic material as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse mesh for 2D and 3D problems is depicted in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
+The matrix material is taken to have Poisson's ratio $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is take to be $100$ times harder.
+The 3D material is obtained by extrusion in the third direction.
+Note that although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
+{\color{red}Daniel: do we have any paper referencing manifolds in deal.II? No, I am not aware of any.}
+Both domains are fixed at the bottom surface and the distributed load is applied at the top in $(1,0)$ and $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
+The load of $0.5\,\rm{N}$ is applied in 5 steps. The displacement tolerance for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for 2the forces is $10^{-8}$. The relative convergence criteria for linear solver is $10^{-6}$.
+%
+Figure \ref{fig:miehe_gmg} illustrates the multigrid mesh for the 2D problem after two global refinements.
+%
+The benchmark calculations are performed for 2D and 3D problems with various combination of polynomial degrees and number of global refinements, see Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
+%
+We are interested in the following metrics:
+\begin{itemize}
+\item walltime and memory requirement per DoF of matrix-vector multiplication;
+\item average number of CG iterations throughout the whole run (i.e. each Newton-Raphson iteration and each loading step);
+\item walltime per DoF of CG solver;
+\end{itemize}
+%
+The results of the matrix-free approach with geometric-multigrid preconditioner are compared to the matrix-based approach with the algebraic multigrid (AMG) preconditioner using the package ML of the Trilinos \cite{Heroux2005} library, version 12.12.1.
+The aggregation threshold for AMG is taken as $10^{-4}$.
+Computations are done on a single node of two clusters.
+A node on ``Emmy'' cluster has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB Shared Cache per chip and 64 GB of RAM. Intel compilers version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
+The ``IWR'' results were obtained ona single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB Shared Cache per chip. For the simulation, GNU 8.1.0 with flags ``-O3 -march=native'' and OpenMPI 3.0.0 were used.
+
+\subsection{Matrix-vector multiplication}
+
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
       \centering
       \includegraphics[width=\textwidth]{Emmy_RRZE_timing2d.eps}
       \caption{vmult 2D}
       \label{fig:benchmark_miehe_Emmy_vmult2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_timing3d.eps}
     \caption{vmult 3D}
     \label{fig:benchmark_miehe_Emmy_vmult3}
   \end{subfigure}
   ~
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
       \centering
       \includegraphics[width=\textwidth]{Emmy_RRZE_memory2d.eps}
       \caption{memory consumption 2D}
       \label{fig:benchmark_miehe_Emmy_memory2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{Emmy_RRZE_memory3d.eps}
     \caption{memory consumption 3D}
     \label{fig:benchmark_miehe_Emmy_memory3}
   \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.45\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_cg2d.eps}
-    \caption{CG iterations 2D}
-    \label{fig:benchmark_miehe_Emmy_cg2}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_cg3d.eps}
-    \caption{CG iterations 3D}
-    \label{fig:benchmark_miehe_Emmy_cg3}
-  \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.45\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_solver2d.eps}
-    \caption{CG solution time 2D}
-    \label{fig:benchmark_miehe_Emmy_sol2}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_solver3d.eps}
-    \caption{CG solution time 3D}
-    \label{fig:benchmark_miehe_Emmy_sol3}
-  \end{subfigure}
-  \caption{Emmy cluster, RRZE.}%
+  \caption{Emmy cluster, RRZE, matrix-vector multiplication.}%
   \label{fig:benchmark_miehe_Emmy}
 \end{figure}
 
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
       \centering
       \includegraphics[width=\textwidth]{IWR_timing2d.eps}
       \caption{vmult 2D}
       \label{fig:benchmark_miehe_IWR_vmult2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_timing3d.eps}
     \caption{vmult 3D}
     \label{fig:benchmark_miehe_IWR_vmult3}
   \end{subfigure}
   ~
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
       \centering
       \includegraphics[width=\textwidth]{IWR_memory2d.eps}
       \caption{memory consumption 2D}
       \label{fig:benchmark_miehe_IWR_memory2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_memory3d.eps}
     \caption{memory consumption 3D}
     \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
+  \caption{IWR cluster, matrix-vector multiplication}%
+  \label{fig:benchmark_miehe_IWR}
+\end{figure}
+
+Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the benchmarks as performed on the two clusters.
+As expected the matrix-vector multiplication becomes very expensive for higher order discretization for matrix-based approaches.
+The matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
+Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies.
+Two conclusions can be drawn: The scalar caching implementation is the most time consuming, at each step we additionally evaluate the gradient of the displacement field in the reference configuration required to evaluate the Kirchhoff stress $\gz \tau$. On the other hand, there is little difference between the approach where the fourth order material tangent tensor is cached (``tensor4'') and the one where we only cache the second order Kirchhoff tensor and utilize the chosen hyper-elastic constitutive equation to efficiently implement the action of the material tangent on the second order symmetric tensor.
+This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
+Consequently, we can apply the matrix-free approach to any fine-strain material model by caching the fourth order material tangent in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
+
+As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
+Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} show that even with caching one fourth order symmetric tensor and one second order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
+
+\subsection{Iterative solver}
+
+\begin{figure}[!ht]
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_cg2d.eps}
+    \caption{CG iterations 2D}
+    \label{fig:benchmark_miehe_Emmy_cg2}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_cg3d.eps}
+    \caption{CG iterations 3D}
+    \label{fig:benchmark_miehe_Emmy_cg3}
+  \end{subfigure}
   ~
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_solver2d.eps}
+    \caption{CG solution time 2D}
+    \label{fig:benchmark_miehe_Emmy_sol2}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{Emmy_RRZE_solver3d.eps}
+    \caption{CG solution time 3D}
+    \label{fig:benchmark_miehe_Emmy_sol3}
+  \end{subfigure}
+  \caption{Emmy cluster, RRZE, iterative solver.}%
+  \label{fig:benchmark_miehe_Emmy_cg}
+\end{figure}
+
+\begin{figure}[!ht]
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_cg2d.eps}
     \caption{CG iterations 2D}
     \label{fig:benchmark_miehe_IWR_cg2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_cg3d.eps}
     \caption{CG iterations 3D}
     \label{fig:benchmark_miehe_IWR_cg3}
   \end{subfigure}
   ~
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_solver2d.eps}
     \caption{CG solution time 2D}
     \label{fig:benchmark_miehe_IWR_sol2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_solver3d.eps}
     \caption{CG solution time 3D}
     \label{fig:benchmark_miehe_IWR_sol3}
   \end{subfigure}
   \caption{IWR cluster.}%
-  \label{fig:benchmark_miehe_IWR}
+  \label{fig:benchmark_miehe_IWR_cg}
 \end{figure}
 
+Next we evaluate the performance of the proposed geometric multigrid preconditioner. First we consider the number of CG iterations.
+Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iterations for different polynomial degrees. On the other hand, the black-box AGM preconditioner requires much more iterations for convergence.
+Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution time for polynomial degrees up to $p=5$. For higher orders in 2D the walltime is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
+The reason for that is the coarse level solver within the GMG preconditioner. Evidently, the combination of the Chebyshev smoother with the CG solver has unsatisfactory performance for higher degrees.
+A possible solution is to perform further coarsening combined with the homogenization-based transfer operators \cite{Miehe2007}. This should also improve the performance of the preconditioner for lower degrees.
+A valid alternative is to use matrix-based AMG at the coarsest level.
 
 \section{Summary and Conclusions}
 \label{sec:summary}
