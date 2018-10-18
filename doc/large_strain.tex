@@ -390,7 +390,7 @@ For the sake of demonstration, let us assume that $\gz A$ represents a mass matr
 \end{align*}
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in that case that we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
-and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently.
+and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
 Let us illustrate this in 2D. Tensor-product quadrature points can be expressed as a combination of one dimensional quadrature points
 \begin{align}
   \gz \xi_q = (\widetilde{\xi}_{q_1}, \widetilde{\xi}_{q_2}),
@@ -408,7 +408,7 @@ Shape functions can also be expressed as product of $d$ one dimensional basis fu
 \end{align}
 where for each DoF index $i$ we can associate a multi-index $(i_1, i_2)$.
 %
-Therefore the result of application of the scalar-valued mass operator, represented as a vector $y_i$, on a single element $K$ can be written as
+Therefore, the result of application of the scalar-valued mass operator, represented as a vector $y_i$, on a single element $K$ can be written as
 \begin{align*}
   y_{i} = y_{i_1\,i_2} & = \sum_{q_1} \sum_{q_2} \sum_{j_1} \sum_{j_2}
   \widetilde{N}_{i_1}(\widetilde{\xi}_{q_1})
@@ -430,8 +430,7 @@ Therefore the result of application of the scalar-valued mass operator, represen
   \right]\, \forall i_1 \, i_2
 \end{align*}
 %
-{\color{red} Daniel: please adjust the discussion above, I think we need to add more on what happens with those 4 loops}
-In general, this reordering reduces the arithmetic complexity to $\mathcal{O}(dn^{d+1})$ and is called sum factorization.
+These four loops all have the same structure. We either keep the shape function fixed and iterate over the quadrature points in one spatial direction (in the first two sums) or keep the quadrature point and fixed and iterate over all the shape functions in one spatial direction (in the last two sums). Since each of these $2\cdot d$ loops has a complexity of $n$ and we perform them for $n^d$ values in quadrature points or values in degrees of freedoms simultaneously, we end up with an arithmetic complexity of $\mathcal{O}(dn^{d+1})$.
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for 3D and high polynomial degree with the corresponding quadrature rule.
 More information on matrix-free techniques can be found in \cite{kronbichler12,vos10}.
 We briefly note that the SIMD vectorization is applied at the finite element level, that is the operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
