@@ -106,7 +106,7 @@
   \author[b]{Daniel Arndt}
   \ead{daniel.arndt@iwr.uni-heidelberg.de}
 
-  \author[a]{Paul Steinmann}
+  \author[a,c]{Paul Steinmann}
   \ead{paul.steinmann@fau.de}
 
   \cortext[cor]{Corresponding author.}
@@ -121,12 +121,16 @@
       69120 Heidelberg,
       Germany}
 
+  \address[c]{Glasgow computational engineering center,
+      University of Glasgow, G12 8QQ Glasgow, United Kingdom
+  }
+
 
   \begin{abstract}
     The performance of finite element solvers on modern computer architectures is typically memory bound.
     The main cause for this is that loading matrix elements from RAM into CPU cache is significantly slower than performing the arithmetic operations when solving the problem.
     In order to improve the performance of iterative solvers within the high-performance computing context, so-called matrix-free methods are
-    widely adopted in the fluid mechanics community, where the matrix-vector products are computed on-the-fly.
+    widely adopted in the fluid mechanics community, where matrix-vector products are computed on-the-fly.
 
     In this work, we extend the application of matrix-free approaches to problems in solid mechanics and investigate different implementations of the finite-strain hyperelastic tangent operator numerically.
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
@@ -151,25 +155,25 @@
 The performance of finite element solvers on modern computer architectures is typically memory bound.
 The main cause for this is that loading pre-computed matrix elements from RAM into CPU cache is significantly slower than performing the arithmetic operations when solving the problem.
 In order to improve the performance of iterative solvers, so-called matrix-free methods,
-where the matrix-vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016},
+where matrix-vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016},
 are widely adopted in the fluid mechanics community.
 Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, ljungkvist2017multigrid}.
 
 To the best of our knowledge, matrix-free methods are not widely adopted within the solid mechanics community.
-We are only aware of a single paper in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a masters thesis produced by a student of two of the authors \cite{Mentler2017}.
+We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a recent masters thesis produced by a student of the first two of the authors \cite{Mentler2017}.
 One possible reason is that the tangent operators (stemming from linearization of the nonlinear balance equations) are
 more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether the matrix-free methods can be advantageous in this case.
 Another reason could be the use of lower order elements due to lacking smoothness of the underlying solution.
-Finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community.
+The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community.
 Even higher order elements are rarely employed.
-However, we note, even with linear FEM, that large scale computations with $10^{12}$ unknowns inevitably requires a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
+However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
 
-In this work, we investigate different implementations of the finite-strain hyperelastic tangent operator with respcet to their computational cost.
+In this work, we investigate different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
-and employ them to define a geometric multigrid preconditioner.
-Our implementation employs MPI and Intel Threading Building Blocks parallelization, and SIMD vectorization.
+and employ them to define a \mbox{geometric} multigrid preconditioner.
+Our implementation employs MPI and Intel Threading Building Blocks parallelization, together with SIMD vectorization.
 
-The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics. Sections \ref{sec:fe} and \ref{sec:mf} cover the finite element discretization and the different matrix-free operator evaluation approaches. In Section \ref{sec:gmg} we propose a geometric multigrid preconditioner suitable for finite-strain linear elasticity. The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}. The results are summarized in Section \ref{sec:summary}.
+The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics. Sections \ref{sec:fe} and \ref{sec:mf} cover the finite element discretization and the different matrix-free operator evaluation approaches. In Section \ref{sec:gmg} we propose a geometric multigrid preconditioner suitable for finite-strain hyperelasticity. The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}. The results are summarized in Section \ref{sec:summary}.
 
 \section{Theoretical background}
 \label{sec:theory}
@@ -179,34 +183,34 @@ The paper is organized as follows: In Section \ref{sec:theory} we briefly introd
 % Kinematics
 %
 The deformation of a body $\mcl B$ from the reference configuration $\mcl B_0$ to the current configuration $\mcl B_t$ at time $t$
-is defined via the mapping $\gz \varphi_t: \mcl B \rightarrow \mathbb E^3$, which places material points of $\mcl B$ in the Euclidean space $\mathbb E^3$.
+is defined via the deformation map $\gz \varphi_t: \mcl B_0 \rightarrow \mcl B_t$, which places material points of $\mcl B$ into the Euclidean space $\mathbb E^3$.
 The current location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
 The displacement field reads $\gz u = \gz x - \gz X$.
 
 %
 % Deformation gradient
 %
-We assume that the deformation map is linear such that
+The tangent map is linear such that
 $\d \gz x = \gz F \cdot \d \gz X$,
 where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient and $\gz I$ is the second order unit tensor.
 The mapping has to be one-to-one and must exclude self-penetration. Consequently, the Jacobian $J = \det \gz F > 0$ has to be positive.
 % The deformation gradient can be split into the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors such that $\gz F = \gz R \gz U = \gz V \gz R$.
-We shall denote the Piola transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by
+We shall denote the push-forward transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by
 \begin{align}
-  \chi\left( \mathbf{A} \right)_{ij}
+  \varphi\left( \mathbf{A} \right)_{ij}
   &= F_{iA} A_{AB} F_{jB} \\
-\chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
+\varphi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
   &= F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}.
 \end{align}
 
 %
 % strain measures
 %
-In what follows, we parameterize the material behavior using the right Cacuhy-Green tensor $\gz C := \gz F^T \cdot \gz F$.
+In what follows, we parameterize the material behavior using the right Cauchy-Green tensor $\gz C := \gz F^T \cdot \gz F$.
 We will also use the Green-Lagrange strain tensor $\gz E:=\frac{1}{2}\left[\gz C - \gz I\right]$ and the left Cauchy-Green tensor $\gz b := \gz F \cdot \gz F^T$.
 Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \partial (\bullet)/\partial \gz C$.
 %
-For conservative systems without the body force, the total potential energy functional $\mcl E$ is introduced as
+For conservative systems without body forces, the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
 \int_{\mcl B_0} \mcl \psi(\gz F) \, \d V \,
@@ -214,7 +218,7 @@ For conservative systems without the body force, the total potential energy func
 \end{align}
 where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in the reference configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
 
-The principal of stationary potential energy requires for all  equilibrium states $\gz u$ that the directional derivative with respect to the displacement
+The principle of stationary potential energy at equilibrium requires that the directional derivative with respect to the displacement
 \begin{align}
 \delta \mcl E =
 \frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0 \, .
@@ -230,12 +234,12 @@ F(\gz u, \delta \gz u) =
 \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
 = 0 \, ,
 \end{align}
-where $\gz P := \partial \mcl \psi / \partial \gz F$ is the first Piola-Kirchhoff stress tensor.
+where $\gz P := \partial \mcl \psi / \partial \gz F$ is the Piola stress tensor.
 The double contraction in the first term can be re-written in terms of the symmetric Kirchhoff stress tensor $\gz \tau := \gz P \cdot \gz F^T$ as
 \begin{align}
 \gz P : \Grad \, \delta \gz u =
-(\gz \tau \cdot \gz F^{-T}) : \Grad \, \delta \gz u =
-\gz \tau : (\Grad \, \delta \gz u \cdot \gz F^{-1}) =
+\left[\gz \tau \cdot \gz F^{-T}\right] : \Grad \, \delta \gz u =
+\gz \tau : \left[\Grad \, \delta \gz u \cdot \gz F^{-1}\right] =
 \gz \tau : \grad \, \delta \gz u \, ,
 \end{align}
 and therefore
@@ -248,8 +252,8 @@ and therefore
 \label{eq:weak_form}
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
-Note that $\gz \tau$ is the Piola transformation of the second Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
-that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
+Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
+that is $\gz \tau = \varphi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
@@ -281,7 +285,7 @@ Following \cite{Wriggers2008}, this can be simplified to
   \d V.
 \label{eq:tangent}
 \end{align}
-Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Kirchhoff stress and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of the inverse of the deformation gradient $\gz F^{-1}$.
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \varphi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Kirchhoff stress and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of the inverse of the deformation gradient $\gz F^{-1}$.
 
 \subsection{Constitutive modelling}
 
@@ -303,13 +307,13 @@ The Kirchhoff stress and its associated material tangent are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
-  = \chi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
+  = \varphi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
   = \mu \mathbf{b} - \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{I}
 \end{gather}
 and
 \begin{gather}
 J \boldsymbol{\mathcal{C}}
-  = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
+  = \varphi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
   = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
   + 2 \lambda \mathbf{I} \otimes \mathbf{I}
 \end{gather}
@@ -340,7 +344,7 @@ The Newton-Raphson solution approach is adopted for the nonlinear problem consid
 Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is obtained as the solution to the following system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent}):
 \begin{align}
   A_{ij} \Delta u_j &= - F_i  \label{eq:linear_system} \\
-  A_{ij} &=
+  A_{ij} \equiv a(\gz N_i, \gz N_j) &=
   \int_{\mcl B_0}
   \underbrace{
   \overline{\grad^s} \gz N_i : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \gz N_j
@@ -350,7 +354,7 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
   \overline{\grad} \gz N_j \cdot
   \overline{\gz \tau}
   \right]
-  }_{\tilde{a}(\gz N_i, \gz N_j)}
+  }_{\displaystyle \tilde{a}(\gz N_i, \gz N_j)}
   \d V
   \label{eq:algebraic_tangent}
   \\
@@ -359,8 +363,8 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S.
 \end{align}
-Here $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
-and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the bilinear form for the trial solution field $\overline{\gz u^h}$.
+Here $\gz A$ is the discrete tangent matrix, $\gz F$ is the discrete gradient
+and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the deformed configuration, whereas the integration is done in the reference (undeformed) configuration.
 
 \section{Matrix-free operator evaluation}
@@ -372,49 +376,62 @@ For this reason, recent implementations often focus on so-called matrix-free app
 rather than loading matrix elements from memory.
 For iterative solvers, this is possible since it is sufficient to compute matrix-vector products alone.
 %
-The matrix-vector product $A x$ can be expressed by
+The matrix-vector product $\gz A \gz x$ can be expressed by
 \begin{align*}
- (Ax)_i &= \sum_j a(\gz N_i,\gz N_j) x_j \\
-        &= \sum_K\sum_q \sum_j \tilde{a}(\gz N_i,\gz N_j)(\gz x_q) x_j w_q
+ (\gz A \gz x)_i &= \sum_j a(\gz N_i,\gz N_j) x_j \\
+        &\approx \sum_q \sum_j \tilde{a}(\gz N_i,\gz N_j)(\gz x_q) x_j W_q \\
+        &= \sum_K \sum_q \sum_j \tilde{a}(\gz N_i,\gz N_j)(\gz \xi^K_q) x_j w_q
+  \label{eq:mf_vmult}
 \end{align*}
-where in the last step $\tilde{a}_K(\varphi_i,\varphi_j)(\gz x_q)$ is a representation for the evaluation of the bilinear form in one quadrature point $q$.
-For the sake of demonstration, let us assume that $A$ represents a mass matrix. In this case, it holds that
+where in the last step $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi^K_q)$ is a representation for the evaluation of the bilinear form in one quadrature point $q$.
+For the sake of demonstration, let us assume that $\gz A$ represents a mass matrix with scalar valued shape functions $\{ N_i(\gz x) \}$. In this case, it holds that
 \begin{align*}
- \tilde{a}_K(N_i,N_j)(\gz x_q) = N_i(\gz x_q)N_j(\gz x_q).
+ \tilde{a}(N_i,N_j)(\gz \xi^K_q) = N_i(\gz \xi^K_q)N_j(\gz \xi^K_q).
 \end{align*}
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in that case that we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
 and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently.
-Indeed, the evaluation of all the shape functions in all the ansatz points can be rewritten as
-\begin{lstlisting}
-template<int k, int q>
-void evaluate_dof_vector_in_all_quadrature_points
-  (const double u[k][k][k],
-   const double phi[k][q],
-   double return_value[q][q][q])
-{
-  double tmp1[k][k][q] {};
-  for (int i1=0; i1<k; ++i1)
-    for (int i2=0; i2<k; ++i2)
-      for (int q3=0; q3<q; ++q3)
-        for (int i3=0; i3<k; ++i3)
-          tmp1[i1][i2][q3] += u[i1][i2][i3]*phi[i3][q3];
-
-  double temp2[k][q][q] {};
-  for (int i1=0; i1<k; ++i1)
-    for (int q3=0; q3<q; ++q3)
-      for (int q2=0; q2<q; ++q2)
-        for (int i2=0; i2<k; ++i2)
-          tmp2[i1][q2][q3] += tmp1[i1][i2][q3]*phi[i2][q2];
-
-  for (int q2=0; q2<q; ++q2)
-    for (int q3=0; q3<q; ++q3)
-      for (int q1=0; q1<q; ++q1)
-        for (int i1=0; i1<k; ++i1)
-  return_value[q1][q2][q3] += tmp2[i1][q2][q3]*phi[i1][q1];
-}
-\end{lstlisting}
-in three space dimensions. In general, this reordering reduces the arithmetic complexity to $\mathcal{O}(dn^{d+1})$ and is called sum factorization.
+Let us illustrate this in 2D. Tensor-product quadrature points can be expressed as a combination of one dimensional quadrature points
+\begin{align}
+  \gz \xi_q = (\widetilde{\xi}_{q_1}, \widetilde{\xi}_{q_2}),
+\end{align}
+where for quadrature points $q$ we can associate a multi-index $(q_1,q_2)$.
+Weights associated with the quadrature formula $w_q$ can be expressed as a product of one-dimensional weights
+\begin{align}
+  w_q = \widetilde{w}_{q_1} \widetilde{w}_{q_2}
+\end{align}
+Shape functions can also be expressed as product of $d$ one dimensional basis functions
+\begin{align}
+  N_i(\gz \xi_q) =
+  \widetilde{N}_{i_1}(\widetilde{\xi}_{q_1})
+  \widetilde{N}_{i_2}(\widetilde{\xi}_{q_2})
+\end{align}
+where for each DoF index $i$ we can associate a multi-index $(i_1, i_2)$.
+%
+Therefore the result of application of the scalar-valued mass operator, represented as a vector $y_i$, on a single element $K$ can be written as
+\begin{align*}
+  y_{i} = y_{i_1\,i_2} & = \sum_{q_1} \sum_{q_2} \sum_{j_1} \sum_{j_2}
+  \widetilde{N}_{i_1}(\widetilde{\xi}_{q_1})
+  \widetilde{N}_{i_2}(\widetilde{\xi}_{q_2})
+  \widetilde{N}_{j_1}(\widetilde{\xi}_{q_1})
+  \widetilde{N}_{j_2}(\widetilde{\xi}_{q_2})
+  x_{j_1\,j_2}
+  \widetilde{w}_{q_1} \widetilde{w}_{q_2}
+  \\
+  &=
+  \sum_{q_1} \widetilde{N}_{i_1}(\widetilde{\xi}_{q_1}) \widetilde{w}_{q_1}
+  \sum_{q_2} \widetilde{N}_{i_2}(\widetilde{\xi}_{q_2}) \widetilde{w}_{q_2}
+  \left[
+    \sum_{j_1}
+    \widetilde{N}_{j_1}(\widetilde{\xi}_{q_1})
+    \sum_{j_2}
+    \widetilde{N}_{j_2}(\widetilde{\xi}_{q_2})
+    x_{j_1\,j_2}
+  \right]
+\end{align*}
+%
+{\color{red} Daniel: please adjust the discussion above, I think we need to add more on what happens with those 4 loops}
+In general, this reordering reduces the arithmetic complexity to $\mathcal{O}(dn^{d+1})$ and is called sum factorization.
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for 3D and high polynomial degree with the consistent quadrature rule.
 More information on techniques developed to increase the computational density can be found in \cite{kronbichler12,vos10}.
 We briefly note that the SIMD vectorization is applied at the finite element level, that is the operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
