@@ -452,17 +452,18 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
   cached $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
+        evaluate the following tensors at each quadrature point using sum factorization \;
+        $\gz \nabla_X \gz u^h$ \tcp*{2nd order}
+        $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+        $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
-          evaluate $\gz \nabla_X \gz u^h$ \tcp*{2nd order}
           evaluate $\gz F = \gz I + \gz \nabla_X \gz u^h$ \tcp*{2nd order}
           evaluate $J = \rm{det}(\gz F)$ \tcp*{scalar}
           evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
-          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
           evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
-          evaluate $\boldsymbol{\mathcal{G}} \gz g = \gz g \cdot \gz \tau/J$ \tcp*{2nd order}
-          queue $\boldsymbol{\mathcal{G}}$ for contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
-          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
-          evaluate $\boldsymbol{\mathcal{C}}\gz g_s = \left[2 c_1 \gz g_s + 2 \lambda\, \rm{tr}( \gz g_s) \gz I \right]/J$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \gz \tau/J$ \tcp*{2nd order}
+          queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
+          evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \left[2 c_1 \gz g_s + 2 \lambda\, \rm{tr}( \gz g_s) \gz I \right]/J$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}} \gz g_s$ for contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
         }
       evaluate queued contractions using sum factorization and distribute results to the destination vector
@@ -483,12 +484,13 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
+        evaluate the following tensors at each quadrature point using sum factorization \;
+        $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+        $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
-          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
-          evaluate $\boldsymbol{\mathcal{G}}\gz g = \gz g \cdot \left[\gz \tau/J \right]$ \tcp*{2nd order}
+          evaluate $\boldsymbol{\mathcal{G}}\gz g := \gz g \cdot \left[\gz \tau/J \right]$ \tcp*{2nd order}
           queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$ \;
-          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
-          evaluate $\boldsymbol{\mathcal{C}} \gz g_s = c_1 \gz g_s + c_2 \, \rm{tr}(\gz g_s) \gz I$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{C}} \gz g_s := c_1 \gz g_s + c_2 \, \rm{tr}(\gz g_s) \gz I$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}} \gz g_s$ contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}} \gz g_s $ \;
         }
         evaluate queued contractions using sum factorization and distribute results to the destination vector
@@ -510,12 +512,13 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
+        evaluate the following tensors at each quadrature point using sum factorization \;
+        $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
+        $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
-          evaluate $\gz g := \gz \nabla \gz x$ \tcp*{2nd order}
-          evaluate $\boldsymbol{\mathcal{G}} \gz g = \gz g \cdot \left[\gz \tau/J\right]$ \tcp*{2nd order}
+          evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \left[\gz \tau/J\right]$ \tcp*{2nd order}
           queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\gz \nabla \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
-          evaluate $\gz g_s := \gz \nabla_{sym} \gz x$ \tcp*{2nd order symmetric}
-          evaluate $\boldsymbol{\mathcal{C}}\gz g_s = \boldsymbol{\mathcal{C}}\gz : \gz g_s$ \tcp*{2nd order symmetric}
+          evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \boldsymbol{\mathcal{C}}\gz : \gz g_s$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}}\gz g_s$ for contraction $\gz \nabla_{sym} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
         }
         evaluate queued contractions using sum factorization and distribute results to the destination vector
