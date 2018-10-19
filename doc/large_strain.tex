@@ -572,6 +572,8 @@ Note that, although a relatively coarse mesh is used at the coarsest multigrid l
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
 The distributed load of $0.5\,\rm{N}$ is applied in 5 steps.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
+Shared memory parallelization using Intel Threading Building Blocks was disabled for this study.
+
 
 \begin{figure}[!ht]
   \centering
@@ -585,6 +587,23 @@ With respect to the nonlinear solver, the displacement tolerance of the $\mathca
 \end{figure}
 %
 Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements.
+Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.45\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{deformed.png}
+      \caption{2D deformed mesh}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{deformed_3d.png}
+    \caption{3D deformed mesh}
+  \end{subfigure}
+  \caption{Deformed meshes at the final loading step with quadratic elements and two global mesh refinements.}%
+  \label{fig:miehe_deformed}
+\end{figure}
 
 \begin{table}
   \centering
@@ -627,9 +646,7 @@ Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the
 \end{table}
 
 The benchmark calculations are performed for 2D and 3D problems with various combination of polynomial degrees and number of global refinements, as is stated in Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
-Shared memory parallelization using Intel Threading Building Blocks was disabled for this study.
 %
-
 We are interested in the following metrics:
 \begin{itemize}
 \item the wall-clock time and memory requirement per DoF for matrix-vector multiplication;
