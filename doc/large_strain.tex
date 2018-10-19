@@ -565,7 +565,7 @@ The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps. For
   \label{fig:miehe}
 \end{figure}
 
-In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyperelastic material as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse mesh for the 2D and 3D problems is illustrated in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
+In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyperelastic materials as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse meshes for the 2D and 3D problems are illustrated in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
 The matrix material is taken to have Poisson's ratio $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is taken to be $100$ times stiffer.
 The 3D material is obtained by extrusion of the 2D geometry into the third dimension.
 Note that, although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of the inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
