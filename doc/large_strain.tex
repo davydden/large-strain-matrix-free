@@ -384,7 +384,7 @@ The matrix-vector product $\gz A \gz x$ can be expressed by
         &= \sum_K \sum_q \sum_j \tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q) x_j w_q J^K
   \label{eq:mf_vmult}
 \end{align*}
-where in the last step $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q)$ is a representation for the evaluation of the bilinear form in one quadrature point on isoparametric element $\gz \xi_q$ and $J^K$ is the Jacobian of the mapping from the isoparametric to the element $K$.
+where in the last step $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q)$ is a representation for the evaluation of the bilinear form in one quadrature point on isoparametric element $\gz \xi_q$ and $J^K$ is the Jacobian of the mapping from the isoparametric element to the element $K$.
 For the sake of demonstration, let us assume that $\gz A$ represents a mass matrix with scalar valued shape functions $\{ N_i(\gz x) \}$. In this case, it holds that
 \begin{align*}
  \tilde{a}(N_i,N_j)(\gz \xi_q) = N_i(\gz \xi_q)N_j(\gz \xi_q).
