@@ -261,25 +261,25 @@ that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 In order to solve \eqref{eq:weak_form} using Newton's method, a first order approximation around a given solution field $\overline{\gz u}$ is required such that
 \begin{align}
 F(\overline{\gz u} + \Delta \gz u, \delta \gz u) \approx
-F(\overline{\gz u}, \delta \gz u) + \D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u.
+F(\overline{\gz u}, \delta \gz u) + \D F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u.
 \end{align}
 For conservative traction boundary conditions, the directional derivative is given by
 \begin{equation}
 \begin{split}
-\D_{\Delta \gz u}  F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u
+\D F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u
 &=
-\int_{\mcl B_0} \left[\D_{\Delta \gz u} \gz \tau \cdot \Delta \gz u\right] : \overline{\grad^s} \, \delta \gz u \, \d V
+\int_{\mcl B_0} \left[\D \gz \tau \cdot \Delta \gz u\right] : \overline{\grad^s} \, \delta \gz u \, \d V
 \\
 & +
 \int_{\mcl B_0} \overline{\gz \tau} : \left[ \Grad \, \delta \gz u \cdot
-\left[\D_{\Delta \gz u}  \gz F^{-1} \cdot \Delta \gz u\right]
+\left[\D \gz F^{-1} \cdot \Delta \gz u\right]
 \right] \d V.
 \end{split}
 \end{equation}
 Following \cite{Wriggers2008}, this can be simplified to
 \begin{equation}
   \begin{split}
-\D_{\Delta \gz u} F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u
+\D F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u
   &=
   \int_{\mcl B_0} \overline{\grad^s} \Delta \gz u : J \boldsymbol{\mathcal{C}} : \overline{\grad^s} \, \delta \gz u \, \d V \\
   &+
