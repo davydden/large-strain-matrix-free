@@ -163,7 +163,7 @@ To the best of our knowledge, matrix-free methods are not widely adopted within 
 We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a recent masters thesis produced by a student of the first two of the authors \cite{Mentler2017}.
 One possible reason is that the tangent operators (stemming from linearization of the nonlinear balance equations) are
 more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether the matrix-free methods can be advantageous in this case.
-Another reason could be the use of lower order elements due to lacking smoothness of the underlying solution.
+Another reason could be the use of lower order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community.
 Even higher order elements are rarely employed.
 However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
@@ -195,13 +195,14 @@ $\d \gz x = \gz F \cdot \d \gz X$,
 where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient and $\gz I$ is the second-order unit tensor.
 The mapping has to be one-to-one and must exclude self-penetration. Consequently, the Jacobian $J = \det \gz F > 0$ has to be positive.
 % The deformation gradient can be split into the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors such that $\gz F = \gz R \gz U = \gz V \gz R$.
-We shall denote the push-forward transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by
+We shall denote the push-forward transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by a linear transformation $\chi$ defined as
 \begin{align}
-  \varphi\left( \mathbf{A} \right)_{ij}
+  \chi\left( \mathbf{A} \right)_{ij}
   &= F_{iA} A_{AB} F_{jB} \\
-\varphi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
+  \chi\left( \boldsymbol{\mathcal{A}} \right)_{ijkl}
   &= F_{iA} F_{jB} \mathcal{A}_{ABCD} F_{kC} F_{lD}.
 \end{align}
+Note that $\d \gz x = \chi(\d \gz X)$.
 
 %
 % strain measures
@@ -253,7 +254,7 @@ and therefore
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
 Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
-that is $\gz \tau = \varphi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
+that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
@@ -285,7 +286,7 @@ Following \cite{Wriggers2008}, this can be simplified to
   \d V.
 \label{eq:tangent}
 \end{align}
-Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \varphi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Kirchhoff stress and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of the inverse of the deformation gradient $\gz F^{-1}$.
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Kirchhoff stress and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of the inverse of the deformation gradient $\gz F^{-1}$.
 
 \subsection{Constitutive modelling}
 
@@ -307,13 +308,13 @@ The Kirchhoff stress and its associated material tangent are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
-  = \varphi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
+  = \chi\left( 2 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}} \right)
   = \mu \mathbf{b} - \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{I}
 \end{gather}
 and
 \begin{gather}
 J \boldsymbol{\mathcal{C}}
-  = \varphi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
+  = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)
   = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
   + 2 \lambda \mathbf{I} \otimes \mathbf{I}
 \end{gather}
@@ -334,10 +335,10 @@ the associated FE space of continuous piecewise elements with polynomial space o
 The displacement fields are given in
 a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support on a patch of elements):
 \begin{alignat}{2}
-       \gz u^h &=:  \sum_{i \in \mcl I_\varphi} u^i \gz N_i (\gz X) \quad \quad \quad
-\delta \gz u^h &&=: \sum_{i \in \mcl I_\varphi} \delta u^i \gz N_i (\gz X) \,,
+       \gz u^h &=:  \sum_{i \in \mcl I} u^i \gz N_i (\gz X) \quad \quad \quad
+\delta \gz u^h &&=: \sum_{i \in \mcl I} \delta u^i \gz N_i (\gz X) \,,
 \end{alignat}
-where the superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I_\varphi$ is the set of unknown degrees of freedom (DoF).
+where the superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I$ is the set of unknown degrees of freedom (DoF).
 %{\color{red} For the sake of this study, $\gz N_i (\gz X)$ are such that only one component of the vector-valued shape function is non-zero for each $i$.}
 
 The Newton-Raphson solution approach is adopted for the nonlinear problem considered here.
