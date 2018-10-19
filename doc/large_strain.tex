@@ -268,7 +268,7 @@ For conservative traction boundary conditions, the directional derivative is giv
 \begin{split}
 \D F(\overline{\gz u}, \delta \gz u) \cdot \Delta \gz u
 &=
-\int_{\mcl B_0} \left[\D \gz \tau \cdot \Delta \gz u\right] : \overline{\grad^s} \, \delta \gz u \, \d V
+\int_{\mcl B_0} \left[\D \left[\gz F \cdot \gz S \cdot \gz F^T\right] \cdot \Delta \gz u\right] : \overline{\grad^s} \, \delta \gz u \, \d V
 \\
 & +
 \int_{\mcl B_0} \overline{\gz \tau} : \left[ \Grad \, \delta \gz u \cdot
@@ -293,7 +293,7 @@ Following \cite{Wriggers2008}, this can be simplified to
 \end{split}
 \label{eq:tangent}
 \end{equation}
-Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Kirchhoff stress and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of the inverse of the deformation gradient $\gz F^{-1}$.
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order tangent tensor is the push forward of the material tangent $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and therefore called material part of the tangent operator.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
 
 \subsection{Constitutive modelling}
 
