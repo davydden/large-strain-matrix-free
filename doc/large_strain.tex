@@ -406,7 +406,7 @@ Let us illustrate this in 2D. Tensor-product quadrature points can be expressed 
 where for each quadrature points $q$ we can associate a multi-index $(q_1,q_2)$.
 Weights associated with the quadrature formula $w_q$ can be expressed as a product of one-dimensional weights
 \begin{align}
-  w_q = \widetilde{w}_{q_1} \widetilde{w}_{q_2}
+  w_q = \widetilde{w}_{q_1} \widetilde{w}_{q_2} \, .
 \end{align}
 Shape functions can also be expressed as product of one dimensional basis functions
 \begin{align}
@@ -440,8 +440,8 @@ Therefore, the result of application of the scalar-valued mass operator, represe
 %
 These four loops all have the same structure.
 We either keep the shape function fixed and iterate over the quadrature points in one spatial direction (in the first two sums) or keep the quadrature point fixed and iterate over all the shape functions in one spatial direction (in the last two sums).
-Since each of these $2\times d$ loops has a complexity of $n$ and we perform them for $n^d$ values in quadrature points or values in degrees of freedoms simultaneously, we end up with an arithmetic complexity of $\mathcal{O}(dn^{d+1})$.
-Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for 3D and high polynomial degree with the corresponding quadrature rule.
+Since each of these $2\times d$ loops has a complexity of $n$ and we perform them for $n^d$ values in quadrature points or values in degrees of freedoms simultaneously, what results is an algorithm with arithmetic complexity of $\mathcal{O}(dn^{d+1})$.
+Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for the 3D case, and where the discretization and evaluation employs high polynomial degree basis functions with the corresponding quadrature rule.
 More information on matrix-free techniques can be found in \cite{kronbichler12,vos10}.
 We briefly note that the SIMD vectorization is applied at the finite element level, that is the operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
 
@@ -503,7 +503,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
         }
         evaluate queued contractions using sum factorization and distribute results to the destination vector
   }
-  \caption{Matrix-free tangent cell operator, variant 1: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate refential quantities like $\gz F$ at runtime.}
+  \caption{Matrix-free tangent cell operator, variant 1: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at when executed.}
   \label{alg:mf_tensor2}
 \end{algorithm}
 
