@@ -88,7 +88,7 @@ for f in files:
             cg_iterations = int(re.findall(pattern,line)[0])
 
         if start_line in line:
-            print 'p={0} q={1} cells={2} dofs={3} tr_memory={4} mf_memory={5} file={6}'.format(p, q, cells, dofs, tr_memory, mf_memory, f)
+            print 'dim={0} p={1} q={2} cells={3} dofs={4} tr_memory={5} mf_memory={6} cg_it={7} file={8}'.format(dim, p, q, cells, dofs, tr_memory, mf_memory, cg_iterations, f)
             ready = True
 
         if ready:
