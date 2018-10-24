@@ -1,0 +1,41 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 4
+q     = 5
+cells = 22528
+dofs  = 4442880
+
+Trilinos memory = 33791 Mb
+MF cache memory = 1004 Mb
+
+Average CG iter = 59
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |  3.09e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        20 |       823s |        27% |
+| Coarse solve level 0            |       885 |  1.48e+03s |        48% |
+| Coarse solve level 1            |       885 |     0.259s |         0% |
+| Coarse solve level 2            |       885 |      1.66s |         0% |
+| Linear solver                   |        15 |  1.76e+03s |        57% |
+| Post-smoothing level 1          |       885 |      13.5s |      0.44% |
+| Post-smoothing level 2          |       885 |      98.3s |       3.2% |
+| Pre-smoothing level 1           |       885 |      12.2s |       0.4% |
+| Pre-smoothing level 2           |       885 |      88.1s |       2.9% |
+| Prolongation level 1            |       885 |     0.307s |         0% |
+| Prolongation level 2            |       885 |      1.83s |         0% |
+| Setup matrix-free               |        20 |       363s |        12% |
+| Setup system                    |         1 |      23.6s |      0.76% |
+| vmult (MF)                      |       200 |      7.85s |      0.25% |
+| vmult (Trilinos)                |       200 |      79.9s |       2.6% |
++---------------------------------+-----------+------------+------------+
+

@@ -1,0 +1,32 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 2
+q     = 3
+cells = 360448
+dofs  = 2887680
+
+Trilinos memory = 1110 Mb
+MF cache memory = 20 Mb
+
+Average CG iter = 136
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       374s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        25 |      21.8s |       5.8% |
+| Linear solver                   |        20 |       293s |        78% |
+| Setup matrix-free               |        25 |      28.5s |       7.6% |
+| Setup system                    |         1 |      1.15s |      0.31% |
+| vmult (MF)                      |       250 |      8.41s |       2.3% |
+| vmult (Trilinos)                |       250 |      3.61s |      0.97% |
++---------------------------------+-----------+------------+------------+
+

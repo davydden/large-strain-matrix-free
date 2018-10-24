@@ -1,0 +1,49 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 7
+q     = 8
+cells = 22528
+dofs  = 2211328
+
+Trilinos memory = 4292 Mb
+MF cache memory = 60 Mb
+
+Average CG iter = 56
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |  1.85e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        25 |      34.1s |       1.8% |
+| Coarse solve level 0            |      1139 |  1.65e+03s |        89% |
+| Coarse solve level 1            |      1139 |    0.0372s |         0% |
+| Coarse solve level 2            |      1139 |    0.0731s |         0% |
+| Coarse solve level 3            |      1139 |     0.239s |         0% |
+| Coarse solve level 4            |      1139 |     0.773s |         0% |
+| Linear solver                   |        20 |  1.75e+03s |        95% |
+| Post-smoothing level 1          |      1139 |       0.8s |         0% |
+| Post-smoothing level 2          |      1139 |      2.08s |      0.11% |
+| Post-smoothing level 3          |      1139 |      7.04s |      0.38% |
+| Post-smoothing level 4          |      1139 |      28.8s |       1.6% |
+| Pre-smoothing level 1           |      1139 |     0.806s |         0% |
+| Pre-smoothing level 2           |      1139 |      2.04s |      0.11% |
+| Pre-smoothing level 3           |      1139 |       6.6s |      0.36% |
+| Pre-smoothing level 4           |      1139 |      27.4s |       1.5% |
+| Prolongation level 1            |      1139 |    0.0392s |         0% |
+| Prolongation level 2            |      1139 |    0.0675s |         0% |
+| Prolongation level 3            |      1139 |     0.203s |         0% |
+| Prolongation level 4            |      1139 |     0.917s |         0% |
+| Setup matrix-free               |        25 |      43.3s |       2.3% |
+| Setup system                    |         1 |      2.53s |      0.14% |
+| vmult (MF)                      |       250 |      2.26s |      0.12% |
+| vmult (Trilinos)                |       250 |      12.3s |      0.66% |
++---------------------------------+-----------+------------+------------+
+
