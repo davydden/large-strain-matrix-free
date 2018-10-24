@@ -356,8 +356,8 @@ the associated FE space of continuous piecewise elements with polynomial space o
 The displacement fields are given in
 a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\gz x)$ (e.g. polynomials with local support on a patch of elements):
 \begin{alignat}{2}
-       \gz u^h &=:  \sum_{i \in \mcl I} u^i \gz N_i (\gz X) \quad \quad \quad
-\delta \gz u^h &&=: \sum_{i \in \mcl I} \delta u^i \gz N_i (\gz X) \,,
+       \gz u^h &=:  \sum_{i \in \mcl I} u_i \gz N_i (\gz X) \quad \quad \quad
+\delta \gz u^h &&=: \sum_{i \in \mcl I} \delta u_i \gz N_i (\gz X) \,,
 \end{alignat}
 where the superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I$ is the set of unknown degrees of freedom (DoF).
 %{\color{red} For the sake of this study, $\gz N_i (\gz X)$ are such that only one component of the vector-valued shape function is non-zero for each $i$.}
