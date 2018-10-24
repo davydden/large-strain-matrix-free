@@ -17,3 +17,4 @@
 # generated input files:
 /Calculations/*_p*q*r*_*.prm
 /Calculations/run.sh
+/Calculations/__*
