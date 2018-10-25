@@ -1,0 +1,45 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 2
+q     = 3
+cells = 180224
+dofs  = 4442880
+
+Trilinos memory = 10040 Mb
+MF cache memory = 1740 Mb
+
+Average CG iter = 50
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       834s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        20 |       126s |        15% |
+| Coarse solve level 0            |       760 |       116s |        14% |
+| Coarse solve level 1            |       760 |    0.0478s |         0% |
+| Coarse solve level 2            |       760 |     0.202s |         0% |
+| Coarse solve level 3            |       760 |      1.48s |      0.18% |
+| Linear solver                   |        15 |       488s |        59% |
+| Post-smoothing level 1          |       760 |       2.2s |      0.26% |
+| Post-smoothing level 2          |       760 |      16.3s |         2% |
+| Post-smoothing level 3          |       760 |       126s |        15% |
+| Pre-smoothing level 1           |       760 |      2.17s |      0.26% |
+| Pre-smoothing level 2           |       760 |      15.4s |       1.8% |
+| Pre-smoothing level 3           |       760 |       119s |        14% |
+| Prolongation level 1            |       760 |    0.0455s |         0% |
+| Prolongation level 2            |       760 |     0.197s |         0% |
+| Prolongation level 3            |       760 |      1.55s |      0.19% |
+| Setup matrix-free               |        20 |       136s |        16% |
+| Setup system                    |         1 |      8.88s |       1.1% |
+| vmult (MF)                      |       200 |      13.3s |       1.6% |
+| vmult (Trilinos)                |       200 |      24.4s |       2.9% |
++---------------------------------+-----------+------------+------------+
+

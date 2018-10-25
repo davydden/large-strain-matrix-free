@@ -35,9 +35,8 @@ end
 
 
 subsection Time
-  set End time         = 0.5
-  set Force multiplier = 0.5   # N
-  set Time step size   = 0.1
+  set End time         = 1.0
+  set Time step size   = 0.2
 end
 
 subsection Misc

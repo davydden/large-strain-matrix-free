@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mp
 import numpy as np
 import fileinput
+from matplotlib.ticker import MaxNLocator
 
 def remove_creation_date(file_name):
     for line in fileinput.input(file_name, inplace=True):
@@ -87,7 +88,7 @@ for f in files:
             cg_iterations = int(re.findall(pattern,line)[0])
 
         if start_line in line:
-            print 'p={0} q={1} cells={2} dofs={3} tr_memory={4} mf_memory={5} file={6}'.format(p, q, cells, dofs, tr_memory, mf_memory, f)
+            print 'dim={0} p={1} q={2} cells={3} dofs={4} tr_memory={5} mf_memory={6} cg_it={7} file={8}'.format(dim, p, q, cells, dofs, tr_memory, mf_memory, cg_iterations, f)
             ready = True
 
         if ready:
@@ -188,6 +189,10 @@ mem3d_t4 = [tup[3]/tup[1] for tup in mf3d_data_tensor4]
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
 
+params = {'legend.fontsize': 20,
+          'font.size': 20}
+plt.rcParams.update(params)
+
 plt.plot(deg2d,time2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,time2d_sc, 'bo--', label='MF scalar')
 plt.plot(deg2d,time2d_t2, 'g^--', label='MF tensor2')
@@ -195,12 +200,15 @@ plt.plot(deg2d,time2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
 remove_creation_date(fig_prefix + 'timing2d.eps')
 
 # clear
 plt.clf()
 
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg3d,time3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,time3d_sc, 'bo--', label='MF scalar')
 plt.plot(deg3d,time3d_t2, 'g^--', label='MF tensor2')
@@ -208,11 +216,13 @@ plt.plot(deg3d,time3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'timing3d.eps', format='eps')
 remove_creation_date(fig_prefix + 'timing3d.eps')
 
 # clear
 plt.clf()
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 plt.plot(deg2d,mem2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,mem2d_sc, 'bo--', label='MF scalar')
@@ -221,11 +231,15 @@ plt.plot(deg2d,mem2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'memory2d.eps', format='eps')
 remove_creation_date(fig_prefix + 'memory2d.eps')
 
 # clear
 plt.clf()
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 plt.plot(deg3d,mem3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,mem3d_sc, 'bo--', label='MF scalar')
@@ -234,11 +248,13 @@ plt.plot(deg3d,mem3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'memory3d.eps', format='eps')
 remove_creation_date(fig_prefix + 'memory3d.eps')
 
 # clear
 plt.clf()
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
@@ -249,21 +265,26 @@ plt.xlabel('degree')
 plt.ylabel('wall time (s) / DoF')
 plt.plot(deg2d,assembly2d_tr, 'mp--', label='Trilinos Assembly')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
 remove_creation_date(fig_prefix + 'solver2d.eps')
 
 # clear
 plt.clf()
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
 # plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,solver3d_t4, 'cv--', label='MF Solver')
 plt.plot(deg3d,solver3d_t4_coarse, 'g^--', label='MF Coarse Solver')
+plt.plot(deg3d,assembly3d_tr, 'mp--', label='Trilinos Assembly')
 plt.xlabel('degree')
 plt.ylabel('wall time (s) / DoF')
-plt.plot(deg3d,assembly3d_tr, 'mp--', label='Trilinos Assembly')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'solver3d.eps', format='eps')
 remove_creation_date(fig_prefix + 'solver3d.eps')
 
@@ -275,16 +296,20 @@ plt.plot(deg2d,cg2d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'cg2d.eps', format='eps')
 remove_creation_date(fig_prefix + 'cg2d.eps')
 
 # clear
 plt.clf()
 
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg3d,cg3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,cg3d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
 plt.savefig(fig_prefix + 'cg3d.eps', format='eps')
 remove_creation_date(fig_prefix + 'cg3d.eps')

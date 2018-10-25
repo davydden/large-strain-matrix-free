@@ -74,15 +74,36 @@ end
 
 subsection Misc
   set Output folder = {7}
-  set Output points = 0,0{9}
+  set Output points = {9}
+  set Output solution = {13}
 end
 
 subsection Boundary conditions
-  set Dirichlet IDs and expressions = 1:0,0{10}
-  set Dirichlet IDs and component mask = 1:true,true{11}
-  set Neumann IDs and expressions = 11:(0.05*t)/(2.0e-6),0{12}
+  set Dirichlet IDs and expressions = {10}
+  set Dirichlet IDs and component mask = {11}
+  set Neumann IDs and expressions = {12}
 end
 """
+
+output_points  = {
+  2: '0,0',
+  3: '0,0,0.5e-3'
+}
+
+dirichlet_id   = {
+  2: '1:0,0',
+  3: '1:0,0,0;2:0,0,0'
+}
+
+dirichlet_mask = {
+  2: '1:true,true',
+  3: '1:true,true,true;2:false,false,true'
+}
+
+neumann_bc     = {
+  2: '11:12.5e3*t,0',
+  3: '11:12.5e3*t,0,12.5e3*t'
+}
 
 base_prm = args.base_prm
 base_name = args.base_prm.split('.')[0]
@@ -114,12 +135,38 @@ for pqrd in poly_quad_ref_dim:
             s[2],
             out_dir + name,
             pqrd[3],
-            "" if pqrd[3]==2 else ",0.5e-3",
-            "" if pqrd[3]==2 else ",0;2:0,0,0",
-            "" if pqrd[3]==2 else ",true;2:false,false,true",
-            "" if pqrd[3]==2 else ",(0.05*t)/(2.0e-6)"
+            output_points[pqrd[3]],
+            dirichlet_id[pqrd[3]],
+            dirichlet_mask[pqrd[3]],
+            neumann_bc[pqrd[3]],
+            'false'
         ))
         filenames.append(name)
+
+# two more runs just to illustrate the deformed mesh
+for pqrd in [(2,3,2,2),(2,3,2,3)]:
+    for s in [('MF_CG', 'gmg', 'tensor4')]:
+        name = '__' + base_name + '_{6}d_p{0}q{1}r{2}_{3}_{4}_{5}'.format(pqrd[0],pqrd[1],pqrd[2],s[0],s[1],s[2],pqrd[3])
+        fname = name + '.prm'
+        print '{0}'.format(fname)
+        fout = open(fname, 'w')
+        fout.write(parameter_file.format(
+            base_prm,
+            pqrd[0],
+            pqrd[1],
+            pqrd[2],
+            s[0],
+            s[1],
+            s[2],
+            name,
+            pqrd[3],
+            output_points[pqrd[3]],
+            dirichlet_id[pqrd[3]],
+            dirichlet_mask[pqrd[3]],
+            neumann_bc[pqrd[3]],
+            'true'
+        ))
+
 
 # write bash script
 fout = open ('run.sh', 'w')
