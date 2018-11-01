@@ -502,7 +502,7 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
         $\gz g_s := \overline{\grad^s} \gz x$ \tcp*{2nd order symmetric}
         $\gz g := \overline{\grad} \gz x$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
-          evaluate $\gz F = \gz I + \Grad \overline{\gz u^h}$ \tcp*{2nd order}
+          evaluate $\gz F = \gz I + \Grad \, \overline{\gz u^h}$ \tcp*{2nd order}
           evaluate $J = \rm{det}(\gz F)$ \tcp*{scalar}
           evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
           evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
