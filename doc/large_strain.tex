@@ -414,6 +414,23 @@ For the sake of demonstration, let us assume that $\gz A$ represents a mass matr
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in that case that we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
 and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.45\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{nodes.png}
+      \caption{Nodes of cubic Lagrange element}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{quad_points.png}
+    \caption{Gaussian quadrature points}
+  \end{subfigure}
+  \caption{Illustration of tensorial indexing for nodes and quadrature points. In this sketch a node/quadrature point with the number $7$ can be indexed with a multi-index $\{3,2\}$.}%
+  \label{fig:multi_index}
+\end{figure}
+
 Let us illustrate this in 2D. Tensor-product quadrature points can be expressed as a combination of one dimensional quadrature points
 \begin{align}
   \gz \xi_q = (\widetilde{\xi}_{q_1}, \widetilde{\xi}_{q_2}),
@@ -430,6 +447,7 @@ Shape functions can also be expressed as product of one dimensional basis functi
   \widetilde{N}_{i_2}(\widetilde{\xi}_{q_2})
 \end{align}
 where for each DoF index $i$ we can associate a multi-index $(i_1, i_2)$.
+See Figure \ref{fig:multi_index} for illustration.
 %
 Therefore, the result of application of the scalar-valued mass operator, represented as a vector $y_i$, on a single element $K$ can be written as
 \begin{align*}
