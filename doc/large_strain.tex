@@ -162,7 +162,9 @@ Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, 
 To the best of our knowledge, matrix-free methods are not widely adopted within the solid mechanics community.
 We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a recent masters thesis produced by a student of the first two of the authors \cite{Mentler2017}.
 One possible reason is that the tangent operators\footnote{{\color{red}Here and
-below by operators we mean finite-dimensional linear operators on vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.}} (stemming from linearization of the nonlinear balance equations) are
+below by operators we mean finite-dimensional linear operators on vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
+Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
+}} (stemming from linearization of the nonlinear balance equations) are
 more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether the matrix-free methods can be advantageous in this case.
 Another reason could be the use of lower order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community.
