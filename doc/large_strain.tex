@@ -402,7 +402,7 @@ For this reason, recent implementations often focus on so-called matrix-free app
 rather than loading matrix elements from memory.
 For iterative solvers, this is possible since it is sufficient to compute matrix-vector products alone.
 %
-The matrix-vector product $\gz A \gz x$ can be expressed by
+The matrix-vector product $\gz A \gz x$ {\color{red}(i.e. the action of operator $\gz A$ on a vector $\gz x$)} can be expressed by
 \begin{align}
   \begin{split}
  (\gz A \gz x)_i &= \sum_j a(\gz N_i,\gz N_j) x_j \\
@@ -412,7 +412,7 @@ The matrix-vector product $\gz A \gz x$ can be expressed by
 \end{align}
 where $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q)$ is a representation for the evaluation of the bilinear form in one quadrature point $\gz \xi_q$, $J^K_q$ is the Jacobian of the mapping from the isoparametric element to the element $K$ {\color{red}and
 $w_q$ is the quadrature weight}.
-For the sake of demonstration, let us assume that $\gz A$ represents a mass matrix with scalar valued shape functions $\{ N_i(\gz x) \}$. In this case, it holds that
+For the sake of demonstration, let us assume that $\gz A$ represents a mass {\color{red}operator} with scalar valued shape functions $\{ N_i(\gz x) \}$. In this case, it holds that
 \begin{align*}
  \tilde{a}(N_i,N_j)(\gz \xi_q) = N_i(\gz \xi_q)N_j(\gz \xi_q).
 \end{align*}
