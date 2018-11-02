@@ -184,7 +184,7 @@ The paper is organized as follows: In Section \ref{sec:theory} we briefly introd
 %
 The deformation of a body $\mcl B$ from the {\color{red}referential} configuration $\mcl B_0$ to the {\color{red}spatial} configuration $\mcl B_t$ at time $t$
 is defined via the deformation map $\gz \varphi_t: \mcl B_0 \rightarrow \mcl B_t$, which places material points of $\mcl B$ into the Euclidean space $\mathbb E^3$.
-The current location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
+The {\color{red}spatial} location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
 The displacement field reads $\gz u = \gz x - \gz X$.
 
 %
@@ -192,7 +192,7 @@ The displacement field reads $\gz u = \gz x - \gz X$.
 %
 The tangent map is linear such that
 $\d \gz x = \gz F \cdot \d \gz X$,
-where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called deformation gradient and $\gz I$ is the second-order unit tensor.
+where $\gz F := \Grad \, \gz \varphi \equiv \gz I + \Grad \, \gz u$ is called {\color{red}the} deformation gradient and $\gz I$ is the second-order unit tensor.
 The mapping has to be one-to-one and must exclude self-penetration. Consequently, the Jacobian $J = \det \gz F > 0$ has to be positive.
 % The deformation gradient can be split into the proper orthogonal rotation tensor $\gz R$ and the symmetric right $\gz U$ and left $\gz V$ stretch tensors such that $\gz F = \gz R \gz U = \gz V \gz R$.
 We shall denote the push-forward transformation of rank-2 and rank-4 tensors $\mathbf{A}$ and $\boldsymbol{\mathcal{A}}$ by a linear transformation $\chi$ defined as
@@ -227,7 +227,7 @@ The principle of stationary potential energy at equilibrium requires that the di
 \end{align}
 vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet boundary conditions.
 %
-This leads to the following scalar non-linear equation
+This leads to the following scalar{\color{red}-valued} non-linear equation
 \begin{align}
 F(\gz u, \delta \gz u) =
 \int_{\mcl B_0} \gz P : \Grad \, \delta \gz u \, \d V \,
@@ -252,7 +252,8 @@ and therefore
   = 0 \, ,
 \label{eq:weak_form}
 \end{align}
-where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$.
+where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$
+{\color{red}is involved due to the symmetry of $\gz \tau$}.
 Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
 that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
@@ -307,7 +308,9 @@ $\D_{\displaystyle \Delta \gz u} \gz S = 2 \partial \gz S / \partial \gz C : \D_
 \end{split}
 \label{eq:tangent}
 \end{equation}
-Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order {\color{red}spatial} tangent {\color{red}stiffness} tensor is the push forward of the material tangent {\color{red}stiffness tensor} $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$. The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and therefore called material part of the tangent.  The second term in \eqref{eq:tangent} is called geometric part of the tangent since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order {\color{red}spatial} tangent {\color{red}stiffness} tensor is the push forward of the material {\color{red}part of the referential} tangent {\color{red}stiffness tensor} $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$.
+The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and {\color{red}is} therefore called material part of the tangent.
+The second term in \eqref{eq:tangent} is called {\color{red}the} geometric part of the tangent since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
 
 \subsection{Constitutive modelling}
 
@@ -325,7 +328,7 @@ where $\mu$ and $\lambda$ denote the shear modulus and Lam\'{e} parameter respec
   &= \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
   + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
 \end{align}
-The Kirchhoff stress and its associated {\color{red}fourth-order material tangent tensor} are
+The Kirchhoff stress and its associated {\color{red}fourth-order material part of spatial tangent tensor} are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
@@ -365,7 +368,7 @@ where the superscript $h$ denotes that this representation is related to the FE 
 The Newton-Raphson solution approach is adopted for the nonlinear problem considered here.
 Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is obtained as the solution to the following system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent}):
 \begin{align}
-  A_{ij} \Delta u_j &= - F_i  \label{eq:linear_system} \\
+  \sum_{j \in \mcl I} A_{ij} \Delta u_j &= - F_i  \label{eq:linear_system} \\
   A_{ij} \equiv a(\gz N_i, \gz N_j) &=
   \int_{\mcl B_0}
   \underbrace{
@@ -385,13 +388,13 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S.
 \end{align}
-Here $\gz A$ is the discrete tangent {\color{red}operator}, $\gz F$ is the discrete gradient
+Here $\gz A$ is the discrete tangent {\color{red}operator}, $\gz F$ is the discrete gradient {\color{red}of the potential energy}
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the {\color{red}spatial} configuration, whereas the integration is done in the {\color{red}referential} configuration.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
-Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the force vector $\gz F$ corresponding to the discretization are assembled and
+Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the {\color{red}residual} force vector $\gz F$ corresponding to the discretization are assembled and
 a direct or iterative solver is used to solve the linear system.
 On modern computer architectures however, it transpires that loading sparse matrix data into the CPU registers is significantly slower than performing the arithmetic operations when solving.
 For this reason, recent implementations often focus on so-called matrix-free approaches. The idea is to perform the operations within the solver on-the-fly
@@ -406,13 +409,15 @@ The matrix-vector product $\gz A \gz x$ can be expressed by
   \end{split}
   \label{eq:mf_vmult}
 \end{align}
-where $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q)$ is a representation for the evaluation of the bilinear form in one quadrature point on isoparametric element $\gz \xi_q$ and $J^K$ is the Jacobian of the mapping from the isoparametric element to the element $K$.
+where $\tilde{a}(\gz N_i,\gz N_j)(\gz \xi_q)$ is a representation for the evaluation of the bilinear form in one quadrature point $\gz \xi_q$, $J^K_q$ is the Jacobian of the mapping from the isoparametric element to the element $K$ {\color{red}and
+$w_q$ is the quadrature weight}.
 For the sake of demonstration, let us assume that $\gz A$ represents a mass matrix with scalar valued shape functions $\{ N_i(\gz x) \}$. In this case, it holds that
 \begin{align*}
  \tilde{a}(N_i,N_j)(\gz \xi_q) = N_i(\gz \xi_q)N_j(\gz \xi_q).
 \end{align*}
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
-in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in that case that we consider a problem in $d$ space dimensions. For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
+in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ {\color{red}in $d$ space dimensions}.
+For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
 and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
 
 \begin{figure}[!ht]
@@ -484,7 +489,7 @@ Since each of these $2\times d$ loops has a complexity of $n$ and we perform the
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for the 3D case, and where the discretization and evaluation employs high polynomial degree basis functions with the corresponding quadrature rule.
 More information on matrix-free techniques can be found in \cite{kronbichler12,vos10}.
 
-We briefly note that the SIMD vectorization is applied at the finite element level, that is the operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
+We briefly note that the SIMD vectorization is applied at the finite element level, {\color{red}i.e.} the {\color{red}matrix-free} operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
 
 Given that the matrix-free operators are applied on-the-fly, it is crucial to find a good balance between pre-calculation of certain values (caching) and performance of the algorithm.
 Below, we propose three algorithms to implement the tangent {\color{red}operator} of finite-strain elasticity (see \eqref{eq:algebraic_tangent}) using the matrix-free approach.
@@ -492,7 +497,8 @@ Below, we propose three algorithms to implement the tangent {\color{red}operator
 In order to obtain gradients with respect to the {\color{red}spatial} configuration we used the \textit{MappingQEulerian} class from the \texttt{deal.II} \cite{dealII90} library.
 In addition to the standard mapping from the reference (isoparametric) element to the element in real space, this class computes the mapping to the {\color{red}spatial} configuration given a displacement field.
 %
-Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, the integration is performed over the {\color{red}spatial} configuration. Therefore, we have to divide by the Jacobian $J$ of the deformation map at a given quadrature point additionally to express the integral in the {\color{red}referential} configuration.
+Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, the integration is {\color{red}eventually} performed over the {\color{red}spatial} configuration.
+Therefore, we have to {\color{red}additionally} divide by the Jacobian $J$ of the deformation map at a given quadrature point to express the integral in the {\color{red}referential} configuration.
 
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
@@ -521,7 +527,7 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
   \label{alg:mf_scalar}
 \end{algorithm}
 
-Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarithm of the Jacobian -- a computationally demanding operation compared to additions and multiplications. As evident from Section \ref{sec:theory}, we need to re-evaluate the Kirchhoff stress at each quadrature point in order to apply the operator. This in turn requires evaluating the deformation gradient $\gz F$ and therefore gradients with respect to the {\color{red}referential} configuration.
+Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarithm of the Jacobian -- a computationally demanding operation compared to additions and multiplications. As evident from Section \ref{sec:theory}, we need to re-evaluate the Kirchhoff stress at each quadrature point in order to apply the {\color{red}tangent} operator. This in turn requires evaluating the deformation gradient $\gz F$ and therefore gradients with respect to the {\color{red}referential} configuration.
 
 \begin{algorithm}[!ht]
   \SetKwInOut{Input}{Given}
@@ -550,7 +556,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
 
 In order to avoid recalculation of the Kirchhoff stress, Algorithm \ref{alg:mf_tensor2} caches its value for each element and quadrature point. In this case, we also avoid the need to evaluate gradients of displacement field with respect to the {\color{red}referential} configuration.
 This algorithm also utilizes the chosen constitutive relationship in that the operation of $J \boldsymbol{\mathcal{C}}$ remains directly expressed using \eqref{eq:simplified_action}.
-Therefore, the action of the material fourth-order tangent {\color{red}stiffness tensor} $J \boldsymbol{\mathcal{C}}$ on the second-order symmetric tensor $\overline{\grad^s} \gz x$ is cheap to evaluate.
+Therefore, the action of the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} $J \boldsymbol{\mathcal{C}}$ on the second-order symmetric tensor $\overline{\grad^s} \gz x$ is cheap to evaluate.
 To that end, we cache two scalars that depend on the Jacobian $J$.
 
 \begin{algorithm}[!ht]
@@ -576,17 +582,17 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
   \label{alg:mf_tensor4}
 \end{algorithm}
 
-Finally, Algorithm \ref{alg:mf_tensor4} represents the most general case which does not assume any form of the material tangent {\color{red}stiffness} tensor.
+Finally, Algorithm \ref{alg:mf_tensor4} represents the most general case which does not assume any form of the {\color{red}material part of the fourth-order spatial tangent stiffness tensor}.
 In this case, we have to cache the fourth-order symmetric tensor $\boldsymbol{\mathcal{C}}$ and the Kirchhoff stress $\gz \tau$ for each element and quadrature point, and perform the double contraction with the second-order symmetric tensor $\overline{\grad^s} \gz x$ on-the-fly.
 
 \section{Geometric multigrid preconditioning}
 \label{sec:gmg}
 
-Efficient and scalable matrix-vector products are not enough to obtain a method suitable for large computations. In particular, linear scaling with respect to the number of unknown DoFs $N$ is desirable.
-The efficiency of standard iterative solvers and preconditioners deteriorate for large systems of linear equations due to increasing iteration counts under mesh refinement.
+Efficient and scalable matrix-vector products are not enough to obtain a method suitable for large computations. In particular, linear scaling with respect to the number $N$ of unknown DoFs is desirable.
+The efficiency of standard iterative solvers and preconditioners deteriorates for large systems of linear equations due to increasing iteration counts under mesh refinement.
 In contrast to other preconditioners, geometric multigrid (GMG) preconditioners \cite{Bramble1990, Briggs2000, Janssen2011,May2015} can be proven to result in iteration counts that are independent of the number of mesh refinements by smoothing the residual on a hierarchy of meshes. For further information about geometric multigrid methods we refer the reader to \cite{Briggs2000,Hackbusch1985,Wesseling1992}.
 
-For this work we adopt the matrix-free level operators within the GMG and employ Chebyshev pre- and post-smoothing on each level. In general, given a heterogeneous non-linear material, the definition of transfer operators (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}\footnote{
+For this work we adopt the matrix-free level operators within the GMG and employ Chebyshev pre- and post-smoothing on each level. In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{{\color{red}Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.}} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}\footnote{
   We note that this approach is limited to the case where for each quadrature point within an element the fourth-order tangent {\color{red}stiffness tensor} is the same.
 }.
 In this approach, the fine-scale displacement is decomposed into long-wave and short-wave contributions by an additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch.
@@ -622,7 +628,7 @@ The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps. For
 In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyperelastic materials as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse meshes for the 2D and 3D problems are illustrated in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
 The matrix material is taken to have Poisson's ratio $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is taken to be $100$ times stiffer.
 The 3D material is obtained by extrusion of the 2D geometry into the third dimension.
-Note that, although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of the inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
+Note that although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of the inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
@@ -676,7 +682,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \hline
   \end{tabular}
   \caption{Parameters for the 2D benchmark: $p$ is the polynomial degree,
-  $q$ is the quadrature order, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
+  $q$ is the {\color{red}number of quadrature points in 1D}, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
   }
   \label{tab:input_parameters_2d}
 \end{table}
@@ -694,7 +700,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \hline
   \end{tabular}
   \caption{Parameters for the 3D benchmark: $p$ is the polynomial degree,
-  $q$ is the quadrature order, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
+  $q$ is the {\color{red}number of quadrature points in 1D}, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
   }
   \label{tab:input_parameters_3d}
 \end{table}
@@ -784,7 +790,7 @@ The matrix-free implementation is faster than the matrix-based counterpart alrea
 Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies.
 Two conclusions can be drawn from these results:
 The scalar caching implementation is the most time consuming of the three, as at each step we additionally evaluate the gradient of the displacement field in the {\color{red}referential} configuration that is required to evaluate the Kirchhoff stress $\gz \tau$.
-There is little difference between the approach where the fourth-order material tangent {\color{red}stiffness} tensor is cached (``tensor4'') and the one where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the material tangent {\color{red}stiffness tensor} on the second-order symmetric tensor.
+There is little difference between the approach where the fourth-order material tangent {\color{red}stiffness} tensor is cached (``tensor4'') and the one where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} on the second-order symmetric tensor.
 This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
 Consequently, we can apply the matrix-free approach to any finite-strain material model by caching the fourth-order material tangent {\color{red}stiffness tensor} in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
 It is therefore feasible to define highly performant generic operators that are independent of any applied constitutive laws.
@@ -870,8 +876,8 @@ A valid alternative would be to use matrix-based AMG at the coarsest level.
 \label{sec:summary}
 
 In this contribution, we proposed and numerically investigated several matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
-The implementation that caches the fourth-order material tangent {\color{red}stiffness tensor} together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic in 3D.
-This gives hope that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material tangent {\color{red}stiffness tensor} on the quadrature point level.
+The implementation that caches the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic in 3D.
+This gives hope that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} on the quadrature point level.
 
 We also studied the performance of the GMG preconditioner with standard geometric transfer operations between each level.
 The GMG was applied to heterogeneous material assuming that the coarsest level can provide an adequate discretization of the heterogeneity.
