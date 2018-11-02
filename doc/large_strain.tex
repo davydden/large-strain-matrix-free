@@ -1,22 +1,16 @@
 \RequirePackage[l2tabu, orthodox]{nag}
 %\documentclass[12pt]{article}
-\documentclass[preprint,12pt,times]{elsarticle}
+% \documentclass[preprint,12pt,times]{elsarticle}
+\documentclass[times,doublespace]{nmeauth}
 
-\biboptions{sort&compress,comma,square}
+%%% ELSOPTIONS:
+% \biboptions{sort&compress,comma,square}
+% \usepackage{amsmath}
 
-% \usepackage{url}
+%%%
 
-% \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
-%\usepackage{amssymb}
-\usepackage{amsmath}
-%\usepackage{amsfonts}
 \usepackage{bm}
-%\usepackage{bbm}
-%\usepackage{caption}
 \usepackage{xcolor}
-%\usepackage{geometry}
-%\usepackage{graphicx}
-%\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 \usepackage{listings}
 \lstset{ %
    backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
@@ -45,85 +39,83 @@
    tabsize=2,	                   % sets default tabsize to 2 spaces
    title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
 }
-%\usepackage{layouts}
-%\usepackage{mathrsfs}
-%\usepackage{pgfkeys,pgfmath,pgfcore}
-%\usepackage{srcltx}
-%\usepackage[labelformat=simple]{subcaption}
-%\usepackage{xspace}
 \usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
 
 \usepackage[format=plain,indention=.5cm]{caption}
 \usepackage[labelformat=simple]{subcaption}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
-%\renewcommand{\thetable}{\arabic{table}}
-%\captionsetup[table]{labelformat=simple, labelsep=colon}
 
-%\pgfkeys{/pgf/number format/.cd,1000 sep={}}
-
-%% see http://tex.stackexchange.com/questions/2441/how-to-add-a-forced-line-break-inside-a-table-cell
-%\newcommand{\specialcell}[2][c]{%
-%  \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
-
-% put your own definitions here:
-% \renewcommand\thesubfigure{(\alph{subfigure})}
+%
+% Definitions:
+%
 \def\gz  #1{           \mbox{$\boldsymbol{#1}$}}
-% \DeclareMathAlphabet{\bsf}{OT1}{cmss}{bx}{n}
-% \def\msf  #1{           \mbox{\!\!      $\sf #1$}}
 \def\Grad #1 {{\rm Grad} #1}
 \def\grad {\mbox{grad}}
 \def\Div {\mbox{Div\,}}
 \def\div {\mbox{div\,}}
 \def\d {\mbox{d}}
 \def\D {\mbox{D}}
-% \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
-%\newcommand\normDouble[1]{\left\lVert#1\right\rVert}
-%\newcommand{\normXY}[1]{\lvert #1 \rvert_{2d}}
-%\newcommand{\dbracket}[1]{\left[\!\!\left[ #1 \right]\!\!\right]}
-
 \def\mcl  #1{               {\cal #1}}
-%\def\bcl  #1{\mbox{\boldmath$\cal #1$}}
-
-%\DeclareMathOperator{\det}{det}
 \DeclareMathOperator{\trace}{tr}
 \newcommand{\diff}{\mathop{}\!\mathrm{d}}
 
 
 \begin{document}
 
-\begin{frontmatter}
-  \title{
+\runningheads{D. Davydov et al.}{A matrix-free approach for finite-strain hyperelastic problems}
+
+\title{
   A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid
   }
 
-  \author[a]{Denis Davydov\corref{cor}}
-  \ead{denis.davydov@fau.de}
-
-  \author[a]{Jean-Paul Pelteret}
-  \ead{jean-paul.pelteret@fau.de}
-
-  \author[b]{Daniel Arndt}
-  \ead{daniel.arndt@iwr.uni-heidelberg.de}
-
-  \author[a,c]{Paul Steinmann}
-  \ead{paul.steinmann@fau.de}
-
-  \cortext[cor]{Corresponding author.}
-
-  \address[a]{Chair of Applied Mechanics,
-  Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
-  Egerlandstr.\ 5, 91058 Erlangen, Germany}
-
-  \address[b]{Interdisciplinary Center for Scientific Computing (IWR),
-      Heidelberg University,
-      Im Neuenheimer Feld 205,
-      69120 Heidelberg,
-      Germany}
-
-  \address[c]{Glasgow Computational Engineering Center (GCEC),
-      University of Glasgow, G12 8QQ Glasgow, United Kingdom
+  \author{
+    Denis Davydov\affil{1} \corrauth ,
+    Jean-Paul Pelteret\affil{1},
+    Daniel Arndt\affil{2},
+    Paul Steinmann\affil{1,3}
   }
+
+  \address{
+    \affilnum{1}Chair of Applied Mechanics,
+    Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
+    Egerlandstr.\ 5, 91058 Erlangen, Germany \break
+    \affilnum{2}Interdisciplinary Center for Scientific Computing (IWR),
+    Heidelberg University,
+    Im Neuenheimer Feld 205, 69120 Heidelberg, Germany \break
+    \affilnum{3}Glasgow Computational Engineering Center (GCEC),
+        University of Glasgow, G12 8QQ Glasgow, United Kingdom \break
+    }
+
+  \corraddr{E-mail: denis.davydov@fau.de}
+
+  % \author[a]{Denis Davydov\corref{cor}}
+  % \ead{denis.davydov@fau.de}
+
+  % \author[a]{Jean-Paul Pelteret}
+  % \ead{jean-paul.pelteret@fau.de}
+
+  % \author[b]{Daniel Arndt}
+  % \ead{daniel.arndt@iwr.uni-heidelberg.de}
+
+  % \author[a,c]{Paul Steinmann}
+  % \ead{paul.steinmann@fau.de}
+
+  % \cortext[cor]{Corresponding author.}
+
+  % \address[a]{Chair of Applied Mechanics,
+  % Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
+  % Egerlandstr.\ 5, 91058 Erlangen, Germany}
+
+  % \address[b]{Interdisciplinary Center for Scientific Computing (IWR),
+  %     Heidelberg University,
+  %     Im Neuenheimer Feld 205,
+  %     69120 Heidelberg,
+  %     Germany}
+
+  % \address[c]{Glasgow Computational Engineering Center (GCEC),
+  %     University of Glasgow, G12 8QQ Glasgow, United Kingdom
+  % }
 
 
   \begin{abstract}
@@ -139,16 +131,18 @@
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
   \end{abstract}
 
-
-  \begin{keyword}
-      adaptive finite element method \sep
-      geometric multigrid \sep
-      finite-strain \sep
-      matrix-free \sep
+  \keywords{
+  % \begin{keyword}
+      adaptive finite element method ; %\sep
+      geometric multigrid ; %\sep
+      finite-strain ; %\sep
+      matrix-free ; %\sep
       hyperelasticity
-  \end{keyword}
+  % \end{keyword}
+  }
 
-  \end{frontmatter}
+  \maketitle
+  % \end{frontmatter}
 
 \section{Introduction}
 
