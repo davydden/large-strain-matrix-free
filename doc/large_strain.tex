@@ -308,9 +308,9 @@ $\D_{\displaystyle \Delta \gz u} \gz S = 2 \partial \gz S / \partial \gz C : \D_
 \end{split}
 \label{eq:tangent}
 \end{equation}
-Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order {\color{red}spatial} tangent {\color{red}stiffness} tensor is the push forward of the material {\color{red}part of the referential} tangent {\color{red}stiffness tensor} $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$.
-The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and {\color{red}is} therefore called material part of the tangent.
-The second term in \eqref{eq:tangent} is called {\color{red}the} geometric part of the tangent since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
+Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the displacement field $\overline {\gz u}$, and the fourth-order {\color{red}material part of the spatial} tangent {\color{red}stiffness} tensor is the push forward of the material {\color{red}part of the referential tangent stiffness tensor} $J \boldsymbol{\mathcal{C}} = \chi\left( 4 \frac{d^{2} \psi \left( \mathbf{C} \right)}{d \mathbf{C} \otimes d \mathbf{C}} \right)$.
+The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and {\color{red}is} therefore called material part of the {\color{red}directional derivative}.
+The second term in \eqref{eq:tangent} is called {\color{red}the} geometric part of the {\color{red}directional derivative} since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
 
 \subsection{Constitutive modelling}
 
@@ -578,7 +578,7 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
         }
         evaluate queued contractions using sum factorization and distribute results to the destination vector
   }
-  \caption{Matrix-free tangent operator: cache fourth-order material tangent {\color{red}stiffness tensor} $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
+  \caption{Matrix-free tangent operator: cache {\color{red}material part of the fourth-order spatial tangent stiffness tensor} $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
   \label{alg:mf_tensor4}
 \end{algorithm}
 
@@ -790,9 +790,9 @@ The matrix-free implementation is faster than the matrix-based counterpart alrea
 Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies.
 Two conclusions can be drawn from these results:
 The scalar caching implementation is the most time consuming of the three, as at each step we additionally evaluate the gradient of the displacement field in the {\color{red}referential} configuration that is required to evaluate the Kirchhoff stress $\gz \tau$.
-There is little difference between the approach where the fourth-order material tangent {\color{red}stiffness} tensor is cached (``tensor4'') and the one where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} on the second-order symmetric tensor.
+There is little difference between the approach where the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} is cached (``tensor4'') and the one where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} on the second-order symmetric tensor.
 This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
-Consequently, we can apply the matrix-free approach to any finite-strain material model by caching the fourth-order material tangent {\color{red}stiffness tensor} in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
+Consequently, we can apply the matrix-free approach to any finite-strain material model by caching the {\color{red}material part of the fourth-order spatial tangent stiffness tensor} in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
 It is therefore feasible to define highly performant generic operators that are independent of any applied constitutive laws.
 
 As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
