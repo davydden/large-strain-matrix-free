@@ -159,10 +159,10 @@ One possible reason is that the tangent operators\footnote{{\color{red}Here and
 below by operators we mean finite-dimensional linear operators on vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
 Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
 }} (stemming from linearization of the nonlinear balance equations) are
-more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether the matrix-free methods can be advantageous in this case.
-Another reason could be the use of lower order elements in solid mechanics due to lacking smoothness of the underlying solution.
-The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community.
-Even higher order elements are rarely employed.
+more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether matrix-free methods can be advantageous in this case.
+Another reason could be the {\color{red}frequent} use of lower order elements in solid mechanics due to lacking smoothness of the underlying solution.
+The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
+{\color{red}whereas} higher order elements are rarely employed.
 {\color{red}
 This can potentially reduce advantage of matrix-free methods, that are generally more competitive for higher order elements.
 }
@@ -342,7 +342,8 @@ J \boldsymbol{\mathcal{C}}
   = 2 \left[ \mu - 2\lambda\ln\left( J \right) \right] \boldsymbol{\mathcal{S}}
   + 2 \lambda \mathbf{I} \otimes \mathbf{I}
 \end{gather}
-where $\boldsymbol{\mathcal{S}}$ is the fourth-order symmetric identity tensor.
+where $\boldsymbol{\mathcal{S}}$ is the fourth-order symmetric identity tensor
+{\color{red}with $S_{ijkl}=\frac{1}{2}\left[\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk}\right]$}.
 The action that $J \boldsymbol{\mathcal{C}}$ performs when contracted with an arbitrary rank-2 symmetric tensor is therefore
 \begin{gather}
 J \boldsymbol{\mathcal{C}} : \left( \bullet \right)
