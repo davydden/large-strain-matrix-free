@@ -156,7 +156,7 @@ Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, 
 To the best of our knowledge, matrix-free methods are not widely adopted within the solid mechanics community.
 We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a recent masters thesis produced by a student of the first two of the authors \cite{Mentler2017}.
 One possible reason is that the tangent operators\footnote{{\color{red}Here and
-below by operators we mean finite-dimensional linear operators on vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
+below 'operator' denotes a finite-dimensional linear operator defined on the vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
 Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
 }} (stemming from linearization of the nonlinear balance equations) are
 more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether matrix-free methods can be advantageous in this case.
@@ -164,7 +164,7 @@ Another reason could be the {\color{red}frequent} use of lower order elements in
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
 {\color{red}whereas} higher order elements are rarely employed.
 {\color{red}
-This can potentially reduce advantage of matrix-free methods, that are generally more competitive for higher order elements.
+This can potentially reduce the advantage of matrix-free methods, that are generally more competitive for higher order elements.
 }
 However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
 
@@ -327,7 +327,7 @@ where $\mu$ and $\lambda$ denote the shear modulus and Lam\'{e} parameter respec
   &= \frac{1}{2}\left[ \mu - 2\lambda\ln\left( J \right) \right] \left[ - \frac{d \mathbf{C}^{-1}}{d \mathbf{C}} \right]
   + \frac{\lambda}{2} \mathbf{C}^{-1} \otimes \mathbf{C}^{-1}
 \end{align}
-The Kirchhoff stress and its associated {\color{red}fourth-order material part of spatial tangent tensor} are
+The Kirchhoff stress and its associated {\color{red}fourth-order material part of the spatial tangent tensor} are
 \begin{gather}
 \boldsymbol{\tau}
   \equiv J \boldsymbol{\sigma}
@@ -388,7 +388,7 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
   -
   \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz N_i \, \d S.
 \end{align}
-Here $\gz A$ is the discrete tangent {\color{red}operator}, $\gz F$ is the discrete gradient {\color{red}of the potential energy}
+Here, $\gz A$ is the discrete tangent {\color{red}operator}, $\gz F$ is the discrete gradient {\color{red}of the potential energy}
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the {\color{red}spatial} configuration, whereas the integration is done in the {\color{red}referential} configuration.
 
@@ -453,7 +453,7 @@ Shape functions can also be expressed as product of one dimensional basis functi
 \end{align}
 where for each DoF index $i$ we can associate a multi-index $(i_1, i_2)$.
 {\color{red}
-See Figure \ref{fig:multi_index} for illustration.
+See Figure \ref{fig:multi_index} for an illustration.
 }
 %
 Therefore, the result of the application of the scalar-valued mass operator, represented as a vector $y_i$, on a single element $K$ can be written as
@@ -480,7 +480,7 @@ Therefore, the result of the application of the scalar-valued mass operator, rep
 \end{align*}
 %
 {\color{red}
-Note that $x_j \equiv X_{j_1\,j_2}$; the former access the element source vector using a linear index $j$, whereas the latter uses the associated multi-index accesses $\{j_1\,j_2\}$.
+Note that $x_j \equiv X_{j_1\,j_2}$; the former accesses the element source vector using a linear index $j$, whereas the latter uses the associated multi-index accesses $\{j_1\,j_2\}$.
 }
 %
 These four loops all have the same structure.
