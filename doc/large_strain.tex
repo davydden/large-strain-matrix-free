@@ -1,13 +1,17 @@
 \RequirePackage[l2tabu, orthodox]{nag}
-%\documentclass[12pt]{article}
-% \documentclass[preprint,12pt,times]{elsarticle}
+
+\newif\ifijnme %Declaration of ijnme
+% \ijnmetrue %Sets ijnme to true
+\ijnmefalse %Sets ijnme to false
+
+\ifijnme
 \documentclass[times,doublespace]{nmeauth}
+\else
+\documentclass[preprint,12pt,times]{elsarticle}
+\biboptions{sort&compress,comma,square}
+\usepackage{amsmath}
+\fi
 
-%%% ELSOPTIONS:
-% \biboptions{sort&compress,comma,square}
-% \usepackage{amsmath}
-
-%%%
 
 \usepackage{bm}
 \usepackage{xcolor}
@@ -63,12 +67,18 @@
 
 \begin{document}
 
+\ifijnme
 \runningheads{D. Davydov et al.}{A matrix-free approach for finite-strain hyperelastic problems}
+\else
+\journal{CMAME}
+\begin{frontmatter}
+\fi
 
 \title{
   A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid
   }
 
+\ifijnme
   \author{
     Denis Davydov\affil{1} \corrauth ,
     Jean-Paul Pelteret\affil{1},
@@ -89,33 +99,35 @@
 
   \corraddr{E-mail: denis.davydov@fau.de}
 
-  % \author[a]{Denis Davydov\corref{cor}}
-  % \ead{denis.davydov@fau.de}
+\else
+  \author[a]{Denis Davydov\corref{cor}}
+  \ead{denis.davydov@fau.de}
 
-  % \author[a]{Jean-Paul Pelteret}
-  % \ead{jean-paul.pelteret@fau.de}
+  \author[a]{Jean-Paul Pelteret}
+  \ead{jean-paul.pelteret@fau.de}
 
-  % \author[b]{Daniel Arndt}
-  % \ead{daniel.arndt@iwr.uni-heidelberg.de}
+  \author[b]{Daniel Arndt}
+  \ead{daniel.arndt@iwr.uni-heidelberg.de}
 
-  % \author[a,c]{Paul Steinmann}
-  % \ead{paul.steinmann@fau.de}
+  \author[a,c]{Paul Steinmann}
+  \ead{paul.steinmann@fau.de}
 
-  % \cortext[cor]{Corresponding author.}
+  \cortext[cor]{Corresponding author.}
 
-  % \address[a]{Chair of Applied Mechanics,
-  % Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
-  % Egerlandstr.\ 5, 91058 Erlangen, Germany}
+  \address[a]{Chair of Applied Mechanics,
+  Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
+  Egerlandstr.\ 5, 91058 Erlangen, Germany}
 
-  % \address[b]{Interdisciplinary Center for Scientific Computing (IWR),
-  %     Heidelberg University,
-  %     Im Neuenheimer Feld 205,
-  %     69120 Heidelberg,
-  %     Germany}
+  \address[b]{Interdisciplinary Center for Scientific Computing (IWR),
+      Heidelberg University,
+      Im Neuenheimer Feld 205,
+      69120 Heidelberg,
+      Germany}
 
-  % \address[c]{Glasgow Computational Engineering Center (GCEC),
-  %     University of Glasgow, G12 8QQ Glasgow, United Kingdom
-  % }
+  \address[c]{Glasgow Computational Engineering Center (GCEC),
+      University of Glasgow, G12 8QQ Glasgow, United Kingdom
+  }
+\fi
 
 
   \begin{abstract}
@@ -131,18 +143,29 @@
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
   \end{abstract}
 
+\ifijnme
+
   \keywords{
-  % \begin{keyword}
-      adaptive finite element method ; %\sep
-      geometric multigrid ; %\sep
-      finite-strain ; %\sep
-      matrix-free ; %\sep
+      adaptive finite element method ;
+      geometric multigrid ;
+      finite-strain ;
+      matrix-free ;
       hyperelasticity
-  % \end{keyword}
   }
 
   \maketitle
-  % \end{frontmatter}
+
+\else
+    \begin{keyword}
+        adaptive finite element method \sep
+        geometric multigrid \sep
+        finite-strain \sep
+        matrix-free \sep
+        hyperelasticity
+    \end{keyword}
+
+\end{frontmatter}
+\fi
 
 \section{Introduction}
 
@@ -886,8 +909,11 @@ However, a considerable amount of time of GMG preconditioner is spent in the coa
 Our future work will, therefore, be focused on extending the proposed matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}.
 We are also interested in extending these methods to near incompressible three-field formulations.
 
+\ifijnme
 \acks
-% \section*{Acknowledgements}
+\else
+\section*{Acknowledgements}
+\fi
 
 D.~Davydov acknowledges the financial support of the German Research Foundation (DFG), grant DA 1664/2-1.
 
@@ -902,10 +928,12 @@ for Exascale Computing'' (SPPEXA).
 
 P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible, as well as funding by the EPSRC Strategic Support Package ``Engineering of Active Materials by Multiscale/Multiphysics Computational Mechanics''.
 
-% \section*{Bibliography}
-
+\ifijnme
 \bibliographystyle{wileyj}
-% \bibliographystyle{elsarticle-num}
+\else
+\section*{Bibliography}
+\bibliographystyle{elsarticle-num}
+\fi
 
 \bibliography{bibliography}
 
