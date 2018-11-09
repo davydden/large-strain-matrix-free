@@ -627,7 +627,8 @@ Essentially, level operators correspond to the linearization around smoothed rep
 Note that this differs from the classical approach where the (tangent) operator $\gz A^{l+1}$ on level $l+1$ is directly related to the (tangent) operator $\gz A^{l}$ on level $l$ via $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, where $\gz I^l_{l+1}$ and $\gz I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
 }
 Finally, at the coarsest level we use a CG solver to reduce the residual by three orders of magnitude within (at most) one hundred steps.
-The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps. For other approaches that combine homogenization and multigrid methods for small strain elastic materials {\color{red}and fracture}, see \cite{Bayreuther2003,Fish1995} {\color{red}and \cite{Kaczmarczyk2010}, respectively}.
+The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps.
+{\color{red}For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.}
 
 \section{Numerical examples}
 \label{sec:example}
