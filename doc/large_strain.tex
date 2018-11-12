@@ -336,7 +336,7 @@ The second term in \eqref{eq:tangent} is called {\color{red}the} geometric part 
 
 \subsection{Constitutive modelling}
 
-For the current study, we use the Neo-Hookean model
+For the current study, we use the compressible Neo-Hookean model
 \begin{gather}
 \psi \left( \mathbf{C} \right)
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
@@ -417,11 +417,11 @@ Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradie
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
-Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the {\color{red}residual} force vector $\gz F$ corresponding to the discretization are assembled and
-a direct or iterative solver is used to solve the linear system.
+Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the {\color{red}residual} force vector $\gz F$ corresponding to the discretization are assembled (\textcolor{red}{that is, the non-zero matrix elements $A_{ij}$ are individually computed and stored}) and a direct or iterative solver is used to solve the linear system.
+\textcolor{red}{In this case the the matrix-vector product $\gz A \gz x$ results from the product of the individual matrix elements with the elements in the vector, and is usually implemented with the aid of specialized linear algebra packages.}
 On modern computer architectures however, it transpires that loading sparse matrix data into the CPU registers is significantly slower than performing the arithmetic operations when solving.
-For this reason, recent implementations often focus on so-called matrix-free approaches. The idea is to perform the operations within the solver on-the-fly
-rather than loading matrix elements from memory.
+For this reason, recent implementations often focus on so-called matrix-free approaches \textcolor{red}{where the matrix is not assembled but rather the result of its operation on a vector is directly calculated}. 
+The idea is to perform the operations within the solver on-the-fly rather than loading matrix elements from memory.
 For iterative solvers, this is possible since it is sufficient to compute matrix-vector products alone.
 %
 The matrix-vector product $\gz A \gz x$ {\color{red}(i.e. the action of operator $\gz A$ on a vector $\gz x$)} can be expressed by
