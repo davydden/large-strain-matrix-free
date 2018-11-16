@@ -420,7 +420,7 @@ Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradie
 Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the {\color{red}residual} force vector $\gz F$ corresponding to the discretization are assembled (\textcolor{red}{that is, the non-zero matrix elements $A_{ij}$ are individually computed and stored}) and a direct or iterative solver is used to solve the linear system.
 \textcolor{red}{In this case the the matrix-vector product $\gz A \gz x$ results from the product of the individual matrix elements with the elements in the vector, and is usually implemented with the aid of specialized linear algebra packages.}
 On modern computer architectures however, it transpires that loading sparse matrix data into the CPU registers is significantly slower than performing the arithmetic operations when solving.
-For this reason, recent implementations often focus on so-called matrix-free approaches \textcolor{red}{where the matrix is not assembled but rather the result of its operation on a vector is directly calculated}. 
+For this reason, recent implementations often focus on so-called matrix-free approaches \textcolor{red}{where the matrix is not assembled but rather the result of its operation on a vector is directly calculated}.
 The idea is to perform the operations within the solver on-the-fly rather than loading matrix elements from memory.
 For iterative solvers, this is possible since it is sufficient to compute matrix-vector products alone.
 %
@@ -623,9 +623,9 @@ However, for a patch of elements consisting of the same material, the transfer o
 Based on this observation we adopt the following approach: It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
 In this case, the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators.
 We define the level operators as follows: Recall that the fine scale tangent {\color{red}operator} \eqref{eq:algebraic_tangent} is obtained by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to all multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}.
-Essentially, level operators correspond to the linearization around smoothed representation of displacement field\footnote{
+Essentially, level operators correspond to the linearization around the smoothed representation of displacement field\footnote{
 Note that this differs from the classical approach where the (tangent) operator $\gz A^{l+1}$ on level $l+1$ is directly related to the (tangent) operator $\gz A^{l}$ on level $l$ via $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, where $\gz I^l_{l+1}$ and $\gz I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
-}
+}.
 Finally, at the coarsest level we use a CG solver to reduce the residual by three orders of magnitude within (at most) one hundred steps.
 The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps.
 {\color{red}For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.}
