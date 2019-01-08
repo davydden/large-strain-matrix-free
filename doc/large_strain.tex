@@ -139,7 +139,6 @@
     In this work, we extend the application of matrix-free approaches to problems in solid mechanics and investigate different implementations of the finite-strain hyperelastic finite element tangent operator numerically.
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
-    Our implementation employs MPI and Intel Threading Building Blocks parallelization, and SIMD vectorization.
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
   \end{abstract}
 
@@ -192,7 +191,10 @@ However, we note that, even with linear FEM, large scale computations with $10^{
 In this work, we investigate different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
-Our implementation employs MPI and Intel Threading Building Blocks parallelization, together with SIMD vectorization.
+MPI parallelization together with SIMD vectorization
+{\color{red}
+are provided by the \texttt{deal.II} \cite{dealII90} finite element library, used for this study.
+}
 
 The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics. Sections \ref{sec:fe} and \ref{sec:mf} cover the finite element discretization and the different matrix-free operator evaluation approaches. In Section \ref{sec:gmg} we propose a geometric multigrid preconditioner suitable for finite-strain hyperelasticity. The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}. The results are summarized in Section \ref{sec:summary}.
 
@@ -505,8 +507,6 @@ Since each of these $2\times d$ loops has a complexity of $n$ and we perform the
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for the 3D case, and where the discretization and evaluation employs high polynomial degree basis functions with the corresponding quadrature rule.
 More information on matrix-free techniques can be found in \cite{kronbichler12,vos10}.
 
-We briefly note that the SIMD vectorization is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'') whereas the shared memory parallelization using Intel Threading Building Blocks is adopted at the element blocks.
-
 Given that the matrix-free operators are applied on-the-fly, it is crucial to find a good balance between pre-calculation of certain values (caching) and performance of the algorithm.
 %
 In order to obtain gradients with respect to the spatial configuration,
@@ -608,6 +608,19 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
 Finally, Algorithm \ref{alg:mf_tensor4} represents the most general case which does not assume any form of the material part of the fourth-order spatial tangent stiffness tensor.
 In this case, we have to cache the fourth-order symmetric tensor $\boldsymbol{\mathcal{C}}$ and the Kirchhoff stress $\gz \tau$ for each element and quadrature point, and perform the double contraction with the second-order symmetric tensor $\overline{\grad^s} \gz x$ on-the-fly.
 
+Note that the SIMD vectorization
+{\color{red}
+in \texttt{deal.II} \cite{dealII90}
+}
+is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'').
+{\color{red}
+For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements. This is achieved using templated number types within the \textit{Tensor} class of the \texttt{deal.II} library.
+\textit{FEEvaluation} class already provides all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
+Thanks to the object oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
+For more information about the implementation details and performance analysis (????), see \cite{kronbichler12}.
+}
+
+
 \section{Geometric multigrid preconditioning}
 \label{sec:gmg}
 
@@ -663,7 +676,6 @@ Note that although a relatively coarse mesh is used at the coarsest multigrid le
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
-Shared memory parallelization using Intel Threading Building Blocks was disabled for this study.
 
 
 \begin{figure}[!ht]
