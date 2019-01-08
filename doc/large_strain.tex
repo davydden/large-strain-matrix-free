@@ -628,6 +628,13 @@ Note that this differs from the classical approach where the (tangent) operator 
 }.
 Finally, at the coarsest level we use a CG solver to reduce the residual by three orders of magnitude within (at most) one hundred steps.
 The multigrid algorithm is a V-cycle with two pre- and post-smoothing steps.
+
+{\color{red}
+To summarize, in this section we propose a method by which to construct level tangent operators for finite-strain elasticity to be employed within the GMG preconditioner.
+The other parts of the GMG preconditioner such as Chebyshev smoother, matrix-free interlevel transfer operators and the coarse level iterative solver are provided by the \texttt{deal.II} library.
+We note that at the time of writing, $p-$ version of the GMG is not available within the \texttt{deal.II} library.
+}
+
 For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.
 
 \section{Numerical examples}
