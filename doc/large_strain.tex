@@ -614,11 +614,18 @@ in \texttt{deal.II} \cite{dealII90}
 }
 is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'').
 {\color{red}
-For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements. This is achieved using templated number types within the \textit{Tensor} class of the \texttt{deal.II} library.
-\textit{FEEvaluation} class already provides all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
+For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements.
+For example, deformation gradient $\gz F = \gz I + \Grad \, \overline{\gz u^h}$ (second order tensor) is evaluated at the specific quadrature point of all elements within the ``block''.
+This is achieved using templated number types within the \textit{Tensor} class of the \texttt{deal.II} library.
+In particular, \texttt{deal.II} provides the \textit{VectorizedArray} templated generic class that defines a unified interface to a vectorized data type.
+The core of the sum factorization algorithms is provided by
+\textit{FEEvaluation} class, that already supports all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
 Thanks to the object oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
-For more information about the implementation details and performance analysis (????), see \cite{kronbichler12}.
+Distributed memory MPI parallelization of matrix-free operators is done using the standard domain decomposition technique, where each MPI process is responsible for applying the operator only on the so called locally owned elements.
+For more information about the implementation details of sum factorization techniques in deal.II and their performance analysis (????), see \cite{kronbichler12}.
 }
+
+
 
 
 \section{Geometric multigrid preconditioning}
