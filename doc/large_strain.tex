@@ -903,7 +903,7 @@ A valid alternative would be to use matrix-based AMG at the coarsest level.
 \label{sec:summary}
 
 In this contribution, we proposed and numerically investigated several matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
-The implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic in 3D.
+The implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic {\color{red}elements} in 3D.
 This gives hope that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
 
 We also studied the performance of the GMG preconditioner with standard geometric transfer operations between each level.
