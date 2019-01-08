@@ -437,7 +437,7 @@ For the sake of demonstration, let us assume that $\gz A$ represents a mass oper
 \end{align*}
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in $d$ space dimensions.
-For the total matrix-vector product we get $\mathcal{O}(2n^{2d})$,
+For the total matrix-vector product we get $\mathcal{O}(n^{2d})$,
 and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
 
 \begin{figure}[!ht]
@@ -501,7 +501,7 @@ Note that $x_j \equiv X_{j_1\,j_2}$; the former accesses the element source vect
 %
 These four loops all have the same structure.
 We either keep the shape function fixed and iterate over the quadrature points in one spatial direction (in the first two sums) or keep the quadrature point fixed and iterate over all the shape functions in one spatial direction (in the last two sums).
-Since each of these $2\times d$ loops has a complexity of $n$ and we perform them for $n^d$ values in quadrature points or values in degrees of freedoms simultaneously, this results in an algorithm with an arithmetic complexity of $\mathcal{O}(2dn^{d+1})$.
+Since each of these $2\times d$ loops has a complexity of $n$ and we perform them for $n^d$ values in quadrature points or values in degrees of freedoms simultaneously, this results in an algorithm with an arithmetic complexity of $\mathcal{O}(n^{d+1})$.
 Hence, we can expect that such a matrix-free approach is faster than a regular matrix-based approach, especially for the 3D case, and where the discretization and evaluation employs high polynomial degree basis functions with the corresponding quadrature rule.
 More information on matrix-free techniques can be found in \cite{kronbichler12,vos10}.
 
