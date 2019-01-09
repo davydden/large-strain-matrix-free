@@ -685,20 +685,6 @@ Note that although a relatively coarse mesh is used at the coarsest multigrid le
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
-
-
-\begin{figure}[!ht]
-  \centering
-  \begin{subfigure}[b]{0.8\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{gmg_2d.png}
-    % \caption{2D multigrid mesh with 2 global refinements}
-  \end{subfigure}
-  \caption{2D multigrid mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
-  \label{fig:miehe_gmg}
-\end{figure}
-%
-Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements.
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
 
 \begin{figure}[!ht]
@@ -716,6 +702,40 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \caption{Deformed meshes at the final loading step with quadratic elements and two global mesh refinements.}%
   \label{fig:miehe_deformed}
 \end{figure}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{fine_level_2d.png}
+    % \caption{2D multigrid mesh with 2 global refinements}
+  \end{subfigure}
+  \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
+  \label{fig:miehe_fine_level}
+\end{figure}
+
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{gmg_2d.png}
+    % \caption{2D multigrid mesh with 2 global refinements}
+  \end{subfigure}
+  \caption{2D multigrid mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
+  \label{fig:miehe_gmg}
+\end{figure}
+%
+%
+{\color{red}
+MPI parallelization is achieved using the standard domain decomposition, where each MPI process ``owns'' only a subset of elements.
+To that end, \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4est} library is used.
+Figure \ref{fig:miehe_fine_level} illustrates such decomposition on the fine mesh level for the 2D problem.
+Same approach is adopted at the multigrid levels.}
+Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements.
+{\color{red}
+Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.
+}
 
 \begin{table}
   \centering
