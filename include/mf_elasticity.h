@@ -1524,21 +1524,22 @@ namespace Cook_Membrane
                                             locally_relevant_dofs);
 
     tangent_matrix.clear();
-    {
-      // Setup the sparsity pattern and tangent matrix
-      TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
-                                           mpi_communicator);
+    if (!parameters.skip_tangent_assembly)
+      {
+        // Setup the sparsity pattern and tangent matrix
+        TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
+                                            mpi_communicator);
 
-      DoFTools::make_sparsity_pattern(dof_handler,
-                                      sp,
-                                      constraints,
-                                      /* keep_constrained_dofs */ false,
-                                      Utilities::MPI::this_mpi_process(
-                                        mpi_communicator));
+        DoFTools::make_sparsity_pattern(dof_handler,
+                                        sp,
+                                        constraints,
+                                        /* keep_constrained_dofs */ false,
+                                        Utilities::MPI::this_mpi_process(
+                                          mpi_communicator));
 
-      sp.compress();
-      tangent_matrix.reinit(sp);
-    }
+        sp.compress();
+        tangent_matrix.reinit(sp);
+      }
 
     // We then set up storage vectors
     system_rhs.reinit(locally_owned_dofs,
@@ -2050,17 +2051,18 @@ namespace Cook_Membrane
 
           const unsigned int n_times = 10;
           MPI_Barrier(mpi_communicator);
-          for (unsigned int i = 0; i < n_times; ++i)
-            {
-              TimerOutput::Scope t(timer, "vmult (Trilinos)");
+          if (!parameters.skip_tangent_assembly)
+            for (unsigned int i = 0; i < n_times; ++i)
+              {
+                TimerOutput::Scope t(timer, "vmult (Trilinos)");
 #ifdef WITH_LIKWID
-              LIKWID_MARKER_START("vmult_Trilinos");
+                LIKWID_MARKER_START("vmult_Trilinos");
 #endif
-              tangent_matrix.vmult(dst_mb, src_trilinos);
+                tangent_matrix.vmult(dst_mb, src_trilinos);
 #ifdef WITH_LIKWID
-              LIKWID_MARKER_STOP("vmult_Trilinos");
+                LIKWID_MARKER_STOP("vmult_Trilinos");
 #endif
-            }
+              }
 
           MPI_Barrier(mpi_communicator);
           for (unsigned int i = 0; i < n_times; ++i)
@@ -2498,14 +2500,22 @@ namespace Cook_Membrane
                   }
               }
 
-          constraints.distribute_local_to_global(cell_matrix,
-                                                 cell_rhs,
-                                                 local_dof_indices,
-                                                 tangent_matrix,
-                                                 system_rhs_trilinos);
+          if (parameters.skip_tangent_assembly)
+            constraints.distribute_local_to_global(cell_rhs,
+                                                   local_dof_indices,
+                                                   system_rhs_trilinos,
+                                                   cell_matrix);
+          else
+            constraints.distribute_local_to_global(cell_matrix,
+                                                   cell_rhs,
+                                                   local_dof_indices,
+                                                   tangent_matrix,
+                                                   system_rhs_trilinos);
         }
 
-    tangent_matrix.compress(VectorOperation::add);
+    if (!parameters.skip_tangent_assembly)
+      tangent_matrix.compress(VectorOperation::add);
+
     system_rhs_trilinos.compress(VectorOperation::add);
 
     // Determine the true residual error for the problem.  That is, determine
@@ -2621,7 +2631,7 @@ namespace Cook_Membrane
     }
 
     timer.enter_subsection("Linear solver");
-    const int solver_its = tangent_matrix.m() * parameters.max_iterations_lin;
+    const int solver_its = dof_handler.n_dofs() * parameters.max_iterations_lin;
 
     SolverControl solver_control(solver_its,
                                  tol_sol,
