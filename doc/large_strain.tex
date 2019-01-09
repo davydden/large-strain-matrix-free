@@ -963,14 +963,27 @@ A valid alternative would be to use matrix-based AMG at the coarsest level.
 \section{Summary and Conclusions}
 \label{sec:summary}
 
-In this contribution, we proposed and numerically investigated several matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
-The implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic {\color{red}elements} in 3D.
-This gives hope that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
+In this contribution, we proposed and numerically investigated {\color{red}three different} matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
+{\color{red}
+To the best of our knowledge, this is the first work that applies matrix-free sum factorization techniques to such materials.}
+The implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic {\color{red}elements in 2D}.
+{\color{red}
+Given that in this case we did not utilize the specific form of the material part of the stiffness tensor, we conclude}
+that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
 
-We also studied the performance of the GMG preconditioner with standard geometric transfer operations between each level.
+{\color{red}
+We also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner
+}
+with standard geometric transfer operations between each level.
 The GMG was applied to heterogeneous material assuming that the coarsest level can provide an adequate discretization of the heterogeneity.
-The numerical studies indicate that the proposed preconditioner leads to a solution approach that is faster than the matrix-based AMG for moderately high polynomial degrees (approximately up to order five).
-However, a considerable amount of time of GMG preconditioner is spent in the coarse level solver.
+The numerical studies indicate that the proposed preconditioner is efficient from the perspective of linear algebra.
+{\color{red}
+Namely, the number of iterations in the iterative solver is almost independent on the polynomial degree of the finite element basis.
+The multigrid matrix-free preconditioner also}
+leads to a solution approach that is faster than the matrix-based AMG for moderately high polynomial degrees (approximately up to order five).
+However, a considerable amount of time of GMG preconditioner is spent in the coarse level solver,
+{\color{red}
+which is the main bottleneck of the here considered iterative solver.}
 Our future work will, therefore, be focused on extending the proposed matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}.
 We are also interested in extending these methods to near incompressible three-field formulations.
 
