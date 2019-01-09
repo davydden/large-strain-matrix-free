@@ -936,13 +936,26 @@ Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_me
 \end{figure}
 
 Next we evaluate the performance of the proposed geometric multigrid preconditioner.
+{\color{red}
+Our main goal is to examine whether or not the adopted level operators lead to an efficient preconditioner from the linear algebra perspective.
+}
 First we consider the number of iterations in the conjugate gradient (CG) solver.
 Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_Emmy_cg3} show a very mild increase in the average number of CG iterations for different polynomial degrees.
 On the other hand, the black-box AMG preconditioner requires many more iterations for convergence.
+{\color{red}
+Consequently we can concluded that, although the adopted level operators are not built using the triple product $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, they still results in a well behaving multigrid preconditioner for the here considered finite strain elasticity problem.
+}
+
+{\color{red}
+Additionally, we also compare solution times of the preconditioned iterative solvers.
+}
 Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution times for polynomial degrees up to $p=5$.
 For higher orders in 2D the wall-clock time is comparable to the AMG preconditioner, see Figure \ref{fig:benchmark_miehe_Emmy_sol2}.
 The reason for this is the suboptimal coarse level solver within the GMG preconditioner.
 Evidently, the combination of the Chebyshev smoother with the CG solver at the coarsest mesh level has unsatisfactory performance for higher polynomial degrees.
+{\color{red}
+Consequently, the coarse level solver is the bottleneck of the adopted here geometric multigrid preconditioner. Its performance from the perspective of linear algebra shall be improved first and only then numerical implementational details of the complete preconditioner shall be studied.
+}
 One possible solution to this issues would be to perform further coarsening combined with the homogenization-based transfer operators \cite{Miehe2007}.
 Although untested in this work, we hypothesize that this should also improve the performance of the preconditioner for lower degrees.
 A valid alternative would be to use matrix-based AMG at the coarsest level.
