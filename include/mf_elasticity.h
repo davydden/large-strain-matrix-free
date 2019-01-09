@@ -80,10 +80,15 @@ static const unsigned int debug_level = 0;
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
+#include <config.h>
 #include <material.h>
 #include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
 #include <sys/stat.h>
+
+#ifdef WITH_LIKWID
+#include <likwid.h>
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -1089,6 +1094,9 @@ namespace Cook_Membrane
   void
   Solid<dim, degree, n_q_points_1d, NumberType>::run()
   {
+#ifdef WITH_LIKWID
+    LIKWID_MARKER_INIT;
+#endif
     make_grid();
     system_setup();
     output_results();
@@ -1121,6 +1129,10 @@ namespace Cook_Membrane
 
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
+#ifdef WITH_LIKWID
+    LIKWID_MARKER_CLOSE;
+#endif
+
   }
 
 
@@ -2041,14 +2053,26 @@ namespace Cook_Membrane
           for (unsigned int i = 0; i < n_times; ++i)
             {
               TimerOutput::Scope t(timer, "vmult (Trilinos)");
+#ifdef WITH_LIKWID
+              LIKWID_MARKER_START("vmult_Trilinos");
+#endif
               tangent_matrix.vmult(dst_mb, src_trilinos);
+#ifdef WITH_LIKWID
+              LIKWID_MARKER_STOP("vmult_Trilinos");
+#endif
             }
 
           MPI_Barrier(mpi_communicator);
           for (unsigned int i = 0; i < n_times; ++i)
             {
               TimerOutput::Scope t(timer, "vmult (MF)");
+#ifdef WITH_LIKWID
+              LIKWID_MARKER_START("vmult_MF");
+#endif
               mf_nh_operator.vmult(dst_mf, src);
+#ifdef WITH_LIKWID
+              LIKWID_MARKER_STOP("vmult_MF");
+#endif
             }
 
 #ifdef DEBUG
