@@ -880,8 +880,12 @@ It is therefore feasible to define highly performant generic operators that are 
 As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
 Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} demonstrate that even with caching one fourth-order symmetric tensor and one second-order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
 
+% likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m $EXC
 {\color{red}
-Finally, we analyze the node-level performance of the two approaches using the Roofline model. [DD]TODO: plot and discuss.
+Finally, we analyze the node-level performance of the two approaches using the Roofline model.
+Memory bandwidth (MBytes/s) and the number of floating point operations per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
+The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket.
+[DD]TODO: plot and discuss.
 }
 
 \subsection{Preconditioned iterative solver}
