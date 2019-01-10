@@ -123,7 +123,7 @@ for f in files:
 
 # now we have lists of tuples ready
 # first, sort by label:
-likwid_data.sort(key=lambda tup: tup[3])
+likwid_data.sort(key=lambda tup: (tup[3], tup[1]))
 
 #####################
 #       PLOT        #
