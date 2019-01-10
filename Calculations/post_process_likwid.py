@@ -152,6 +152,9 @@ degree_to_points = {
     8:'v'
 }
 
+mf_perf = []
+tr_perf = []
+
 # Now plot each measured point:
 for d in likwid_data:
   f = d[5][0]
@@ -161,11 +164,18 @@ for d in likwid_data:
   style = d[4] + degree_to_points[d[1]]
   label = '{0} (p={1})'.format(d[3],d[1])
   plt.loglog(x,y, style, label=label)
+  if 'MF' in label:
+    mf_perf.append(y[0])
+  else:
+    tr_perf.append(y[0])
 
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
+plt.ylim(top=9000)
+plt.text(1,200,'P={0} GFlop/s'.format(P))
+plt.text(0.02, 5, 'B={0} GB/s'.format(B), rotation=30.)
 
-leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.2)
+leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
 
 # file location
@@ -177,6 +187,11 @@ print 'Saving figure in: {0}'.format(fig_file)
 
 plt.tight_layout()
 plt.savefig(fig_file, format='pdf')
+
+# Finally report average performance for all MF and Trilinos runs:
+print 'Average performance:'
+print '  MF:       {0}'.format(np.mean(mf_perf))
+print '  Trilinos: {0}'.format(np.mean(tr_perf))
 
 # plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
 # remove_creation_date(fig_prefix + 'timing2d.eps')
