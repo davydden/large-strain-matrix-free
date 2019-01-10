@@ -921,14 +921,14 @@ memory bandwidth and peak performance are $B=50 \,\rm{GB/s}$ and $P=176\, \rm{GF
 
 {\color{red}
 Figure \ref{fig:roofline} shows the Roofline performance model.
-As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$.
+As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$ (4.5\% of the peak performance).
 Matrix-free implementation of fine-strain elastic tangent operators (on average) leads to a much better performance of
 $22.6\,\rm{GFlop/s}$, as well as about an order of magnitude higher computational intensity, but still stays in the memory bound regime.
 The achieved performance is about 13\% of the peak arithmetic performance, which is considerably lower than the
 70\% reported for the Laplace operation in \cite{kronbichler12}.
 When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}),
 we observe very marginal increase in computational intensity and almost unchanged performance.
-This indicates the origin for suboptimal results of matrix-free approach is most likely not related to the algorithms studied here.
+This indicates that the origin for suboptimal results of matrix-free approach is most likely not related to the algorithms numerically investigated here.
 Further detailed studies are necessary to explain this behavior.
 }
 
