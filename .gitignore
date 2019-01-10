@@ -16,5 +16,10 @@
 
 # generated input files:
 /Calculations/*_p*q*r*_*.prm
-/Calculations/run.sh
+/Calculations/*run.sh
 /Calculations/__*
+
+# LIKWID:
+/Calculations/*csv.tmp
+/Calculations/.hostfile_*.txt
+/Calculations/.likwidscript_*.txt
