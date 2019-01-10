@@ -184,7 +184,12 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
   return cached_scalar.memory_consumption() +
          cached_second_scalar.memory_consumption() +
          cached_tensor2.memory_consumption() +
-         cached_tensor4.memory_consumption();
+         cached_tensor4.memory_consumption() +
+         // matrix-free data:
+         data_current->memory_consumption() +
+         (mf_caching == "scalar" ? data_reference->memory_consumption() : 0) +
+         // diagonal (we actually need only one vector)
+         inverse_diagonal_entries->memory_consumption();
 }
 
 
