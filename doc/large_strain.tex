@@ -906,7 +906,27 @@ Finally, we analyze the node-level performance of the two approaches using the R
 Memory bandwidth (MBytes/s) and the number of floating point operations per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
 The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket, whose
 memory bandwidth and peak performance are $B=50 \,\rm{GB/s}$ and $P=176\, \rm{GFLOP/s}$, respectively.
-[DD]TODO: plot and discuss.
+}
+
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline.pdf}
+    % \caption{2D multigrid mesh with 2 global refinements}
+  \end{subfigure}
+  \caption{Roofline model for a selection of polynomial degrees on a 2D test example.}%
+  \label{fig:roofline}
+\end{figure}
+
+{\color{red}
+Figure \ref{fig:roofline} shows the Roofline performance model.
+As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$.
+Matrix-free implementation of fine-strain elastic tangent operators (on average) leads to a much better performance of
+$22.6\,\rm{GFlop/s}$, as well as about an order of magnitude higher computational intensity, but still stays in the memory bound regime.
+The achieved performance is about 13\% of the peak arithmetic performance, which is considerably lower than the
+70\% reported for the Laplace operation in \cite{kronbichler12}.
+Further detailed studies are necessary to explain this behavior.
 }
 
 {\color{red}
