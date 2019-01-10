@@ -926,15 +926,18 @@ Matrix-free implementation of fine-strain elastic tangent operators (on average)
 $22.6\,\rm{GFlop/s}$, as well as about an order of magnitude higher computational intensity, but still stays in the memory bound regime.
 The achieved performance is about 13\% of the peak arithmetic performance, which is considerably lower than the
 70\% reported for the Laplace operation in \cite{kronbichler12}.
+When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}),
+we observe very marginal increase in computational intensity and almost unchanged performance.
+This indicates the origin for suboptimal results of matrix-free approach is most likely not related to the algorithms studied here.
 Further detailed studies are necessary to explain this behavior.
 }
 
 {\color{red}
 To summarize, we can attribute the speedup of the matrix-free finite-strain tangent operators for higher order bases to two factors.
-First, is the higher algorithmic intensity as compared to the matrix-based implementation, which is clearly a memory
-bound, see Figure XXXX.
+First, is the higher algorithmic intensity as compared to the matrix-based implementation, which is clearly memory
+bound, see Figure \ref{fig:roofline}.
 Second, is the reduction in the number of floating point operations per DoF thanks to the sum factorization technique, as discussed in
-Section \ref{sec:mf} and in the reference \cite{kronbichler12}.
+Section \ref{sec:mf} and \cite[Section 2.4]{kronbichler12}.
 }
 
 \subsection{Preconditioned iterative solver}
@@ -1036,7 +1039,7 @@ the implementation that caches the material part of the fourth-order spatial tan
 Given that in this case we did not utilize the specific form of the material part of the stiffness tensor, we conclude}
 that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
 {\color{red}
-Roofline model indicated the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity. Further studies are required to identify how to further improve the intensity and reach the compute bound case.}
+Roofline model indicated the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity. Further studies are required to identify means to improve the computational intensity and performance of the matrix-free implementation.}
 
 {\color{red}
 We also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner
