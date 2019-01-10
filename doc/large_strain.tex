@@ -616,15 +616,20 @@ in \texttt{deal.II} \cite{dealII90}
 }
 is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'').
 {\color{red}
-For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements.
+The main reason is that the operations are typically the same on all elements.
+For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements\footnote{For the heterogeneous materials considered here,
+the elements are first according to the material type (matrix or inclusion) and then the SIMD vectorization is applied for each group of elements.
+This functionality is provided by the \texttt{deal.II} library within the \textit{MatrixFree} class.
+}.
 For example, deformation gradient $\gz F = \gz I + \Grad \, \overline{\gz u^h}$ (second order tensor) is evaluated at the specific quadrature point of all elements within the ``block''.
 This is achieved using templated number types within the \textit{Tensor} class of the \texttt{deal.II} library.
-In particular, \texttt{deal.II} provides the \textit{VectorizedArray} templated generic class that defines a unified interface to a vectorized data type.
+In particular, \texttt{deal.II} provides the \textit{VectorizedArray} templated generic class that defines a unified interface to a vectorized data type
+and overloads basic arithmetic operations based on compiler intrinsics.
 The core of the sum factorization algorithms is provided by
 \textit{FEEvaluation} class, that already supports all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
 Thanks to the object oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
 Distributed memory MPI parallelization of matrix-free operators is done using the standard domain decomposition technique, where each MPI process is responsible for applying the operator only on the so called locally owned elements.
-For more information about the implementation details of sum factorization techniques in deal.II and their performance analysis (????), see \cite{kronbichler12}.
+For more information about the implementation details and data structures for sum factorization approaches in deal.II (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and shared memory parallelization as well SIMD vectorization) and performance tests, see \cite{kronbichler12}.
 }
 
 
@@ -891,6 +896,14 @@ Memory bandwidth (MBytes/s) and the number of floating point operations per seco
 The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket, whose
 memory bandwidth and peak performance are $B=50 \,\rm{GB/s}$ and $P=176\, \rm{GFLOP/s}$, respectively.
 [DD]TODO: plot and discuss.
+}
+
+{\color{red}
+To summarize, we can attribute the speedup of the matrix-free finite-strain tangent operators for higher order bases to two factors.
+First, is the higher algorithmic intensity as compared to the matrix-based implementation, which is clearly a memory
+bound, see Figure XXXX.
+Second, is the reduction in the number of floating point operations per DoF thanks to the sum factorization technique, as discussed in
+Section \ref{sec:mf} and in the reference \cite{kronbichler12}.
 }
 
 \subsection{Preconditioned iterative solver}
