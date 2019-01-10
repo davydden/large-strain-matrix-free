@@ -871,10 +871,15 @@ The ``IWR'' results were obtained on a single machine with eight Xeon E7-8870 ``
 
 Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem as performed on the two clusters.
 {\color{red}
-We are interested in the wall-clock time per DoF as a first metric.}
+We are interested in the wall-clock time (average over 10 runs) per DoF as a first metric.}
 As expected, the matrix-vector multiplication becomes very expensive for higher order discretization for sparse matrix-based approaches,
-{\color{red}as the matrix becomes more and more dense.}
-The matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
+{\color{red}as the matrix becomes more and more dense.
+The performance results for finite-strain elasticity operators considered in this study are qualitatively similar to those reported for Laplace operator in \cite{kronbichler12}.
+Note that we consider only non-Cartesian meshes together with additional mappings (namely, manifold descriptions of the boundaries and interfaces to capture the geometry as well as
+the linearization-related mapping required for evaluation of gradients with respect to the deformed configuration),
+which increases the memory consumption makes element operations more expensive.
+Nonetheless }
+the matrix-free implementation is faster than the matrix-based counterpart already for cubic Lagrangian basis in 2D and quadratic in 3D.
 Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies,
 {\color{red}
 described in Algorithms \ref{alg:mf_scalar}, \ref{alg:mf_tensor2} and \ref{alg:mf_tensor4}.}
