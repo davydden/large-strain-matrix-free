@@ -46,9 +46,9 @@ sections = [
 
 # NODE data:
 # memory bandwidth
-B=50   # 50 GB/s single socket
+B=50.0   # 50 GB/s single socket
 # peak performance
-P=176  # 176 Gflop/s single socket
+P=176.0  # 176 Gflop/s single socket
 
 table_names = [
     'Event',
@@ -136,12 +136,23 @@ plt.rcParams.update(params)
 # Roofline model
 # p = min (P, b I)
 # where I is measured intensity (Flops/byte)
-x = [0.05*i for i in range(200)]
-y = [min(P,B*i) for i in x]
+def Roofline(I,P,B):
+    return np.array([min(P,B*i) for i in I])
 
-plt.grid(True, which="both",color='grey', linestyle=':')
+x = np.linspace(1./B, 10., num=500)
+base = np.array([1./B for i in x])
+roofline_style = 'b-'
+peak = Roofline(x,P,B)
+# see https://github.com/matplotlib/matplotlib/issues/8623#issuecomment-304892552
+plt.loglog(x,peak, roofline_style, label=None, nonposx='clip', nonposy='clip')
 
-plt.loglog(x,y, 'r-', label='Roofline')
+# various ceilings (w/o FMA, w/o FMA and vectorization):
+for p_ in [P/2, P/2/4]:
+    plt.plot(x,Roofline(x,p_,B), roofline_style, label=None)
+
+plt.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua')
+
+plt.grid(True, which="both",color='grey', linestyle=':', zorder=5)
 
 
 # map degrees to point labels:
@@ -171,9 +182,11 @@ for d in likwid_data:
 
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
-plt.ylim(top=9000)
-plt.text(1,200,'P={0} GFlop/s'.format(P))
-plt.text(0.02, 5, 'B={0} GB/s'.format(B), rotation=30.)
+plt.ylim(top=9000,bottom=1)
+plt.text(0.04, 15, 'B={0} GB/s'.format(B), rotation=30.)
+plt.text(3,200,'Peak DP')  #  2.2 GHz
+plt.text(3,100,'w/o FMA')
+plt.text(3,25, 'w/o SIMD')
 
 leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
@@ -195,3 +208,14 @@ print '  Trilinos: {0}'.format(np.mean(tr_perf))
 
 # plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
 # remove_creation_date(fig_prefix + 'timing2d.eps')
+
+print 'Peak performance calculations:'
+clock_speed = 2.2  # GHz
+performance = clock_speed
+print '  Clock speed:  {0}'.format(clock_speed)
+performance = performance * 2   # add+mult per cycle
+print '  w FMA:        {0}'.format(performance)
+performance = performance * 4   # vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+print '  w FMA w SIMD: {0}'.format(performance)
+performance = performance * 10  # 10 cores
+print '  peak:         {0}'.format(performance)
