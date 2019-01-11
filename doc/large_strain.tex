@@ -917,34 +917,53 @@ memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \
 
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.8\textwidth}
+  \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline.pdf}
-    % \caption{2D multigrid mesh with 2 global refinements}
+    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline_2d.pdf}
+    \caption{2D}
+    \label{fig:roofline_2d}
   \end{subfigure}
-  \caption{Roofline model for a selection of polynomial degrees on a 2D test example.}%
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline_3d.pdf}
+    \caption{3D}
+    \label{fig:roofline_3d}
+  \end{subfigure}
+  \caption{Roofline model for a selection of polynomial degrees. `Peak DP' denotes the peak double precision performance ($P$),
+  `w/o FMA' represents a ceiling without Fused Multiply-Add ($P/2$), finally `w/o SIMD' is a ceiling where both FMA
+  and SIMD vectorization are discarded ($P/8$).}%
   \label{fig:roofline}
 \end{figure}
 
 {\color{red}
-Figure \ref{fig:roofline} shows the Roofline performance model.
-As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$ (4.5\% of the peak performance).
+Figure \ref{fig:roofline} shows results of the Roofline performance model.
+As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$ (4.5\% of the peak performance) in 2D.
 Matrix-free implementation of fine-strain elastic tangent operators (on average) leads to a much better performance of
-$22.6\,\rm{GFlop/s}$, as well as about an order of magnitude higher computational intensity, but still stays in the memory bound regime.
-The achieved performance is about 13\% of the peak arithmetic performance, which is considerably lower than the
-70\% reported for the Laplace operation on Cartesian meshes in \cite{kronbichler12}.
-When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}),
-we observe very marginal increase in computational intensity and almost unchanged performance.
-This indicates that the origin for suboptimal results of matrix-free approach is most likely not related to the algorithms numerically investigated here.
-Further detailed studies are necessary to explain this behavior.
-}
+$22.6\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory bound regime.
+The achieved performance is about 13\% of the peak arithmetic performance. This is much lower than the
+70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}.
+Unfortunately, the performance measurements for non-Cartesian meshes were not reported in \cite{kronbichler12}.
 
-{\color{red}
-To summarize, we can attribute the speedup of the matrix-free finite-strain tangent operators for higher order bases to two factors.
+When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}),
+we observe a marginal increase in computational intensity and almost unchanged performance.
+This coincides with our expectation that the later algorithm requires transferring fewer bytes to perform operations on a single quadrature point.
+On another hand, the ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates a higher computational intensity.
+Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations, an additional
+second order tensor per quadrature point (inverse of the Jacobian transformation) will be cached as compared to the Algorithm \ref{alg:mf_tensor2}.
+As a result both algorithms will have comparable memory requirements (also confirmed by Figure ....),
+however the ``scalar'' algorithm performs a large number of repetitive operations that are
+independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_scalar}), which makes it the worst option among the three.
+
+Finally we note that all three algorithms are far from the theoretical peak performance which
+indicates that the origin for suboptimal results of matrix-free approach is most likely not related to the various flavours of algorithms numerically investigated here.
+Further detailed studies are necessary to explain this behavior.
+
+To summarize this section, we can attribute the speedup of the matrix-free finite-strain tangent operators for higher order bases to two factors.
 First, is the higher algorithmic intensity as compared to the matrix-based implementation, which is clearly memory
 bound, see Figure \ref{fig:roofline}.
 Second, is the reduction in the number of floating point operations per DoF thanks to the sum factorization technique, as discussed in
 Section \ref{sec:mf} and \cite[Section 2.4]{kronbichler12}.
+Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is the most flexible approach with relatively high computational intensity.
 }
 
 \subsection{Preconditioned iterative solver}
