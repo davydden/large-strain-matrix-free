@@ -516,12 +516,16 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
       // initialize on this cell
       phi_current.reinit(cell);
       phi_current_s.reinit(cell);
-      phi_reference.reinit(cell);
 
       // read-in total displacement and src vector and evaluate gradients
-      phi_reference.read_dof_values_plain(*displacement);
       phi_current.read_dof_values(src);
       phi_current_s.read_dof_values(src);
+
+      if (mf_caching == "scalar")
+        {
+          phi_reference.reinit(cell);
+          phi_reference.read_dof_values_plain(*displacement);
+        }
 
       do_operation_on_cell(phi_current, phi_current_s, phi_reference, cell);
 
