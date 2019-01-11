@@ -18,8 +18,11 @@ def remove_creation_date(file_name):
 parser = argparse.ArgumentParser(
     description='Post-Process timing/memory info and plot figures.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('prefix', metavar='prefix', default='LIKWID_Emmy_RRZE', nargs='?',
+parser.add_argument('--prefix', metavar='prefix', default='LIKWID_Emmy_RRZE',
                     help='A folder to look for benchmark results')
+parser.add_argument('--dim', metavar='dim', default=2, type=int,
+                    help='Dimension (2 or 3)')
+
 args = parser.parse_args()
 
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
@@ -178,17 +181,18 @@ tr_perf = []
 
 # Now plot each measured point:
 for d in likwid_data:
-  f = d[5][0]
-  b = d[5][1]
-  x = [f/b]
-  y = [f/1000]  # MFLOP->GFLOP
-  style = d[4] + degree_to_points[d[1]]
-  label = '{0} (p={1})'.format(d[3],d[1])
-  plt.loglog(x,y, style, label=label)
-  if 'MF' in label:
-    mf_perf.append(y[0])
-  else:
-    tr_perf.append(y[0])
+  if d[0] == args.dim:
+    f = d[5][0]
+    b = d[5][1]
+    x = [f/b]
+    y = [f/1000]  # MFLOP->GFLOP
+    style = d[4] + degree_to_points[d[1]]
+    label = '{0} (p={1})'.format(d[3],d[1])
+    plt.loglog(x,y, style, label=label)
+    if 'MF' in label:
+      mf_perf.append(y[0])
+    else:
+      tr_perf.append(y[0])
 
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
@@ -203,18 +207,15 @@ leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
-
-fig_file = fig_prefix + 'roofline.pdf'
+fig_file = fig_prefix + 'roofline_{0}d.pdf'.format(args.dim)
 
 print 'Saving figure in: {0}'.format(fig_file)
 
 plt.tight_layout()
-plt.savefig(fig_file, format='pdf')
+plt.savefig(fig_file, format='pdf')  # pdf has better colors
+# remove_creation_date(fig_file)
 
 # Finally report average performance for all MF and Trilinos runs:
 print 'Average performance:'
 print '  MF:       {0}'.format(np.mean(mf_perf))
 print '  Trilinos: {0}'.format(np.mean(tr_perf))
-
-# plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
-# remove_creation_date(fig_prefix + 'timing2d.eps')
