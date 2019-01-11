@@ -13,6 +13,7 @@
 \fi
 
 
+\usepackage{todonotes}
 \usepackage{bm}
 \usepackage{xcolor}
 \usepackage{listings}
@@ -877,7 +878,7 @@ The ``IWR'' results were obtained on a single machine with eight Xeon E7-8870 ``
 
 Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem as performed on the two clusters.
 {\color{red}
-We are interested in the wall-clock time (average over 10 runs) per DoF as a first metric.}
+We are interested in the wall-clock time (average over 10 runs per each linear solver step) per DoF as a first metric.}
 As expected, the matrix-vector multiplication becomes very expensive for higher order discretization for sparse matrix-based approaches,
 {\color{red}as the matrix becomes more and more dense.
 The performance results for finite-strain elasticity operators considered in this study are qualitatively similar to those reported for Laplace operator in \cite{kronbichler12}.
@@ -899,6 +900,12 @@ It is therefore feasible to define highly performant generic operators that are 
 
 As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
 Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} demonstrate that even with caching one fourth-order symmetric tensor and one second-order tensor at each quadrature point, the matrix-free approach takes much less memory than its matrix-based counterpart.
+{\color{red}
+In those graphs we report the memory needed to cache additional quantities required for the tangent operator here considered,
+as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
+from unit to real cell \cite{kronbichler12}.
+Note that for the Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both deform and undeformed
+configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{rerun RRZE and IWR}\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
 
 % likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m $EXC
 {\color{red}
