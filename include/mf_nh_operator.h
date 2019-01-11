@@ -187,9 +187,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
          cached_tensor4.memory_consumption() +
          // matrix-free data:
          data_current->memory_consumption() +
-         (mf_caching == "scalar" ? data_reference->memory_consumption() : 0) +
-         // diagonal (we actually need only one vector)
-         inverse_diagonal_entries->memory_consumption();
+         (mf_caching == "scalar" ? data_reference->memory_consumption() : 0);
+  // note: do not include diagonals, we want to measure only memory needed for vmult
+  // for performance analysis.
 }
 
 
