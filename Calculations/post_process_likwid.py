@@ -139,7 +139,7 @@ likwid_data.sort(key=lambda tup: (tup[3], tup[1]))
 #       PLOT        #
 #####################
 
-params = {'legend.fontsize': 20,
+params = {'legend.fontsize': 14,
           'font.size': 20}
 plt.rcParams.update(params)
 
@@ -160,7 +160,7 @@ plt.loglog(x,peak, roofline_style, label=None, nonposx='clip', nonposy='clip')
 for p_ in [P/2, P/2/4]:
     plt.plot(x,Roofline(x,p_,B), roofline_style, label=None)
 
-plt.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua')
+plt.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua', alpha=0.1)
 
 plt.grid(True, which="both",color='grey', linestyle=':', zorder=5)
 
@@ -192,11 +192,11 @@ for d in likwid_data:
 
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
-plt.ylim(top=9000,bottom=1)
-plt.text(0.04, 15, 'B={:.1f} GB/s'.format(B), rotation=30.)
-plt.text(3,200,'Peak DP')  #  2.2 GHz
-plt.text(3,100,'w/o FMA')
-plt.text(3,25, 'w/o SIMD')
+plt.ylim(top=300,bottom=1)
+plt.text(0.02, 5, 'B={:.1f} GB/s'.format(B), rotation=42)
+plt.text(3.7,200,'Peak DP', fontsize=14)
+plt.text(3.7,100,'w/o FMA', fontsize=14)
+plt.text(3.7,25, 'w/o SIMD', fontsize=14)
 
 leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
