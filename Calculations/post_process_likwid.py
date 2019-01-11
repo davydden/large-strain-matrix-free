@@ -45,10 +45,20 @@ sections = [
 ]
 
 # NODE data:
+clock_speed = 2.2  # GHz
 # memory bandwidth
-B=50.0   # 50 GB/s single socket
-# peak performance
-P=176.0  # 176 Gflop/s single socket
+# likwid-bench -t load_avx -w S0:1GB:10:1:2
+B=47.16855 # 50 GB/s single socket
+
+print 'Peak performance calculations:'
+P = clock_speed
+print '  Clock speed:  {0}'.format(clock_speed)
+P = P * 2                             # add+mult per cycle
+print '  w FMA:        {0}'.format(P)
+P = P * 4                             # vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+print '  w FMA w SIMD: {0}'.format(P)
+P = P * 10                            # 10 cores
+print '  peak:         {0}'.format(P)
 
 table_names = [
     'Event',
@@ -183,7 +193,7 @@ for d in likwid_data:
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
 plt.ylim(top=9000,bottom=1)
-plt.text(0.04, 15, 'B={0} GB/s'.format(B), rotation=30.)
+plt.text(0.04, 15, 'B={:.1f} GB/s'.format(B), rotation=30.)
 plt.text(3,200,'Peak DP')  #  2.2 GHz
 plt.text(3,100,'w/o FMA')
 plt.text(3,25, 'w/o SIMD')
@@ -208,14 +218,3 @@ print '  Trilinos: {0}'.format(np.mean(tr_perf))
 
 # plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
 # remove_creation_date(fig_prefix + 'timing2d.eps')
-
-print 'Peak performance calculations:'
-clock_speed = 2.2  # GHz
-performance = clock_speed
-print '  Clock speed:  {0}'.format(clock_speed)
-performance = performance * 2   # add+mult per cycle
-print '  w FMA:        {0}'.format(performance)
-performance = performance * 4   # vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
-print '  w FMA w SIMD: {0}'.format(performance)
-performance = performance * 10  # 10 cores
-print '  peak:         {0}'.format(performance)

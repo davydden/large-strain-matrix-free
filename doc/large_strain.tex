@@ -912,7 +912,7 @@ configurations, and therefore two inverses will be cached via two different \tex
 Finally, we analyze the node-level performance of the two approaches using the Roofline model.
 Memory bandwidth (MBytes/s) and the number of floating point operations per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
 The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket, whose
-memory bandwidth and peak performance are $B=50 \,\rm{GB/s}$ and $P=176\, \rm{GFLOP/s}$, respectively.
+memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \textit{likwid-bench} \cite{likwid}.} and peak performance are $B=47.2 \,\rm{GB/s}$ and $P=176\, \rm{GFlop/s}$, respectively.
 }
 
 \begin{figure}[!ht]
