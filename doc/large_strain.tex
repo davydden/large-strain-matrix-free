@@ -938,7 +938,7 @@ memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \
 Figure\todo{Improve design} \ref{fig:roofline} shows results of the Roofline performance model.
 As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.5\,\rm{GFlop/s}$ (4.5\% of the peak performance) in 2D.
 The matrix-free implementations of the fine-strain elastic tangent operator (on average) lead to a much better performance of
-$22.6\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
+$22.1\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
 The achieved performance is about 13\% of the peak arithmetic performance. This is much lower than the
 70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}.
 Unfortunately, performance measurements for non-Cartesian meshes were not reported in \cite{kronbichler12}.
@@ -949,7 +949,7 @@ This coincides with our expectation that the later algorithm requires transferri
 On another hand, the ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates a higher computational intensity.
 Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations, an additional
 second order tensor per quadrature point (inverse of the Jacobian transformation) will be cached as compared to the Algorithm \ref{alg:mf_tensor2}.
-As a result both algorithms will have comparable memory requirements (also confirmed by Figure ....),
+As a result both algorithms will have comparable memory requirements (also confirmed by Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} \todo{rerun and check}),
 however the ``scalar'' algorithm performs a large number of repetitive operations that are
 independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_scalar}), which makes it the worst option among the three.
 
