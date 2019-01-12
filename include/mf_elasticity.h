@@ -1095,6 +1095,7 @@ namespace Cook_Membrane
   Solid<dim, degree, n_q_points_1d, NumberType>::run()
   {
 #ifdef WITH_LIKWID
+    pcout << "LIKWID_MARKER_INIT" << std::endl;
     LIKWID_MARKER_INIT;
 #endif
     make_grid();
@@ -1130,6 +1131,7 @@ namespace Cook_Membrane
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
 #ifdef WITH_LIKWID
+    pcout << "LIKWID_MARKER_CLOSE" << std::endl;
     LIKWID_MARKER_CLOSE;
 #endif
 
@@ -2076,6 +2078,17 @@ namespace Cook_Membrane
               LIKWID_MARKER_STOP("vmult_MF");
 #endif
             }
+
+#ifdef WITH_LIKWID
+          // save HPC time and simply break out of NR loop
+          AssertThrow (parameters.delta_t == parameters.end_time,
+                      ExcMessage("LIKWID runs are fake and should have 1 timestep only"));
+          pcout << " FAKE CONVERGED!" << std::endl;
+          print_conv_footer();
+          total_n_cg_solve = 1;  // we later divide by that, so terminate gracefully
+          break;
+#endif
+
 
 #ifdef DEBUG
           if (!parameters.skip_tangent_assembly)

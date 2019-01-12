@@ -107,6 +107,10 @@ subsection Boundary conditions
   set Dirichlet IDs and component mask = {11}
   set Neumann IDs and expressions = {12}
 end
+
+subsection Time
+  set End time  = {14}
+end
 """
 
 output_points  = {
@@ -168,7 +172,8 @@ for pqrd in poly_quad_ref_dim:
             dirichlet_id[pqrd[3]],
             dirichlet_mask[pqrd[3]],
             neumann_bc[pqrd[3]],
-            'false'
+            'false',
+            0.2 if args.likwid else 1.0  # make sure we do 1 fake solution step
         ))
         filenames.append(name)
 
@@ -194,7 +199,8 @@ if not args.likwid:
               dirichlet_id[pqrd[3]],
               dirichlet_mask[pqrd[3]],
               neumann_bc[pqrd[3]],
-              'true'
+              'true',
+              1.0
           ))
 
 
