@@ -55,10 +55,7 @@ solvers = [
 ]
 
 solvers_likwid = [
-    ('MF_CG', 'gmg', 'scalar'),
-    ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
-    ('CG',    'amg', 'scalar'),
 ]
 
 # MPI run command (override if use LIKWID)

@@ -2051,7 +2051,7 @@ namespace Cook_Membrane
           constraints.set_zero(src_trilinos);
           copy_trilinos(src, src_trilinos);
 
-          const unsigned int n_times = 10;
+          const unsigned int n_times = 1;
           MPI_Barrier(mpi_communicator);
           if (!parameters.skip_tangent_assembly)
             for (unsigned int i = 0; i < n_times; ++i)
@@ -2070,13 +2070,7 @@ namespace Cook_Membrane
           for (unsigned int i = 0; i < n_times; ++i)
             {
               TimerOutput::Scope t(timer, "vmult (MF)");
-#ifdef WITH_LIKWID
-              LIKWID_MARKER_START("vmult_MF");
-#endif
               mf_nh_operator.vmult(dst_mf, src);
-#ifdef WITH_LIKWID
-              LIKWID_MARKER_STOP("vmult_MF");
-#endif
             }
 
 #ifdef WITH_LIKWID
