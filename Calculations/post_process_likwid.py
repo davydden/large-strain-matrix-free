@@ -22,10 +22,13 @@ parser.add_argument('--prefix', metavar='prefix', default='LIKWID_Emmy_RRZE',
                     help='A folder to look for benchmark results')
 parser.add_argument('--dim', metavar='dim', default=2, type=int,
                     help='Dimension (2 or 3)')
+parser.add_argument('--breakdown', help='Post process breakdown results of vmult', action="store_true")
 
 args = parser.parse_args()
 
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
+if args.breakdown:
+    prefix = prefix + '_breakdown'
 
 files = []
 for root, dirs, files_ in os.walk(prefix):
@@ -44,7 +47,8 @@ pattern = r'[+\-]?(?:[0-9]\d*)(?:\.\d*)?(?:[eE][+\-]?\d+)?'
 sections = [
     'MFLOP/s STAT',
     'Memory bandwidth [MBytes/s] STAT',
-    'Operational intensity STAT'
+    'Operational intensity STAT',
+    'Runtime (RDTSC) [s] STAT'
 ]
 
 # NODE data:
@@ -70,6 +74,26 @@ table_names = [
 
 likwid_data = []
 
+regions = []
+if args.breakdown:
+    regions = [
+        'vmult_sum_factorization',
+        'vmult_reinit_read_write',
+        'vmult_quadrature_loop'
+    ]
+
+# labels/colors to be used for regions in breakdown run:
+region_labels = [
+    'sum factorization',
+    'read / write',
+    'quadrature loop'
+]
+region_colors = [
+    'b',
+    'g',
+    'c'
+]
+
 for f in files:
     # guess parameters from the file name:
     fname = os.path.basename(f)
@@ -77,7 +101,10 @@ for f in files:
     dim = int(re.findall(pattern,strings[2])[0])
     p   = int(re.findall(pattern,strings[3])[0])
     q   = int(re.findall(pattern,strings[3])[1])
-    region = 'vmult_MF' if 'MF_CG' in f else 'vmult_Trilinos'
+    if not args.breakdown:
+        regions = [
+            'vmult_MF' if 'MF_CG' in f else 'vmult_Trilinos'
+        ]
     label = ''
     color = ''  # use colors consistent with post_process.py
     if 'MF_CG' in fname:
@@ -94,19 +121,24 @@ for f in files:
         label = 'Trilinos'
         color = 'r'
 
-    print 'dim={0} p={1} q={2} region={3} label={4} color={5} file={6}'.format(dim,p,q,region,label,color,fname)
+    print 'dim={0} p={1} q={2} region={3} label={4} color={5} file={6}'.format(dim,p,q,regions[0],label,color,fname)
 
     fin = open(f, 'r')
 
-    # store data for each requested section here:
-    timing = [np.nan for i in range(len(sections))]
+    # store data for each requested section and region here:
+    timing = [ [ np.nan for i in range(len(sections))] for i in range(len(regions))]
 
     found_region = False
     found_table = False
+    r_idx = np.nan
     for line in fin:
-        # Check if we found the right region:
+        # Check if we found one of the regions:
         if 'Region:' in line:
-            found_region = (region in line)
+            found_region = False
+            for idx, s in enumerate(regions):
+                if s in line:
+                    found_region = True
+                    r_idx = idx
 
         # Reset the table if found any table:
         for t in table_names:
@@ -116,7 +148,7 @@ for f in files:
         # Now check if the table is actually what we need
         if found_region and ('Metric' in line) and ('Sum' in line):
             found_table = True
-            print '-- Region {0}'.format(region)
+            print '-- Region {0} {1}'.format(regions[r_idx], r_idx)
 
         # Only if we are inside the table of interest and region of interest, try to match the line:
         if found_table and found_region:
@@ -126,13 +158,19 @@ for f in files:
                     if s == columns[1]:
                         val = float(columns[2])
                         print '   {0} {1}'.format(s,val)
-                        # we should get here only once:
-                        assert np.isnan(timing[idx])
-                        timing[idx] = val
+                        # we should get here only once for each region:
+                        assert np.isnan(timing[r_idx][idx])
+                        timing[r_idx][idx] = val
 
     # finish processing the file, put the data
-    tp = tuple((dim,p,q,label,color,timing))
-    likwid_data.append(tp)
+    for r_idx in range(len(regions)):
+        t = timing[r_idx]
+        # overwrite label/color if we do breakdown:
+        if args.breakdown:
+            label = region_labels[r_idx]
+            color = region_colors[r_idx]
+        tp = tuple((dim,p,q,label,color,t))
+        likwid_data.append(tp)
 
 # now we have lists of tuples ready
 # first, sort by label:
@@ -152,7 +190,7 @@ plt.rcParams.update(params)
 def Roofline(I,P,B):
     return np.array([min(P,B*i) for i in I])
 
-x = np.linspace(1./B, 10., num=500)
+x = np.linspace(1./B, 10. if not args.breakdown else 100., num=500 if not args.breakdown else 5000)
 base = np.array([1./B for i in x])
 roofline_style = 'b-'
 peak = Roofline(x,P,B)
@@ -197,17 +235,25 @@ for d in likwid_data:
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
 plt.ylim(top=300,bottom=1)
-plt.text(0.02, 5, 'B={:.1f} GB/s'.format(B), rotation=42)
-plt.text(3.7,200,'Peak DP', fontsize=14)
-plt.text(3.7,100,'w/o FMA', fontsize=14)
-plt.text(3.7,25, 'w/o SIMD', fontsize=14)
+
+ang = 42 if not args.breakdown else 50
+y_pos = 5 if not args.breakdown else 7
+plt.text(0.02, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
+
+x_pos = 3.7 if not args.breakdown else 25
+plt.text(x_pos,200,'Peak DP', fontsize=14)
+plt.text(x_pos,100,'w/o FMA', fontsize=14)
+plt.text(x_pos,25, 'w/o SIMD', fontsize=14)
 
 leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
 
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
-fig_file = fig_prefix + 'roofline_{0}d.pdf'.format(args.dim)
+
+name = 'roofline_breakdown_{0}d.pdf' if args.breakdown else 'roofline_{0}d.pdf'
+
+fig_file = fig_prefix + name.format(args.dim)
 
 print 'Saving figure in: {0}'.format(fig_file)
 
