@@ -48,6 +48,7 @@ sections = [
     'MFLOP/s STAT',
     'Memory bandwidth [MBytes/s] STAT',
     'Operational intensity STAT',
+    'Runtime unhalted [s] STAT',  # not entirely sure, but this should be closest to the walltime
     'Runtime (RDTSC) [s] STAT'
 ]
 
@@ -156,7 +157,12 @@ for f in files:
             if len(columns) > 1:
                 for idx, s in enumerate(sections):
                     if s == columns[1]:
-                        val = float(columns[2])
+                        if 'Runtime' in s:
+                            # Take "Max" (third number)
+                            val = float(columns[4])
+                        else:
+                            # Take "Sum" (first number)
+                            val = float(columns[2])
                         print '   {0} {1}'.format(s,val)
                         # we should get here only once for each region:
                         assert np.isnan(timing[r_idx][idx])
