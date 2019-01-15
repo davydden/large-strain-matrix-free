@@ -39,11 +39,11 @@ poly_quad_ref_dim = [
 ]
 
 poly_quad_ref_dim_likwid = [
-    (2,3,6,2),
-    (4,5,5,2),
-    (6,7,4,2),
-    (2,3,3,3),
-    (4,5,2,3),
+    (2,3,1,2),
+    (4,5,1,2),
+    (6,7,1,2),
+    (2,3,0,3),
+    (4,5,0,3),
 ]
 
 # Solvers (type, preconditioner and caching)

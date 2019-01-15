@@ -1,6 +1,6 @@
 #!/bin/bash
-#   allocate 1 nodes (with likwid) with 40 CPU per node for 15 hour:
-#PBS -l nodes=1:ppn=40:likwid,walltime=15:00:00
+#   allocate 1 nodes (with likwid) with 40 CPU per node for 1 hour:
+#PBS -l nodes=1:ppn=40:likwid,walltime=1:00:00
 #   job name
 #PBS -N dealii_mf_cm_likwid
 #   stdout and stderr files:
