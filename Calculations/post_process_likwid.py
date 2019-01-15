@@ -262,6 +262,7 @@ plt.savefig(fig_file, format='pdf')  # pdf has better colors
 # remove_creation_date(fig_file)
 
 # Finally report average performance for all MF and Trilinos runs:
-print 'Average performance:'
-print '  MF:       {0}'.format(np.mean(mf_perf))
-print '  Trilinos: {0}'.format(np.mean(tr_perf))
+if not args.breakdown:
+  print 'Average performance:'
+  print '  MF:       {0}'.format(np.mean(mf_perf))
+  print '  Trilinos: {0}'.format(np.mean(tr_perf))
