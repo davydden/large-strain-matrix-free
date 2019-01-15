@@ -953,9 +953,55 @@ As a result both algorithms will have comparable memory requirements (also confi
 however the ``scalar'' algorithm performs a large number of repetitive operations that are
 independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_scalar}), which makes it the worst option among the three.
 
-Finally we note that all three algorithms are far from the theoretical peak performance which
-indicates that the origin for suboptimal results of matrix-free approach is most likely not related to the various flavours of algorithms numerically investigated here.
-Further detailed studies are necessary to explain this behavior.}
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_2d.pdf}
+      \caption{Roofline (2D)}
+      \label{fig:roofline_2d_tensor4}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_3d.pdf}
+    \caption{Roofline (3D)}
+    \label{fig:roofline_3d_tensor4}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_stackedbar_2d.pdf}
+      \caption{Computing times (2D)}
+      \label{fig:breakdown_stackedbar_2d_tensor4}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_stackedbar_3d.pdf}
+    \caption{Computing times (2D)}
+    \label{fig:breakdown_stackedbar_3d_tensor4}
+  \end{subfigure}
+  \caption{Breakdown of computing times and Roofline analysis of various steps of Algorithm \ref{alg:mf_tensor4}.}%
+  \label{fig:breakdown}
+\end{figure}
+
+In order to have a better understanding of the behavior of the most promising ``tensor4'' implementation,
+we collect its performance data and computing times for various stages inside the element loop (see Algorithm \ref{alg:mf_tensor4}):
+(i) `read / write' denotes reading and writing from/to a global vector (step 1 and 13);
+(ii) `sum factorization' denotes application of sum factorization techniques (steps 4,5 and 12);
+(iii) `quadrature loop' denotes operations performed on each quadrature (steps 6 -- 11).
+It is clear from Figure \ref{fig:breakdown_stackedbar_2d_tensor4} and  \ref{fig:breakdown_stackedbar_3d_tensor4} that
+`read / write' steps takes negligible amount of time spent on each element.
+For higher order bases the majority of time is spent within the quadrature loop.
+When analyzing the Roofline data (Figure \ref{fig:roofline_2d_tensor4} and \ref{fig:roofline_3d_tensor4}),
+we observe that this part of the algorithm demonstrates rather low performance, which in our opinion is the source of the
+suboptimal performance of the whole matrix-free matrix-vector product (see Figure \ref{fig:roofline}).
+In this case the quadrature loop consists of, essentially, a
+single contraction between two second order tensors (step 7 in Algorithm \ref{alg:mf_tensor4}) and a
+double contraction between a symmetric second order tensor and a fourth order tensor (step 9 in Algorithm \ref{alg:mf_tensor4}).
+Further optimization of \texttt{Tensor} classes in \textit{deal.II} are required to
+improve the performance.
+Such studies, however, are beyond the scope of the current work.
+}
 
 {\color{red}
 To summarize this section, we can attribute the speedup of the matrix-free finite-strain tangent operators for higher order elements to two factors.
@@ -1083,6 +1129,10 @@ However, a considerable amount of time is spent in the coarse level solver of th
 which is the main bottleneck of the here considered iterative solver.}
 Our future work will, therefore, be focused on extending the proposed matrix-free multigrid solution approach to homogenization based transfer operators \cite{Miehe2007}.
 We are also interested in extending these methods to near incompressible three-field formulations.
+
+{\color{red}
+Based on the results presented in this work, we can conclude that the matrix-free implementations of tangent operators for finite-strain elasticity together with
+the geometric multigrid preconditioner is a very competitive solution strategy, as compared to more traditional matrix-based approach.}
 
 \ifijnme
 \acks

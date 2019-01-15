@@ -261,7 +261,7 @@ leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
 
-name = 'roofline_breakdown_{0}d.pdf' if args.breakdown else 'roofline_{0}d.pdf'
+name = 'roofline_{0}d.pdf'
 
 fig_file = fig_prefix + name.format(args.dim)
 
@@ -318,11 +318,11 @@ else:
 
   plt.legend(bars, region_labels, loc='upper left')
 
-  plt.ylabel('Walltime / number of elements')
+  plt.ylabel('wall time (s) / number of elements')
   plt.xticks(ind_plt, ind_str)
-  plt.xlabel("polynomial degree")
+  plt.xlabel('polynomial degree')
 
-  name = 'roofline_breakdown_stackedbar_{0}d.pdf'
+  name = 'stackedbar_{0}d.pdf'
   fig_file = fig_prefix + name.format(args.dim)
   print 'Saving figure in: {0}'.format(fig_file)
   plt.tight_layout()
