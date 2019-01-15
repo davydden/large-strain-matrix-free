@@ -132,7 +132,11 @@ for f in files:
     found_region = False
     found_table = False
     r_idx = np.nan
+    n_cells = np.nan
     for line in fin:
+        if 'Number of active cells' in line:
+            n_cells = int(re.findall(pattern,line)[0])
+
         # Check if we found one of the regions:
         if 'Region:' in line:
             found_region = False
@@ -175,7 +179,7 @@ for f in files:
         if args.breakdown:
             label = region_labels[r_idx]
             color = region_colors[r_idx]
-        tp = tuple((dim,p,q,label,color,t))
+        tp = tuple((dim,p,q,label,color,t,r_idx,n_cells))
         likwid_data.append(tp)
 
 # now we have lists of tuples ready
@@ -272,3 +276,54 @@ if not args.breakdown:
   print 'Average performance:'
   print '  MF:       {0}'.format(np.mean(mf_perf))
   print '  Trilinos: {0}'.format(np.mean(tr_perf))
+else:
+  # clear
+  plt.clf()
+  ax = plt.figure().gca()
+  ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+  plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+  # FIXME: hard-code degrees
+  ind = [2, 4, 6] if args.dim==2 else [2, 4]
+  ind_str = ['{0}'.format(s) for s in ind]
+  ind_plt = range(len(ind))
+  # plot stack bar graph for time
+  bar_data = [[ np.nan for i in range(len(ind))] for i in range(len(region_labels))]
+
+  for d in likwid_data:
+    if d[0] == args.dim:
+      r_idx = d[6] # region index
+      t = d[5][3] / d[7] # runtime unhalted per cell
+      p = d[1]
+      for idx, s in enumerate(ind):
+        if s == p:
+          bar_data[r_idx][idx] = t
+
+  # setup "bottom" for bar data
+  bar_data_bottom = [[ 0 for i in range(len(ind))] for i in range(len(region_labels))]
+  for i in range(len(region_labels)):
+    if i > 0:
+      for j in range(len(ind)):
+        for k in range(i-1):
+          bar_data_bottom[i][j] = bar_data_bottom[i][j] + bar_data[k][j]
+
+  width = 0.5
+  bars = [i for i in range(len(region_labels))]
+  for i in range(len(region_labels)):
+    if i==0:
+      b = plt.bar(ind_plt, bar_data[i], width, color=region_colors[i], align='center')
+    else:
+      b = plt.bar(ind_plt, bar_data[i], width, color=region_colors[i], align='center', bottom=bar_data_bottom[i])
+
+    bars[i] = b[0]
+
+  plt.legend(bars, region_labels, loc='upper left')
+
+  plt.ylabel('Walltime / number of elements')
+  plt.xticks(ind_plt, ind_str)
+  plt.xlabel("polynomial degree")
+
+  name = 'roofline_breakdown_stackedbar_{0}d.pdf'
+  fig_file = fig_prefix + name.format(args.dim)
+  print 'Saving figure in: {0}'.format(fig_file)
+  plt.tight_layout()
+  plt.savefig(fig_file, format='pdf')  # pdf has better colors
