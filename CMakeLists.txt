@@ -96,31 +96,32 @@ TARGET_LINK_LIBRARIES(${TARGET}
   )
 
 #
-# Likwid. Set with -DLIKWID_DIR=/path/to/prefix
+# Likwid, configure with:
+# -DWITH_LIKWID=TRUE -DLIKWID_DIR=/path/to/prefix
 #
-IF (DEFINED LIKWID_DIR)
+IF (WITH_LIKWID)
   FIND_LIBRARY(LIKWID_LIBRARY
     NAMES likwid
     HINTS ${LIKWID_DIR}/lib
     NO_DEFAULT_PATH
   )
   IF(LIKWID_LIBRARY STREQUAL "LIKWID_LIBRARY-NOTFOUND")
-      MESSAGE(FATAL_ERROR "-- Likwid was not found in ${LIKWID_DIR}")
-  ENDIF()
-  MESSAGE("-- Use Likwid from ${LIKWID_DIR}")
-  TARGET_LINK_LIBRARIES(${TARGETLIB}
+    MESSAGE("-- Build without Likwid")
+    SET(WITH_LIKWID "FALSE")
+  ELSE()
+    MESSAGE("-- Use Likwid from ${LIKWID_DIR}")
+    TARGET_LINK_LIBRARIES(${TARGETLIB}
       "${LIKWID_LIBRARY}"
     )
-  # TODO: use FIND_PATH() to look for the headers
-  INCLUDE_DIRECTORIES ("${LIKWID_DIR}/include")
+    # TODO: use FIND_PATH() to look for the headers
+    INCLUDE_DIRECTORIES ("${LIKWID_DIR}/include")
 
-  # Finally, add necessary flags:
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLIKWID_PERFMON")
-  SET(WITH_LIKWID "TRUE")
+    # Finally, add necessary flags:
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLIKWID_PERFMON")
+  ENDIF()
 ELSE()
   MESSAGE("-- Build without Likwid")
-  SET(WITH_LIKWID "FALSE")
-ENDIF (DEFINED LIKWID_DIR)
+ENDIF ()
 
 INCLUDE_DIRECTORIES (${CMAKE_CURRENT_BINARY_DIR}/include)
 
