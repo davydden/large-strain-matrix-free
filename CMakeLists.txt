@@ -13,7 +13,7 @@ INCLUDE_DIRECTORIES(
 # Declare all source files the target consists of:
 SET(TARGETLIB_SRC
   src/mf_elasticity.cc
-  # You can specify additional files here!
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cc
 )
 
 SET(CLEAN_UP_FILES
@@ -37,6 +37,17 @@ IF(NOT ${deal.II_FOUND})
 ENDIF()
 
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
+
+# Run macro to get Git info:
+DEAL_II_QUERY_GIT_INFORMATION()
+# If we could not get the tag from Git, get it from VERSION file
+IF(NOT GIT_TAG)
+  FILE(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" GIT_TAG LIMIT_COUNT 1)
+ENDIF()
+MESSAGE("-- Code version ${GIT_TAG}")
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/version.cc.in
+               ${CMAKE_CURRENT_BINARY_DIR}/version.cc)
+
 PROJECT(${TARGET})
 
 #

@@ -85,6 +85,7 @@ static const unsigned int debug_level = 0;
 #include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
 #include <sys/stat.h>
+#include <version.h>
 
 #ifdef WITH_LIKWID
 #include <likwid.h>
@@ -1049,6 +1050,7 @@ namespace Cook_Membrane
     timer_out << "), VECTORIZATION_LEVEL="
               << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
+    timer_out << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV << " on branch " << GIT_BRANCH <<")" << std::endl;
     timer_out << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
               << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
               << ")" << std::endl;
