@@ -18,6 +18,7 @@ parser.add_argument('--calc', metavar='calc', default='/home/woody/iwtm/iwtm108/
 parser.add_argument('--mpirun', metavar='mpirun', default='mpirun -np 20',
                     help='mpi run command with cores')
 parser.add_argument('--likwid', help='Prepare LIKWID run', action="store_true")
+parser.add_argument('--breakdown', help='LIKWID run with breakdown of costs', action="store_true")
 args = parser.parse_args()
 
 # parameters (list of tuples):
@@ -46,6 +47,14 @@ poly_quad_ref_dim_likwid = [
     (4,5,2,3),
 ]
 
+poly_quad_ref_dim_likwid_breakdown = [
+    (2,3,1,2),
+    (4,5,1,2),
+    (6,7,1,2),
+    (2,3,0,3),
+    (4,5,0,3),
+]
+
 # Solvers (type, preconditioner and caching)
 solvers = [
     ('MF_CG', 'gmg', 'scalar'),
@@ -61,6 +70,11 @@ solvers_likwid = [
     ('CG',    'amg', 'scalar'),
 ]
 
+solvers_likwid_breakdown = [
+    ('MF_CG', 'gmg', 'tensor4')
+]
+
+
 # MPI run command (override if use LIKWID)
 mpirun_args = args.mpirun
 if args.likwid:
@@ -72,6 +86,9 @@ mpicmd = mpirun_args + ' ' + args.prefix + 'main ' + args.calc + '{0}.prm 2>&1 |
 if args.likwid:
   solvers = solvers_likwid
   poly_quad_ref_dim = poly_quad_ref_dim_likwid
+  if args.breakdown:
+    solvers = solvers_likwid_breakdown
+    poly_quad_ref_dim = poly_quad_ref_dim_likwid_breakdown
 
 #
 # from here on the actual preprocessing:
@@ -146,6 +163,8 @@ if out_dir and not out_dir.endswith('/'):
 if args.likwid:
   base_name = 'likwid_' + base_name
   out_dir = 'LIKWID_' + out_dir
+  if args.breakdown:
+    out_dir = out_dir + '_breakdown'
 
 print 'base parameter file: {0}'.format(base_prm)
 print 'output directory:    {0}'.format(out_dir)
