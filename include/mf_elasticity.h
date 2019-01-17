@@ -362,6 +362,9 @@ namespace Cook_Membrane
       double       preconditioner_aggregation_threshold = 1e-4;
       unsigned int cond_number_cg_iterations            = 20;
       std::string  mf_caching                           = "scalar";
+      bool mf_coarse_chebyshev                          = true;
+      bool mf_coarse_chebyshev_accurate_eigenval        = true;
+      unsigned int mf_chebyshev_n_cg_iterations         = 30;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -413,6 +416,23 @@ namespace Cook_Membrane
                           mf_caching,
                           "Type of caching for matrix-free operator",
                           Patterns::Selection("scalar|tensor2|tensor4"));
+
+        prm.add_parameter(
+          "MF Chebyshev number CG iterations",
+          mf_chebyshev_n_cg_iterations,
+          "Number of CG iterations to estiamte condition number "
+          "for Chebyshev smoother",
+          Patterns::Integer(2));
+
+        prm.add_parameter("MF Chebyshev coarse",
+                          mf_coarse_chebyshev,
+                          "Use Chebyshev smoother as coarse level solver");
+
+        prm.add_parameter(
+          "MF Chebyshev coarse accurate eigenvalues",
+          mf_coarse_chebyshev_accurate_eigenval,
+          "Accurately estimate eigenvalues for coarse level Chebyshev"
+          "solver");
       }
       prm.leave_subsection();
     }
@@ -1857,7 +1877,7 @@ namespace Cook_Membrane
       }
 
     // setup GMG preconditioner
-    const bool cheb_coarse = true;
+    const bool cheb_coarse = parameters.mf_coarse_chebyshev;
     {
       MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
       smoother_data.resize(0, triangulation.n_global_levels() - 1);
@@ -1871,7 +1891,9 @@ namespace Cook_Membrane
               smoother_data[level].degree =
                 numbers::invalid_unsigned_int; // use as a solver
               smoother_data[level].eig_cg_n_iterations =
-                mg_mf_nh_operator[level].m();
+                (parameters.mf_coarse_chebyshev_accurate_eigenval ?
+                   mg_mf_nh_operator[level].m() :
+                   parameters.mf_chebyshev_n_cg_iterations);
             }
           else
             {
@@ -1881,7 +1903,8 @@ namespace Cook_Membrane
               // parameter is retrieved
               smoother_data[level].degree = 4;
               // number of CG iterataions to estimate the largest eigenvalue:
-              smoother_data[level].eig_cg_n_iterations = 30;
+              smoother_data[level].eig_cg_n_iterations =
+                parameters.mf_chebyshev_n_cg_iterations;
             }
           smoother_data[level].preconditioner =
             mg_mf_nh_operator[level].get_matrix_diagonal_inverse();
