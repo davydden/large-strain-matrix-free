@@ -703,6 +703,8 @@ by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
 The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
 is set to target the range $[0.6\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
 On the coarsest level we use {\color{red}the Chebyshev preconditioner as a solver \cite{Varga1999}} to reduce the residual by three orders of magnitude.
+{\color{red}Maximum and minimum eigenvalues at this level are estimated from the CG solver set to reduce the residual by $10$ orders of magnitude within (at most) as many
+iterations as the coarse level problem size.\todo{remove if we do 30}}
 Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.}
 
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
