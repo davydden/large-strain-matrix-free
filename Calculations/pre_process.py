@@ -94,6 +94,8 @@ subsection Linear solver
   set Preconditioner type        = {5}
   set MF caching                 = {6}
   set Preconditioner AMG aggregation threshold = 1e-4
+  set MF Chebyshev coarse accurate eigenvalues = false
+  set MF Chebyshev coarse = true
 end
 
 subsection Misc
