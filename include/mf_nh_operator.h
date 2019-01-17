@@ -12,7 +12,12 @@
 
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 
+#include <config.h>
 #include <material.h>
+
+#ifdef WITH_LIKWID
+#  include <likwid.h>
+#endif
 
 using namespace dealii;
 
@@ -514,6 +519,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
     {
       // initialize on this cell
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+      LIKWID_MARKER_START("vmult_reinit_read_write");
+#endif
       phi_current.reinit(cell);
       phi_current_s.reinit(cell);
 
@@ -527,10 +535,23 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
           phi_reference.read_dof_values_plain(*displacement);
         }
 
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+      LIKWID_MARKER_STOP("vmult_reinit_read_write");
+#endif
+
       do_operation_on_cell(phi_current, phi_current_s, phi_reference, cell);
+
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+      LIKWID_MARKER_START("vmult_reinit_read_write");
+#endif
 
       phi_current.distribute_local_to_global(dst);
       phi_current_s.distribute_local_to_global(dst);
+
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+      LIKWID_MARKER_STOP("vmult_reinit_read_write");
+#endif
+
     }
 }
 
@@ -668,11 +689,23 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   const number            mu           = cell_mat->mu;
   const number            lambda       = cell_mat->lambda;
 
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_START("vmult_sum_factorization");
+#endif
+
   if (mf_caching == "scalar")
     phi_reference.evaluate(false, true, false);
 
   phi_current.evaluate(false, true, false);
   phi_current_s.evaluate(false, true, false);
+
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_STOP("vmult_sum_factorization");
+#endif
+
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_START("vmult_quadrature_loop");
+#endif
 
   if (cell_mat->formulation == 0)
     {
@@ -967,9 +1000,22 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   else
     AssertThrow(false, ExcMessage("Unknown material formulation/caching"));
 
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_STOP("vmult_quadrature_loop");
+#endif
+
   // actually do the contraction
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_START("vmult_sum_factorization");
+#endif
+
   phi_current.integrate(false, true);
   phi_current_s.integrate(false, true);
+
+#if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
+  LIKWID_MARKER_STOP("vmult_sum_factorization");
+#endif
+
 }
 
 

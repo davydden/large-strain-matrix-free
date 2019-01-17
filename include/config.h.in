@@ -1,3 +1,4 @@
 #pragma once
 
 #cmakedefine WITH_LIKWID
+#cmakedefine WITH_BREAKDOWN

@@ -2,6 +2,8 @@
 #  CMake script for the step-<XYZ> tutorial program:
 ##
 
+OPTION(WITH_BREAKDOWN "Hack breackdown measurements of MF vmult() with LIKWID" OFF)
+
 # Set the name of the project and target:
 SET(TARGET "main")
 SET(TARGETLIB "mf_elasticity")
