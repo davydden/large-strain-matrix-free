@@ -207,7 +207,7 @@ def Roofline(I,P,B):
 #x = np.linspace(1./B, 10. if not args.breakdown else 100., num=500 if not args.breakdown else 5000)
 #base = np.array([1./B for i in x])
 
-x = np.linspace(2**(-4), 2**4, num=500)
+x = np.linspace(2**(-5), 2**6+10, num=2000)
 base = np.array([x[0] for i in x])
 
 roofline_style = 'b-'
@@ -253,17 +253,20 @@ for d in likwid_data:
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
 #plt.ylim(top=300,bottom=1)
-plt.ylim(top=2**8,bottom=2**2)
-plt.xlim(right=2**4,left=(2**(-4)+0.01))
+ymin = 2**2 if not args.breakdown else 2**(0) - 0.1
+plt.ylim(top=2**8,bottom=ymin)
+xmax = 2**6 + 10 if args.breakdown else 2**4
+xmin = 2**(-4)+0.01 if not args.breakdown else 2**(-5) + 1./80
+plt.xlim(right=xmax,left=xmin)
 plt.axes().set_aspect('equal', adjustable=None) #'datalim')
-plt.axes().yaxis.set_major_formatter(mp.ticker.ScalarFormatter())
-plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}'.format(x) if x < 1.0 else '{0}'.format(int(round(x))) ))
+plt.axes().yaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}'.format(int(round(x))) ))
+plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '1/{0}'.format(int(round(1./x))) if x < 1.0 else '{0}'.format(int(round(x))) ))
 
-ang = 45 if not args.breakdown else 50
-y_pos = 13 if not args.breakdown else 7
-plt.text(2**(-4)+0.01, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
+ang = 45
+y_pos = 13
+plt.text(xmin, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
 
-x_pos = 4 if not args.breakdown else 25
+x_pos = 4 if not args.breakdown else 16
 plt.text(x_pos,200,'Peak DP', fontsize=14)
 plt.text(x_pos,100,'w/o FMA', fontsize=14)
 plt.text(x_pos,25, 'w/o SIMD', fontsize=14)
