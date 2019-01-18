@@ -2,6 +2,7 @@
 --     . running in OPTIMIZED mode
 --     . running with 20 MPI processes
 --     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . version 1.0 (revision 8103475 on branch cmame_quick_fixes_tex)
 --     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
 -----------------------------------------------------------------------------
 
@@ -11,43 +12,42 @@ q     = 6
 cells = 90112
 dofs  = 4510720
 
-Trilinos memory = 5308 Mb
-MF cache memory = 320 Mb
+Trilinos memory = 0 Mb
+MF cache memory = 437 Mb
 
-Average CG iter = 46
+Average CG iter = 111
 
 
 +---------------------------------------------+------------+------------+
-| Total wallclock time elapsed since start    |       709s |            |
+| Total wallclock time elapsed since start    |       510s |            |
 |                                             |            |            |
 | Section                         | no. calls |  wall time | % of total |
 +---------------------------------+-----------+------------+------------+
-| Assemble linear system          |        25 |      39.2s |       5.5% |
-| Coarse solve level 0            |       923 |       402s |        57% |
-| Coarse solve level 1            |       923 |    0.0233s |         0% |
-| Coarse solve level 2            |       923 |    0.0399s |         0% |
-| Coarse solve level 3            |       923 |    0.0941s |         0% |
-| Coarse solve level 4            |       923 |     0.337s |         0% |
-| Coarse solve level 5            |       923 |      1.35s |      0.19% |
-| Linear solver                   |        20 |       580s |        82% |
-| Post-smoothing level 1          |       923 |     0.367s |         0% |
-| Post-smoothing level 2          |       923 |     0.914s |      0.13% |
-| Post-smoothing level 3          |       923 |      2.96s |      0.42% |
-| Post-smoothing level 4          |       923 |        12s |       1.7% |
-| Post-smoothing level 5          |       923 |      50.9s |       7.2% |
-| Pre-smoothing level 1           |       923 |     0.404s |         0% |
-| Pre-smoothing level 2           |       923 |     0.946s |      0.13% |
-| Pre-smoothing level 3           |       923 |      2.91s |      0.41% |
-| Pre-smoothing level 4           |       923 |      11.7s |       1.6% |
-| Pre-smoothing level 5           |       923 |      50.1s |       7.1% |
-| Prolongation level 1            |       923 |    0.0228s |         0% |
-| Prolongation level 2            |       923 |    0.0357s |         0% |
-| Prolongation level 3            |       923 |    0.0871s |         0% |
-| Prolongation level 4            |       923 |     0.372s |         0% |
-| Prolongation level 5            |       923 |      1.47s |      0.21% |
-| Setup matrix-free               |        25 |      53.3s |       7.5% |
-| Setup system                    |         1 |      3.31s |      0.47% |
-| vmult (MF)                      |       250 |       4.8s |      0.68% |
-| vmult (Trilinos)                |       250 |      15.4s |       2.2% |
+| Assemble linear system          |        25 |      35.4s |       6.9% |
+| Coarse solve level 0            |      2234 |      7.31s |       1.4% |
+| Coarse solve level 1            |      2234 |     0.057s |         0% |
+| Coarse solve level 2            |      2234 |    0.0968s |         0% |
+| Coarse solve level 3            |      2234 |     0.225s |         0% |
+| Coarse solve level 4            |      2234 |     0.825s |      0.16% |
+| Coarse solve level 5            |      2234 |      3.27s |      0.64% |
+| Linear solver                   |        20 |       402s |        79% |
+| Post-smoothing level 1          |      2234 |      0.83s |      0.16% |
+| Post-smoothing level 2          |      2234 |       2.1s |      0.41% |
+| Post-smoothing level 3          |      2234 |      6.78s |       1.3% |
+| Post-smoothing level 4          |      2234 |      27.3s |       5.3% |
+| Post-smoothing level 5          |      2234 |       116s |        23% |
+| Pre-smoothing level 1           |      2234 |     0.813s |      0.16% |
+| Pre-smoothing level 2           |      2234 |      1.95s |      0.38% |
+| Pre-smoothing level 3           |      2234 |      6.13s |       1.2% |
+| Pre-smoothing level 4           |      2234 |      24.5s |       4.8% |
+| Pre-smoothing level 5           |      2234 |       105s |        21% |
+| Prolongation level 1            |      2234 |    0.0522s |         0% |
+| Prolongation level 2            |      2234 |    0.0834s |         0% |
+| Prolongation level 3            |      2234 |     0.202s |         0% |
+| Prolongation level 4            |      2234 |     0.864s |      0.17% |
+| Prolongation level 5            |      2234 |      3.54s |      0.69% |
+| Setup matrix-free               |        25 |      53.2s |        10% |
+| Setup system                    |         1 |      2.41s |      0.47% |
+| vmult (MF)                      |       250 |      4.42s |      0.87% |
 +---------------------------------+-----------+------------+------------+
 
