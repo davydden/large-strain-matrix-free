@@ -308,7 +308,7 @@ else:
   for d in likwid_data:
     if d[0] == args.dim:
       r_idx = d[6] # region index
-      t = d[5][3] / d[7] # runtime unhalted per cell
+      t = d[5][3] / d[7] # 3rd element in Sections - Runtime unhalted, report per cell
       p = d[1]
       for idx, s in enumerate(ind):
         if s == p:
