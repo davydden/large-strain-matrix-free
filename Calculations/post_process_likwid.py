@@ -48,8 +48,8 @@ sections = [
     'MFLOP/s STAT',
     'Memory bandwidth [MBytes/s] STAT',
     'Operational intensity STAT',
-    'Runtime unhalted [s] STAT',  # not entirely sure, but this should be closest to the walltime
-    'Runtime (RDTSC) [s] STAT'
+    'Runtime unhalted [s] STAT',
+    'Runtime (RDTSC) [s] STAT' # spoke with Georg Haager, this shall be closest to the walltime.
 ]
 
 # NODE data:
@@ -308,7 +308,7 @@ else:
   for d in likwid_data:
     if d[0] == args.dim:
       r_idx = d[6] # region index
-      t = d[5][3] / d[7] # 3rd element in Sections - Runtime unhalted, report per cell
+      t = d[5][4] / d[7] # 4rd element in Sections - Runtime, report value per cell
       p = d[1]
       for idx, s in enumerate(ind):
         if s == p:
