@@ -194,18 +194,26 @@ params = {'legend.fontsize': 14,
           'font.size': 20}
 plt.rcParams.update(params)
 
+plt.xscale('log', basex=2)
+plt.yscale('log', basey=2)
+
 # Roofline model
 # p = min (P, b I)
 # where I is measured intensity (Flops/byte)
 def Roofline(I,P,B):
     return np.array([min(P,B*i) for i in I])
 
-x = np.linspace(1./B, 10. if not args.breakdown else 100., num=500 if not args.breakdown else 5000)
-base = np.array([1./B for i in x])
+# log10:
+#x = np.linspace(1./B, 10. if not args.breakdown else 100., num=500 if not args.breakdown else 5000)
+#base = np.array([1./B for i in x])
+
+x = np.linspace(2**(-4), 2**4, num=500)
+base = np.array([x[0] for i in x])
+
 roofline_style = 'b-'
 peak = Roofline(x,P,B)
 # see https://github.com/matplotlib/matplotlib/issues/8623#issuecomment-304892552
-plt.loglog(x,peak, roofline_style, label=None, nonposx='clip', nonposy='clip')
+plt.plot(x,peak, roofline_style, label=None)
 
 # various ceilings (w/o FMA, w/o FMA and vectorization):
 for p_ in [P/2, P/2/4]:
@@ -236,7 +244,7 @@ for d in likwid_data:
     y = [f/1000]  # MFLOP->GFLOP
     style = d[4] + degree_to_points[d[1]]
     label = '{0} (p={1})'.format(d[3],d[1])
-    plt.loglog(x,y, style, label=label)
+    plt.plot(x,y, style, label=label)
     if 'MF' in label:
       mf_perf.append(y[0])
     else:
@@ -244,13 +252,18 @@ for d in likwid_data:
 
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
-plt.ylim(top=300,bottom=1)
+#plt.ylim(top=300,bottom=1)
+plt.ylim(top=2**8,bottom=2**2)
+plt.xlim(right=2**4,left=(2**(-4)+0.01))
+plt.axes().set_aspect('equal', adjustable=None) #'datalim')
+plt.axes().yaxis.set_major_formatter(mp.ticker.ScalarFormatter())
+plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}'.format(x) if x < 1.0 else '{0}'.format(int(round(x))) ))
 
-ang = 42 if not args.breakdown else 50
-y_pos = 5 if not args.breakdown else 7
-plt.text(0.02, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
+ang = 45 if not args.breakdown else 50
+y_pos = 13 if not args.breakdown else 7
+plt.text(2**(-4)+0.01, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
 
-x_pos = 3.7 if not args.breakdown else 25
+x_pos = 4 if not args.breakdown else 25
 plt.text(x_pos,200,'Peak DP', fontsize=14)
 plt.text(x_pos,100,'w/o FMA', fontsize=14)
 plt.text(x_pos,25, 'w/o SIMD', fontsize=14)
