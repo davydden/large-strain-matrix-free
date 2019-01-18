@@ -156,15 +156,15 @@ base_prm = args.base_prm
 base_name = args.base_prm.split('.')[0]
 out_dir = args.dir
 
-if out_dir and not out_dir.endswith('/'):
-    out_dir = out_dir + '/'
-
 # add prefix to the base name
 if args.likwid:
   base_name = 'likwid_' + base_name
   out_dir = 'LIKWID_' + out_dir
   if args.breakdown:
     out_dir = out_dir + '_breakdown'
+
+if out_dir and not out_dir.endswith('/'):
+    out_dir = out_dir + '/'
 
 print 'base parameter file: {0}'.format(base_prm)
 print 'output directory:    {0}'.format(out_dir)
