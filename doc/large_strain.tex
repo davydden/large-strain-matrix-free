@@ -904,7 +904,7 @@ In those graphs we report the memory needed to cache additional quantities requi
 as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
 from unit to real cell \cite{kronbichler12}.
 Note that for Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both deform and undeformed
-configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{rerun RRZE and IWR}\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
+configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{rerun IWR}\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
 
 % likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m $EXC
 {\color{red}
@@ -949,7 +949,7 @@ This coincides with our expectation that the later algorithm requires transferri
 On another hand, the ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates a higher computational intensity.
 Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations, an additional
 second order tensor per quadrature point (inverse of the Jacobian transformation) will be cached as compared to the Algorithm \ref{alg:mf_tensor2}.
-As a result both algorithms will have comparable memory requirements (also confirmed by Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} \todo{rerun and check}),
+As a result both algorithms will have comparable memory requirements (also confirmed by Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3}),
 however the ``scalar'' algorithm performs a large number of repetitive operations that are
 independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_scalar}), which makes it the worst option among the three.
 
