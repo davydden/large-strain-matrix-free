@@ -1,0 +1,31 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 10 MPI processes
+--     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
+--     . version 1.0 (revision 2febcb1 on branch cmame_quick_fixes_tex)
+--     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 4
+q     = 5
+cells = 352
+dofs  = 11520
+
+Trilinos memory = 0 Mb
+MF cache memory = 0 Mb
+
+Average CG iter = 0
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      6.21s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |         1 |   0.00981s |      0.16% |
+| Setup matrix-free               |         1 |      5.02s |        81% |
+| Setup system                    |         1 |    0.0272s |      0.44% |
+| vmult (MF)                      |         1 |    0.0861s |       1.4% |
++---------------------------------+-----------+------------+------------+
+

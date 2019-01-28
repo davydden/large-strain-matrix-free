@@ -18,6 +18,7 @@ parser.add_argument('--calc', metavar='calc', default='/home/woody/iwtm/iwtm108/
 parser.add_argument('--mpirun', metavar='mpirun', default='mpirun -np 20',
                     help='mpi run command with cores')
 parser.add_argument('--likwid', help='Prepare LIKWID run', action="store_true")
+parser.add_argument('--breakdown', help='LIKWID run with breakdown of costs', action="store_true")
 args = parser.parse_args()
 
 # parameters (list of tuples):
@@ -42,6 +43,16 @@ poly_quad_ref_dim_likwid = [
     (2,3,6,2),
     (4,5,5,2),
     (6,7,4,2),
+    (2,3,3,3),
+    (4,5,2,3),
+]
+
+poly_quad_ref_dim_likwid_breakdown = [
+    (2,3,1,2),
+    (4,5,1,2),
+    (6,7,1,2),
+    (2,3,0,3),
+    (4,5,0,3),
 ]
 
 # Solvers (type, preconditioner and caching)
@@ -53,10 +64,16 @@ solvers = [
 ]
 
 solvers_likwid = [
+    ('MF_CG', 'gmg', 'scalar'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
     ('CG',    'amg', 'scalar'),
 ]
+
+solvers_likwid_breakdown = [
+    ('MF_CG', 'gmg', 'tensor4')
+]
+
 
 # MPI run command (override if use LIKWID)
 mpirun_args = args.mpirun
@@ -69,6 +86,9 @@ mpicmd = mpirun_args + ' ' + args.prefix + 'main ' + args.calc + '{0}.prm 2>&1 |
 if args.likwid:
   solvers = solvers_likwid
   poly_quad_ref_dim = poly_quad_ref_dim_likwid
+  if args.breakdown:
+    solvers = solvers_likwid_breakdown
+    poly_quad_ref_dim = poly_quad_ref_dim_likwid_breakdown
 
 #
 # from here on the actual preprocessing:
@@ -91,6 +111,8 @@ subsection Linear solver
   set Preconditioner type        = {5}
   set MF caching                 = {6}
   set Preconditioner AMG aggregation threshold = 1e-4
+  set MF Chebyshev coarse accurate eigenvalues = false
+  set MF Chebyshev coarse = true
 end
 
 subsection Misc
@@ -103,6 +125,10 @@ subsection Boundary conditions
   set Dirichlet IDs and expressions = {10}
   set Dirichlet IDs and component mask = {11}
   set Neumann IDs and expressions = {12}
+end
+
+subsection Time
+  set End time  = {14}
 end
 """
 
@@ -130,13 +156,15 @@ base_prm = args.base_prm
 base_name = args.base_prm.split('.')[0]
 out_dir = args.dir
 
-if out_dir and not out_dir.endswith('/'):
-    out_dir = out_dir + '/'
-
 # add prefix to the base name
 if args.likwid:
   base_name = 'likwid_' + base_name
   out_dir = 'LIKWID_' + out_dir
+  if args.breakdown:
+    out_dir = out_dir + '_breakdown'
+
+if out_dir and not out_dir.endswith('/'):
+    out_dir = out_dir + '/'
 
 print 'base parameter file: {0}'.format(base_prm)
 print 'output directory:    {0}'.format(out_dir)
@@ -165,7 +193,8 @@ for pqrd in poly_quad_ref_dim:
             dirichlet_id[pqrd[3]],
             dirichlet_mask[pqrd[3]],
             neumann_bc[pqrd[3]],
-            'false'
+            'false',
+            0.2 if args.likwid else 1.0  # make sure we do 1 fake solution step
         ))
         filenames.append(name)
 
@@ -191,7 +220,8 @@ if not args.likwid:
               dirichlet_id[pqrd[3]],
               dirichlet_mask[pqrd[3]],
               neumann_bc[pqrd[3]],
-              'true'
+              'true',
+              1.0
           ))
 
 

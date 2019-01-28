@@ -85,6 +85,7 @@ static const unsigned int debug_level = 0;
 #include <mf_ad_nh_operator.h>
 #include <mf_nh_operator.h>
 #include <sys/stat.h>
+#include <version.h>
 
 #ifdef WITH_LIKWID
 #include <likwid.h>
@@ -361,6 +362,9 @@ namespace Cook_Membrane
       double       preconditioner_aggregation_threshold = 1e-4;
       unsigned int cond_number_cg_iterations            = 20;
       std::string  mf_caching                           = "scalar";
+      bool mf_coarse_chebyshev                          = true;
+      bool mf_coarse_chebyshev_accurate_eigenval        = true;
+      unsigned int mf_chebyshev_n_cg_iterations         = 30;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -412,6 +416,23 @@ namespace Cook_Membrane
                           mf_caching,
                           "Type of caching for matrix-free operator",
                           Patterns::Selection("scalar|tensor2|tensor4"));
+
+        prm.add_parameter(
+          "MF Chebyshev number CG iterations",
+          mf_chebyshev_n_cg_iterations,
+          "Number of CG iterations to estiamte condition number "
+          "for Chebyshev smoother",
+          Patterns::Integer(2));
+
+        prm.add_parameter("MF Chebyshev coarse",
+                          mf_coarse_chebyshev,
+                          "Use Chebyshev smoother as coarse level solver");
+
+        prm.add_parameter(
+          "MF Chebyshev coarse accurate eigenvalues",
+          mf_coarse_chebyshev_accurate_eigenval,
+          "Accurately estimate eigenvalues for coarse level Chebyshev"
+          "solver");
       }
       prm.leave_subsection();
     }
@@ -1049,6 +1070,7 @@ namespace Cook_Membrane
     timer_out << "), VECTORIZATION_LEVEL="
               << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
+    timer_out << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV << " on branch " << GIT_BRANCH <<")" << std::endl;
     timer_out << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
               << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
               << ")" << std::endl;
@@ -1095,6 +1117,7 @@ namespace Cook_Membrane
   Solid<dim, degree, n_q_points_1d, NumberType>::run()
   {
 #ifdef WITH_LIKWID
+    pcout << "LIKWID_MARKER_INIT" << std::endl;
     LIKWID_MARKER_INIT;
 #endif
     make_grid();
@@ -1130,6 +1153,7 @@ namespace Cook_Membrane
     // for post-processing, print average CG iterations over the whole run:
     timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
 #ifdef WITH_LIKWID
+    pcout << "LIKWID_MARKER_CLOSE" << std::endl;
     LIKWID_MARKER_CLOSE;
 #endif
 
@@ -1853,7 +1877,7 @@ namespace Cook_Membrane
       }
 
     // setup GMG preconditioner
-    const bool cheb_coarse = true;
+    const bool cheb_coarse = parameters.mf_coarse_chebyshev;
     {
       MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
       smoother_data.resize(0, triangulation.n_global_levels() - 1);
@@ -1867,7 +1891,9 @@ namespace Cook_Membrane
               smoother_data[level].degree =
                 numbers::invalid_unsigned_int; // use as a solver
               smoother_data[level].eig_cg_n_iterations =
-                mg_mf_nh_operator[level].m();
+                (parameters.mf_coarse_chebyshev_accurate_eigenval ?
+                   mg_mf_nh_operator[level].m() :
+                   parameters.mf_chebyshev_n_cg_iterations);
             }
           else
             {
@@ -1877,7 +1903,8 @@ namespace Cook_Membrane
               // parameter is retrieved
               smoother_data[level].degree = 4;
               // number of CG iterataions to estimate the largest eigenvalue:
-              smoother_data[level].eig_cg_n_iterations = 30;
+              smoother_data[level].eig_cg_n_iterations =
+                parameters.mf_chebyshev_n_cg_iterations;
             }
           smoother_data[level].preconditioner =
             mg_mf_nh_operator[level].get_matrix_diagonal_inverse();
@@ -2049,7 +2076,11 @@ namespace Cook_Membrane
           constraints.set_zero(src_trilinos);
           copy_trilinos(src, src_trilinos);
 
+#ifdef WITH_BREAKDOWN
+          const unsigned int n_times = 1;
+#else
           const unsigned int n_times = 10;
+#endif
           MPI_Barrier(mpi_communicator);
           if (!parameters.skip_tangent_assembly)
             for (unsigned int i = 0; i < n_times; ++i)
@@ -2068,14 +2099,25 @@ namespace Cook_Membrane
           for (unsigned int i = 0; i < n_times; ++i)
             {
               TimerOutput::Scope t(timer, "vmult (MF)");
-#ifdef WITH_LIKWID
+#if defined(WITH_LIKWID) && !defined(WITH_BREAKDOWN)
               LIKWID_MARKER_START("vmult_MF");
 #endif
               mf_nh_operator.vmult(dst_mf, src);
-#ifdef WITH_LIKWID
+#if defined(WITH_LIKWID) && !defined(WITH_BREAKDOWN)
               LIKWID_MARKER_STOP("vmult_MF");
 #endif
             }
+
+#ifdef WITH_LIKWID
+          // save HPC time and simply break out of NR loop
+          AssertThrow (parameters.delta_t == parameters.end_time,
+                      ExcMessage("LIKWID runs are fake and should have 1 timestep only"));
+          pcout << " FAKE CONVERGED!" << std::endl;
+          print_conv_footer();
+          total_n_cg_solve = 1;  // we later divide by that, so terminate gracefully
+          break;
+#endif
+
 
 #ifdef DEBUG
           if (!parameters.skip_tangent_assembly)

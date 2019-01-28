@@ -2,6 +2,8 @@
 #  CMake script for the step-<XYZ> tutorial program:
 ##
 
+OPTION(WITH_BREAKDOWN "Hack breackdown measurements of MF vmult() with LIKWID" OFF)
+
 # Set the name of the project and target:
 SET(TARGET "main")
 SET(TARGETLIB "mf_elasticity")
@@ -13,7 +15,7 @@ INCLUDE_DIRECTORIES(
 # Declare all source files the target consists of:
 SET(TARGETLIB_SRC
   src/mf_elasticity.cc
-  # You can specify additional files here!
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cc
 )
 
 SET(CLEAN_UP_FILES
@@ -37,6 +39,17 @@ IF(NOT ${deal.II_FOUND})
 ENDIF()
 
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
+
+# Run macro to get Git info:
+DEAL_II_QUERY_GIT_INFORMATION()
+# If we could not get the tag from Git, get it from VERSION file
+IF(NOT GIT_TAG)
+  FILE(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" GIT_TAG LIMIT_COUNT 1)
+ENDIF()
+MESSAGE("-- Code version ${GIT_TAG}")
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/version.cc.in
+               ${CMAKE_CURRENT_BINARY_DIR}/version.cc)
+
 PROJECT(${TARGET})
 
 #
@@ -85,31 +98,32 @@ TARGET_LINK_LIBRARIES(${TARGET}
   )
 
 #
-# Likwid. Set with -DLIKWID_DIR=/path/to/prefix
+# Likwid, configure with:
+# -DWITH_LIKWID=TRUE -DLIKWID_DIR=/path/to/prefix
 #
-IF (DEFINED LIKWID_DIR)
+IF (WITH_LIKWID)
   FIND_LIBRARY(LIKWID_LIBRARY
     NAMES likwid
     HINTS ${LIKWID_DIR}/lib
     NO_DEFAULT_PATH
   )
   IF(LIKWID_LIBRARY STREQUAL "LIKWID_LIBRARY-NOTFOUND")
-      MESSAGE(FATAL_ERROR "-- Likwid was not found in ${LIKWID_DIR}")
-  ENDIF()
-  MESSAGE("-- Use Likwid from ${LIKWID_DIR}")
-  TARGET_LINK_LIBRARIES(${TARGETLIB}
+    MESSAGE("-- Build without Likwid")
+    SET(WITH_LIKWID "FALSE")
+  ELSE()
+    MESSAGE("-- Use Likwid from ${LIKWID_DIR}")
+    TARGET_LINK_LIBRARIES(${TARGETLIB}
       "${LIKWID_LIBRARY}"
     )
-  # TODO: use FIND_PATH() to look for the headers
-  INCLUDE_DIRECTORIES ("${LIKWID_DIR}/include")
+    # TODO: use FIND_PATH() to look for the headers
+    INCLUDE_DIRECTORIES ("${LIKWID_DIR}/include")
 
-  # Finally, add necessary flags:
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLIKWID_PERFMON")
-  SET(WITH_LIKWID "TRUE")
+    # Finally, add necessary flags:
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLIKWID_PERFMON")
+  ENDIF()
 ELSE()
   MESSAGE("-- Build without Likwid")
-  SET(WITH_LIKWID "FALSE")
-ENDIF (DEFINED LIKWID_DIR)
+ENDIF ()
 
 INCLUDE_DIRECTORIES (${CMAKE_CURRENT_BINARY_DIR}/include)
 

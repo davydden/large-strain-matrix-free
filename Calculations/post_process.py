@@ -142,12 +142,12 @@ deg2d = [tup[0] for tup in mf2d_data_scalar]
 deg3d = [tup[0] for tup in mf3d_data_scalar]
 
 # vmult time per dof
-time2d_tr = [tup[4][1]/tup[1] for tup in mf2d_data_scalar]
+time2d_tr = [tup[4][1]/tup[1] for tup in mb2d_data]
 time2d_sc = [tup[4][0]/tup[1] for tup in mf2d_data_scalar]
 time2d_t2 = [tup[4][0]/tup[1] for tup in mf2d_data_tensor2]
 time2d_t4 = [tup[4][0]/tup[1] for tup in mf2d_data_tensor4]
 
-time3d_tr = [tup[4][1]/tup[1] for tup in mf3d_data_scalar]
+time3d_tr = [tup[4][1]/tup[1] for tup in mb3d_data]
 time3d_sc = [tup[4][0]/tup[1] for tup in mf3d_data_scalar]
 time3d_t2 = [tup[4][0]/tup[1] for tup in mf3d_data_tensor2]
 time3d_t4 = [tup[4][0]/tup[1] for tup in mf3d_data_tensor4]
@@ -176,12 +176,12 @@ cg3d_tr = [tup[5] for tup in mb3d_data]
 cg3d_t4 = [tup[5] for tup in mf3d_data_tensor4]
 
 # Mb per dof
-mem2d_tr = [tup[2]/tup[1] for tup in mf2d_data_scalar]
+mem2d_tr = [tup[2]/tup[1] for tup in mb2d_data]
 mem2d_sc = [tup[3]/tup[1] for tup in mf2d_data_scalar]
 mem2d_t2 = [tup[3]/tup[1] for tup in mf2d_data_tensor2]
 mem2d_t4 = [tup[3]/tup[1] for tup in mf2d_data_tensor4]
 
-mem3d_tr = [tup[2]/tup[1] for tup in mf3d_data_scalar]
+mem3d_tr = [tup[2]/tup[1] for tup in mb3d_data]
 mem3d_sc = [tup[3]/tup[1] for tup in mf3d_data_scalar]
 mem3d_t2 = [tup[3]/tup[1] for tup in mf3d_data_tensor2]
 mem3d_t4 = [tup[3]/tup[1] for tup in mf3d_data_tensor4]
