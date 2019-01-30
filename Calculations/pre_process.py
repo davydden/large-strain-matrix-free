@@ -18,6 +18,7 @@ parser.add_argument('--calc', metavar='calc', default='/home/woody/iwtm/iwtm108/
 parser.add_argument('--mpirun', metavar='mpirun', default='mpirun -np 20',
                     help='mpi run command with cores')
 parser.add_argument('--likwid', help='Prepare LIKWID run', action="store_true")
+parser.add_argument('--single', help='LIKWID single MPI core run', action="store_true")
 parser.add_argument('--breakdown', help='LIKWID run with breakdown of costs', action="store_true")
 args = parser.parse_args()
 
@@ -70,6 +71,14 @@ solvers_likwid = [
     ('CG',    'amg', 'scalar'),
 ]
 
+if args.single:
+  solvers_likwid = [
+    ('MF_CG', 'gmg', 'scalar'),
+    ('MF_CG', 'gmg', 'tensor2'),
+    ('MF_CG', 'gmg', 'tensor4'),
+  ]
+
+
 solvers_likwid_breakdown = [
     ('MF_CG', 'gmg', 'tensor4')
 ]
@@ -78,7 +87,7 @@ solvers_likwid_breakdown = [
 # MPI run command (override if use LIKWID)
 mpirun_args = args.mpirun
 if args.likwid:
-  mpirun_args = 'likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m'
+  mpirun_args = 'likwid-mpirun -np {0} -nperdomain S:{0} -g MEM_DP -m'.format(1 if args.single else 10)
 
 mpicmd = mpirun_args + ' ' + args.prefix + 'main ' + args.calc + '{0}.prm 2>&1 | tee {0}.toutput\nmv {0}.toutput {1}{0}/{0}.toutput\n\n'
 
@@ -160,6 +169,8 @@ out_dir = args.dir
 if args.likwid:
   base_name = 'likwid_' + base_name
   out_dir = 'LIKWID_' + out_dir
+  if args.single:
+    out_dir = out_dir + '_1proc'
   if args.breakdown:
     out_dir = out_dir + '_breakdown'
 
