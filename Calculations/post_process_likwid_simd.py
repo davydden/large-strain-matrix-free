@@ -99,7 +99,8 @@ with open(file_name, 'w') as f:
     f.write("""\
 \\begin{table}
 \centering
-\\begin{tabular}{c|cc|ccc|ccc|ccc}
+\\resizebox{\\textwidth}{!}{
+\\begin{tabular}{|c|cc|ccc|ccc|ccc|}
 \hline
               & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\\\
 \hline
@@ -119,6 +120,7 @@ p             & time  & GFlop/s              & time & GFlop/s & speedup & time &
     f.write("""\
 \hline
 \end{tabular}
+}
 \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
 vectorization and parallelization.}
 \label{tab:numbers_2d}

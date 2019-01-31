@@ -1,6 +1,7 @@
 \begin{table}
 \centering
-\begin{tabular}{c|cc|ccc|ccc|ccc}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|cc|ccc|ccc|ccc|}
 \hline
               & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\
 \hline
@@ -11,6 +12,7 @@ p             & time  & GFlop/s              & time & GFlop/s & speedup & time &
 6& \pgfmathprintnumber{0.18234} & \pgfmathprintnumber{2.0967573} & \pgfmathprintnumber{0.02242} & \pgfmathprintnumber{17.4107084} & \pgfmathprintnumber{8.13291703836} & \pgfmathprintnumber{0.0969} & \pgfmathprintnumber{3.8566984} & \pgfmathprintnumber{1.88173374613} & \pgfmathprintnumber{0.01262} & \pgfmathprintnumber{30.6765849} & \pgfmathprintnumber{14.4484944532} \\
 \hline
 \end{tabular}
+}
 \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
 vectorization and parallelization.}
 \label{tab:numbers_2d}
