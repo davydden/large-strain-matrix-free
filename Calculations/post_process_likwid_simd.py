@@ -73,7 +73,7 @@ for idx, s in enumerate(suffixes):
             flops = data['MFLOP/s STAT'][0]                # take Sum
             runtime = data['Runtime (RDTSC) [s] STAT'][2]  # take Max
 
-        runtime = float(runtime)
+        runtime = float(runtime) / 10  # FIXME: hard-code that we run 10 times
         flops = float(flops) / 1000  # MFLOP/s -> GFLOP/s
 
         print '  {0}'.format(flops)
