@@ -908,7 +908,7 @@ In those graphs we report the memory needed to cache additional quantities requi
 as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
 from unit to real cell \cite{kronbichler12}.
 Note that for Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both deform and undeformed
-configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{rerun IWR}\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
+configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
 
 % likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m $EXC
 {\color{red}
