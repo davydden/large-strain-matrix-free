@@ -24,10 +24,17 @@ suffixes = [
     ''
 ]
 
+# FIXME: hard-code polynomial orders
+poly_to_row = {
+    2 : 0,
+    4 : 1,
+    6 : 2
+}
+
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
 
 # We will generate a table similar to Table 1 in Kronbichler 2012
-table_data = []
+table_data = [ [ np.nan for i in range(12)] for i in range(3)]
 
 # Go through all the suffixes and parse the data
 for idx, s in enumerate(suffixes):
@@ -65,8 +72,55 @@ for idx, s in enumerate(suffixes):
             flops = data['MFLOP/s STAT'][0]                # take Sum
             runtime = data['Runtime (RDTSC) [s] STAT'][2]  # take Max
 
+        runtime = float(runtime)
+        flops = float(flops) / 1000  # MFLOP/s -> GFLOP/s
+
         print '  {0}'.format(flops)
         print '  {0}'.format(runtime)
 
+        row = poly_to_row[p]
+        # first column
+        col = 1 if idx==0 else 3 * idx
+        # fill in the table
+        table_data[row][0] = p
+        table_data[row][col] = runtime
+        table_data[row][col+1] = flops
+        if idx > 0:
+            # FIXME: assume that fully serial runs are already in the table
+            table_data[row][col+2] = table_data[row][1] / runtime
 
 
+# Finally write out a latex multicolumn table
+file_name = os.path.join(os.getcwd(), '../doc/parallelization.tex')
+print 'Saving table in ' + file_name
+
+with open(file_name, 'w') as f:
+    # start with the header
+    f.write("""\
+\\begin{table}
+\centering
+\\begin{tabular}{c|cc|ccc|ccc|ccc}
+\hline
+              & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\\\
+\hline
+p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\\\
+\hline
+""")
+
+    # now print the gathered data:
+    for row in table_data:
+        line = '{0}'.format(int(row[0]))
+        for i in range(1, len(row)):
+            line = line + '& \pgfmathprintnumber{' + '{0}'.format(row[i]) + '} '
+        line = line + '\\\\\n'
+        f.write(line)
+
+    # now footer:
+    f.write("""\
+\hline
+\end{tabular}
+\caption{Wall-clock time in seconds and performance in GFlops of tensor4 algorithm for various combinations of polynomial degrees,
+vectorization and parallelization.}
+\label{tab:numbers}
+\end{table}
+""")
