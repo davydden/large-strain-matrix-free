@@ -34,7 +34,8 @@ poly_to_row = {
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
 
 # We will generate a table similar to Table 1 in Kronbichler 2012
-table_data = [ [ np.nan for i in range(12)] for i in range(3)]
+n_rows = 3 if args.dim == 2 else 2
+table_data = [ [ np.nan for i in range(12)] for i in range(n_rows)]
 
 # Go through all the suffixes and parse the data
 for idx, s in enumerate(suffixes):
@@ -89,9 +90,8 @@ for idx, s in enumerate(suffixes):
             # FIXME: assume that fully serial runs are already in the table
             table_data[row][col+2] = table_data[row][1] / runtime
 
-
 # Finally write out a latex multicolumn table
-file_name = os.path.join(os.getcwd(), '../doc/parallelization.tex')
+file_name = os.path.join(os.getcwd(), '../doc/parallelization_{0}d.tex'.format(args.dim))
 print 'Saving table in ' + file_name
 
 with open(file_name, 'w') as f:
@@ -119,8 +119,8 @@ p             & time  & GFlop/s              & time & GFlop/s & speedup & time &
     f.write("""\
 \hline
 \end{tabular}
-\caption{Wall-clock time in seconds and performance in GFlops of tensor4 algorithm for various combinations of polynomial degrees,
+\caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
 vectorization and parallelization.}
-\label{tab:numbers}
+\label{tab:numbers_2d}
 \end{table}
 """)
