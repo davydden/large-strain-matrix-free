@@ -1,0 +1,80 @@
+Assembly method: Residual and linearisation are computed manually.
+LIKWID_MARKER_INIT
+Grid:
+  Reference volume: 9.29428e-10
+Triangulation:
+  Number of active cells: 180224
+  Number of degrees of freedom: 4442880
+
+Timestep 1 @ 0.2s
+__________________________________________________________________________________________________
+    SOLVER STEP     |  LIN_IT    LIN_RES   COND_NUM   RES_NORM      RES_U      NU_NORM       NU_U
+__________________________________________________________________________________________________
+  0  CST  ASM  FAKE CONVERGED!
+__________________________________________________________________________________________________
+Relative errors:
+  Displacement: 1
+  Force:        1
+Absolute errors:
+  Displacement: 1
+  Force:        5.19046e-05
+Volume:         9.29428e-10 / 9.29428e-10
+_______________________________________________________________________________________
+LIKWID_MARKER_CLOSE
+Region: vmult_MF
+Group: 1
++--------------------------------------+---------+-------------+
+|                 Event                | Counter |  e0132:0:0  |
++--------------------------------------+---------+-------------+
+|          Runtime (RDTSC) [s]         |   TSC   |    16.06842 |
+|             Region calls             |   CTR   |          10 |
+|           INSTR_RETIRED_ANY          |  FIXC0  | 66219400000 |
+|         CPU_CLK_UNHALTED_CORE        |  FIXC1  | 47925650000 |
+|         CPU_CLK_UNHALTED_REF         |  FIXC2  | 35157650000 |
+|            PWR_PKG_ENERGY            |   PWR0  |    589.2856 |
+|            PWR_DRAM_ENERGY           |   PWR3  |    221.7584 |
+| FP_COMP_OPS_EXE_SSE_FP_PACKED_DOUBLE |   PMC0  |   183486200 |
+| FP_COMP_OPS_EXE_SSE_FP_SCALAR_DOUBLE |   PMC1  |   341944900 |
+|       SIMD_FP_256_PACKED_DOUBLE      |   PMC2  |  8607952000 |
+|             CAS_COUNT_RD             | MBOX0C0 |    39893520 |
+|             CAS_COUNT_WR             | MBOX0C1 |    12537460 |
+|             CAS_COUNT_RD             | MBOX1C0 |    31442870 |
+|             CAS_COUNT_WR             | MBOX1C1 |     4180888 |
+|             CAS_COUNT_RD             | MBOX2C0 |    31462560 |
+|             CAS_COUNT_WR             | MBOX2C1 |     4177493 |
+|             CAS_COUNT_RD             | MBOX3C0 |    31526110 |
+|             CAS_COUNT_WR             | MBOX3C1 |     4187222 |
+|             CAS_COUNT_RD             | MBOX4C0 |           0 |
+|             CAS_COUNT_WR             | MBOX4C1 |           0 |
+|             CAS_COUNT_RD             | MBOX5C0 |           0 |
+|             CAS_COUNT_WR             | MBOX5C1 |           0 |
+|             CAS_COUNT_RD             | MBOX6C0 |           0 |
+|             CAS_COUNT_WR             | MBOX6C1 |           0 |
+|             CAS_COUNT_RD             | MBOX7C0 |           0 |
+|             CAS_COUNT_WR             | MBOX7C1 |           0 |
++--------------------------------------+---------+-------------+
+
++-----------------------------------+-----------+
+|               Metric              | e0132:0:0 |
++-----------------------------------+-----------+
+|        Runtime (RDTSC) [s]        |   16.0684 |
+|        Runtime unhalted [s]       |   21.7845 |
+|            Clock [MHz]            | 2998.9525 |
+|                CPI                |    0.7237 |
+|             Energy [J]            |  589.2856 |
+|             Power [W]             |   36.6735 |
+|          Energy DRAM [J]          |  221.7584 |
+|           Power DRAM [W]          |   13.8009 |
+|              MFLOP/s              | 2186.9434 |
+|            AVX MFLOP/s            | 2142.8247 |
+|           Packed MUOPS/s          |  547.1252 |
+|           Scalar MUOPS/s          |   21.2806 |
+|  Memory read bandwidth [MBytes/s] |  535.0124 |
+|  Memory read data volume [GBytes] |    8.5968 |
+| Memory write bandwidth [MBytes/s] |   99.9050 |
+| Memory write data volume [GBytes] |    1.6053 |
+|    Memory bandwidth [MBytes/s]    |  634.9174 |
+|    Memory data volume [GBytes]    |   10.2021 |
+|       Operational intensity       |    3.4445 |
++-----------------------------------+-----------+
+
