@@ -1,0 +1,19 @@
+\begin{table}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|c|cc|ccc|ccc|ccc|}
+\hline
+              & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\
+\hline
+p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\
+\hline
+2& \pgfmathprintnumber{0.52707} & \pgfmathprintnumber{1.1891404} & \pgfmathprintnumber{0.06348} & \pgfmathprintnumber{10.0221061} & \pgfmathprintnumber{8.30293005671} & \pgfmathprintnumber{0.29742} & \pgfmathprintnumber{2.1854376} & \pgfmathprintnumber{1.7721404075} & \pgfmathprintnumber{0.03493} & \pgfmathprintnumber{18.8673723} & \pgfmathprintnumber{15.0893215001} \\
+4& \pgfmathprintnumber{0.35003} & \pgfmathprintnumber{1.7759546} & \pgfmathprintnumber{0.04259} & \pgfmathprintnumber{14.7602963} & \pgfmathprintnumber{8.21859591453} & \pgfmathprintnumber{0.1875} & \pgfmathprintnumber{3.2445736} & \pgfmathprintnumber{1.86682666667} & \pgfmathprintnumber{0.02399} & \pgfmathprintnumber{25.8547729} & \pgfmathprintnumber{14.5906627762} \\
+6& \pgfmathprintnumber{0.18234} & \pgfmathprintnumber{2.0967573} & \pgfmathprintnumber{0.02242} & \pgfmathprintnumber{17.4107084} & \pgfmathprintnumber{8.13291703836} & \pgfmathprintnumber{0.0969} & \pgfmathprintnumber{3.8566984} & \pgfmathprintnumber{1.88173374613} & \pgfmathprintnumber{0.01262} & \pgfmathprintnumber{30.6765849} & \pgfmathprintnumber{14.4484944532} \\
+\hline
+\end{tabular}
+}
+\caption{Wall-clock time in seconds and performance in GFlops of Algorithm \ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
+vectorization and parallelization.}
+\label{tab:numbers_2d}
+\end{table}

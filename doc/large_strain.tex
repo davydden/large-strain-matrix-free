@@ -50,6 +50,10 @@
 \usepackage[labelformat=simple]{subcaption}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
+\usepackage{pgfkeys,pgfmath,pgfcore}
+% \pgfkeys{/pgf/number format/.cd,1000 sep={}}
+\pgfkeys{/pgf/number format/fixed,/pgf/number format/precision=3}
+
 
 %
 % Definitions:
@@ -739,10 +743,10 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \centering
   \begin{subfigure}[b]{0.8\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{gmg_2d.png}
+    \includegraphics[width=\textwidth]{gmg_2d_4procs.png}
     % \caption{2D multigrid mesh with 2 global refinements}
   \end{subfigure}
-  \caption{2D multigrid mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
+  \caption{2D multigrid mesh after two global refinements distributed into four MPI processes. The color indicates the process owning the element.}%
   \label{fig:miehe_gmg}
 \end{figure}
 %
@@ -904,7 +908,7 @@ In those graphs we report the memory needed to cache additional quantities requi
 as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
 from unit to real cell \cite{kronbichler12}.
 Note that for Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both deform and undeformed
-configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{rerun IWR}\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
+configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.\todo{this is roughly main memory transfer, do we elaborate on this/use it?}}
 
 % likwid-mpirun -np 10 -nperdomain S:10 -g MEM_DP -m $EXC
 {\color{red}
@@ -983,6 +987,10 @@ independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_
   \caption{Breakdown of computing times and Roofline analysis of various steps of Algorithm \ref{alg:mf_tensor4}.}%
   \label{fig:breakdown}
 \end{figure}
+
+\todo{Discuss MPI/SIMD}
+\input{parallelization_2d.tex}
+\input{parallelization_3d.tex}
 
 In order to have a better understanding of the behavior of the most promising ``tensor4'' implementation,
 we collect its performance data and computing times for various stages inside the element loop (see Algorithm \ref{alg:mf_tensor4}):

@@ -1,0 +1,80 @@
+Assembly method: Residual and linearisation are computed manually.
+LIKWID_MARKER_INIT
+Grid:
+  Reference volume: 9.29428e-10
+Triangulation:
+  Number of active cells: 180224
+  Number of degrees of freedom: 4442880
+
+Timestep 1 @ 0.2s
+__________________________________________________________________________________________________
+    SOLVER STEP     |  LIN_IT    LIN_RES   COND_NUM   RES_NORM      RES_U      NU_NORM       NU_U
+__________________________________________________________________________________________________
+  0  CST  ASM  FAKE CONVERGED!
+__________________________________________________________________________________________________
+Relative errors:
+  Displacement: 1
+  Force:        1
+Absolute errors:
+  Displacement: 1
+  Force:        5.19046e-05
+Volume:         9.29428e-10 / 9.29428e-10
+_______________________________________________________________________________________
+LIKWID_MARKER_CLOSE
+Region: vmult_MF
+Group: 1
++--------------------------------------+---------+--------------+
+|                 Event                | Counter |   e0752:0:0  |
++--------------------------------------+---------+--------------+
+|          Runtime (RDTSC) [s]         |   TSC   |     24.27154 |
+|             Region calls             |   CTR   |           10 |
+|           INSTR_RETIRED_ANY          |  FIXC0  | 176007400000 |
+|         CPU_CLK_UNHALTED_CORE        |  FIXC1  |  72472960000 |
+|         CPU_CLK_UNHALTED_REF         |  FIXC2  |  53158230000 |
+|            PWR_PKG_ENERGY            |   PWR0  |     924.7727 |
+|            PWR_DRAM_ENERGY           |   PWR3  |     362.3405 |
+| FP_COMP_OPS_EXE_SSE_FP_PACKED_DOUBLE |   PMC0  |    529698600 |
+| FP_COMP_OPS_EXE_SSE_FP_SCALAR_DOUBLE |   PMC1  |  31920220000 |
+|       SIMD_FP_256_PACKED_DOUBLE      |   PMC2  |     48668090 |
+|             CAS_COUNT_RD             | MBOX0C0 |     31879180 |
+|             CAS_COUNT_WR             | MBOX0C1 |      4211303 |
+|             CAS_COUNT_RD             | MBOX1C0 |     44508360 |
+|             CAS_COUNT_WR             | MBOX1C1 |     16919440 |
+|             CAS_COUNT_RD             | MBOX2C0 |     31802330 |
+|             CAS_COUNT_WR             | MBOX2C1 |      4194152 |
+|             CAS_COUNT_RD             | MBOX3C0 |     31910140 |
+|             CAS_COUNT_WR             | MBOX3C1 |      4213764 |
+|             CAS_COUNT_RD             | MBOX4C0 |            0 |
+|             CAS_COUNT_WR             | MBOX4C1 |            0 |
+|             CAS_COUNT_RD             | MBOX5C0 |            0 |
+|             CAS_COUNT_WR             | MBOX5C1 |            0 |
+|             CAS_COUNT_RD             | MBOX6C0 |            0 |
+|             CAS_COUNT_WR             | MBOX6C1 |            0 |
+|             CAS_COUNT_RD             | MBOX7C0 |            0 |
+|             CAS_COUNT_WR             | MBOX7C1 |            0 |
++--------------------------------------+---------+--------------+
+
++-----------------------------------+-----------+
+|               Metric              | e0752:0:0 |
++-----------------------------------+-----------+
+|        Runtime (RDTSC) [s]        |   24.2715 |
+|        Runtime unhalted [s]       |   32.9419 |
+|            Clock [MHz]            | 2999.3868 |
+|                CPI                |    0.4118 |
+|             Energy [J]            |  924.7727 |
+|             Power [W]             |   38.1011 |
+|          Energy DRAM [J]          |  362.3405 |
+|           Power DRAM [W]          |   14.9286 |
+|              MFLOP/s              | 1366.7979 |
+|            AVX MFLOP/s            |    8.0206 |
+|           Packed MUOPS/s          |   23.8290 |
+|           Scalar MUOPS/s          | 1315.1296 |
+|  Memory read bandwidth [MBytes/s] |  369.4203 |
+|  Memory read data volume [GBytes] |    8.9664 |
+| Memory write bandwidth [MBytes/s] |   77.8885 |
+| Memory write data volume [GBytes] |    1.8905 |
+|    Memory bandwidth [MBytes/s]    |  447.3089 |
+|    Memory data volume [GBytes]    |   10.8569 |
+|       Operational intensity       |    3.0556 |
++-----------------------------------+-----------+
+
