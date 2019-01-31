@@ -69,6 +69,7 @@
 \DeclareMathOperator{\trace}{tr}
 \newcommand{\diff}{\mathop{}\!\mathrm{d}}
 
+\newcommand{\changeJP}[1]{\textcolor{blue}{#1}}
 
 \begin{document}
 
@@ -341,7 +342,9 @@ Here $\overline{(\bullet)}$ is used to denote quantities evaluated using the dis
 The first term in \eqref{eq:tangent} is related to the linearization of the Piola-Kirchhoff stress $\gz S$ and is therefore called material part of the directional derivative.
 The second term in \eqref{eq:tangent} is called the geometric part of the directional derivative since it originates from the linearization of $\gz F$, $\gz F^T$ and $\gz F^{-1}$.
 
-\subsection{Constitutive modelling}
+\subsection{Constitutive modelling
+\label{sec: Constitutive modelling}
+}
 
 For the current study, we use the compressible Neo-Hookean model
 \begin{gather}
@@ -420,6 +423,30 @@ Given the current trial solution field $\overline{\gz u^h}$, the correction $\De
 Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient of the potential energy
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration, whereas the integration is done in the referential configuration.
+
+\section{\changeJP{Description of numerical framework}}
+
+The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling} were implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
+This library offers a number of paradigms by which to parallelize a finite-element code.
+In this work we employ \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4est} library to perform a standard domain decomposition, whereafter each MPI process ``owns'' only a subset of elements and the mesh is distributed across all MPI processes.
+%
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{fine_level_2d.png}
+    % \caption{2D multigrid mesh with 2 global refinements}
+  \end{subfigure}
+  \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
+  \label{fig:miehe_fine_level}
+\end{figure}
+%
+%
+Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on the fine mesh level for the 2D problem that will be introduced later in Section \ref{sec:example}.
+
+In practise this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of discussion in this manuscript, has been achieved using MPI.
+
+The results of the matrix-free approach with a geometric-multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML of the Trilinos \cite{Heroux2005} library, version 12.12.1.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
@@ -639,7 +666,7 @@ The core of the sum factorization algorithms is provided by the
 \textit{FEEvaluation} class, that already supports all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
 Thanks to the object oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
 Distributed memory MPI parallelization of the matrix-free operators is done using the standard domain decomposition technique, where each MPI process is responsible for applying the operator only on the so-called locally owned elements.
-For more information about the implementation details and data structures for sum factorization approaches in deal.II (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and shared memory parallelization as well SIMD vectorization) and performance tests, see \cite{kronbichler12}.
+For more information about the implementation details and data structures for sum factorization approaches in \texttt{deal.II} (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and distributed memory parallelization as well SIMD vectorization) and performance tests, see \cite{kronbichler12}.
 }
 
 
@@ -731,18 +758,6 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \centering
   \begin{subfigure}[b]{0.8\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{fine_level_2d.png}
-    % \caption{2D multigrid mesh with 2 global refinements}
-  \end{subfigure}
-  \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
-  \label{fig:miehe_fine_level}
-\end{figure}
-
-
-\begin{figure}[!ht]
-  \centering
-  \begin{subfigure}[b]{0.8\textwidth}
-    \centering
     \includegraphics[width=\textwidth]{gmg_2d_4procs.png}
     % \caption{2D multigrid mesh with 2 global refinements}
   \end{subfigure}
@@ -751,16 +766,10 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 \end{figure}
 %
 %
+\changeJP{The same distributed approach to mesh decomposition (as most evident on the finest level) is adopted on the multigrid levels.}
+Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements \changeJP{for the mesh introduced in figure \ref{fig:miehe_fine_level}}.
 {\color{red}
-MPI parallelization is achieved using the standard domain decomposition, where each MPI process ``owns'' only a subset of elements.
-To that end, \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4est} library is used.
-Figure \ref{fig:miehe_fine_level} illustrates such decomposition on the fine mesh level for the 2D problem.
-The same approach is adopted on the multigrid levels.}
-Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements.
-{\color{red}
-Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.
-}
-
+Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.}
 \begin{table}
   \centering
   \begin{tabular}{ccccc}
@@ -808,9 +817,10 @@ We chose a problem size around $10^6$ DoFs for each test case as this was an upp
 On the other hand, the problem size is large enough so that the sparse matrix will not fit into the L3 cache and therefore we can observe that the matrix-based approach is memory bound.
 }
 %
-The results of the matrix-free approach with a geometric-multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML of the Trilinos \cite{Heroux2005} library, version 12.12.1.
+The results of the matrix-free approach with a geometric multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML \cite{Gee2006a} of the Trilinos \cite{Heroux2005} library.
 The aggregation threshold for the AMG preconditioner is taken as $10^{-4}$.
-Computations are done on a single node of two clusters:
+
+Computations \changeJP{were performed} on a single node of two clusters:
 A node on the ``Emmy'' cluster at RRZE, FAU has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB shared cache per chip and 64 GB of RAM. Intel's compiler version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
 The ``IWR'' results were obtained on a single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
 {\color{red}Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. fully occupied node.}
