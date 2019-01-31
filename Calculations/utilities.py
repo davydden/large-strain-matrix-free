@@ -8,13 +8,16 @@ def remove_creation_date(file_name):
         if not 'CreationDate' in line:
             print line,
 
-def collection_toutput_files(files, prefix):
+def collection_toutput_files(prefix):
     '''starting from prefix, collection full path to all files that
     end with .toutput'''
+    files = []
     for root, dirs, files_ in os.walk(prefix):
         for f in files_:
             if f.endswith(".toutput"):
                 files.append(os.path.join(root, f))
+
+    return files
 
 def get_regex_pattern():
     return r'[+\-]?(?:[0-9]\d*)(?:\.\d*)?(?:[eE][+\-]?\d+)?'
@@ -37,6 +40,7 @@ def parse_likwid_file(filename, last_line = ''):
     '''
     result = {}
     fin = open(filename, 'r')
+    debug_output = False
 
     row_separator = '---------'
 
@@ -61,7 +65,8 @@ def parse_likwid_file(filename, last_line = ''):
             # Check if we found one of the regions:
             if 'Region:' in line:
                 region = line[8:]
-                print '-- Region: {0}'.format(region)
+                if debug_output:
+                    print '-- Region: {0}'.format(region)
                 # regions should be unique
                 assert region not in result
                 result[region] = {}
@@ -92,10 +97,12 @@ def parse_likwid_file(filename, last_line = ''):
                 table_name = columns[0]
                 if 'Sum' in line and 'Min' in line and 'Max' in line and 'Avg' in line:
                     table_name = table_name + '_Sum'
-                print '   Name  : {0}'.format(table_name)
+
                 # table names for a given region should be unique
                 assert table_name not in result[region]
                 result[region][table_name] = {}
+                if debug_output:
+                    print '   Name  : {0}'.format(table_name)
             else:
                 # we should have table name around already
                 assert table_name != ''
@@ -107,8 +114,9 @@ def parse_likwid_file(filename, last_line = ''):
                 val = columns[1:]
 
                 # finally put the data
-                print '      {0}'.format(key)
                 result[region][table_name][key] = val
+                if debug_output:
+                    print '      {0}'.format(key)
         else:
             # If we have not found LIKWID part yet
             if last_line in line:
