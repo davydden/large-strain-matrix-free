@@ -836,6 +836,7 @@ We chose a problem size around $10^6$ DoFs for each test case as this was an upp
 %
 % Below are are implementational details that might affect the comparative result
 %
+\changeJP{We conduct two performance studies using the described discretization, the first being for only matrix-vector multiplication, and the second for the preconditioned iterative linear solver.}
 The results of the matrix-free approach with a geometric multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML \cite{Gee2006a} of the Trilinos \cite{Heroux2005} library.
 The aggregation threshold for the AMG preconditioner is taken as $10^{-4}$.
 {\color{red}
@@ -1132,22 +1133,25 @@ Although not reported in this section, we identified that
 the coarse level solver setup will greatly affect the performance of the preconditioner.
 In particular, we can improve the number of iterations by choosing a more accurate coarse level solver,
 however this leads to an overall more expensive linear solver.}
+\changeJP{However, the settings used in this study are optimized for the considered problem in terms of the wall-time spent in the linear solver.}
 The black-box AMG preconditioner
-{\color{red} demonstrate the same behavior of the number of CG iterations, however it}
+{\color{red} demonstrates the same \changeJP{trend in terms of} the number of CG iterations, however it}
 requires many more iterations for convergence.
-{\color{red}
-Consequently, we can conclude that, although the adopted level operators are not built using the triple product $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, they still result in a multigrid preconditioner which requires much fewer CG iterations as compared to the algebraic multigrid for the here considered finite strain elasticity problem and that the considered smoother is suitable.
+\changeJP{
+Consequently, we can conclude that for the here considered finite strain elasticity problem (i) the selected smoother is suitable, and that (ii) although the adopted level operators are not built using the triple product $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, they still result in a multigrid preconditioner which requires much fewer CG iterations as compared to the algebraic multigrid.
 }
 
 {\color{red}
 Additionally, we compare solution times of the preconditioned iterative solvers.
-Our goal is to see whether the matrix-free approach with GMG preconditioner can be faster than the matrix-based approach with an AMG preconditioner.}
+Our goal is to \changeJP{determine} whether the matrix-free approach with GMG preconditioner can be faster than the matrix-based approach with an AMG preconditioner.
+}
+\changeJP{We note that although the well-established implementation of the AMG preconditioner \cite{Gee2006a} is the best available choice for the matrix-based implementation of the boundary value problem, the current implementation of the matrix-free GMG preconditioner is not yet optimized and can be improved further.}
 Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution times for {\color{red}all} polynomial degrees.
 {\color{red}Importantly, the wall time per DoF for the matrix-free solver with GMG preconditioner stays almost constant both for 2D and 3D problems.
 \changeJP{In comparison}, the wall time of the matrix-based iterative solver grows rapidly with increasing polynomial degree.
 Clearly this is related both to the performance of the preconditioner from the linear algebra perspective as well as the matrix-vector products, studied in the previous section.
-Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for engendering problems
-with finite strain material models.
+Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for \changeJP{engineering problems
+with compressible hyperelastic} finite strain material models.
 Extension of this study from the node level to the cluster level is beyond the scope of this work,
 however we hypothesize that the matrix-free and multigrid frameworks provided by \texttt{deal.II} library would provide a competitive solution for that case as well.}
 
@@ -1157,7 +1161,7 @@ however we hypothesize that the matrix-free and multigrid frameworks provided by
 In this contribution, we proposed and numerically investigated {\color{red}three different} matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
 {\color{red}
 To the best of our knowledge, this is the first work that applies matrix-free sum factorization techniques to partial differential equations arising in this case.}
-{\color{red}Among the three algorithms,}
+{\color{red}Among the three \changeJP{examined} algorithms,}
 the implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for quadratic elements in 3D and cubic {\color{red}elements in 2D}.
 {\color{red}
 Given that in this case we did not utilize the specific form of the material part of the stiffness tensor, we conclude}
@@ -1194,7 +1198,7 @@ as well studying its behavior on the cluster level as opposed to node level, con
 
 D.~Davydov acknowledges the financial support of the German Research Foundation (DFG), grant DA 1664/2-1.
 
-D.~Davydov, D.~Arndt and J-P.~Pelteret are grateful to {\color{red}Martin Kronbichler (TU Munich),} Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for a fruitful discussion on matrix-free operator evaluation approaches.
+D.~Davydov, D.~Arndt and J-P.~Pelteret are grateful to {\color{red}Martin Kronbichler (TU Munich),} Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for \changeJP{fruitful discussions} on matrix-free operator evaluation approaches.
 
 D.~Arndt was supported by the German Research Foundation (DFG) under the project ``High-order discontinuous
 Galerkin for the exa-scale'' (\mbox{ExaDG}) within the priority program ``Software
@@ -1204,6 +1208,8 @@ for Exascale Computing'' (SPPEXA).
 % the Advanced Grant 289049 MOCOPOLY
 
 P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible, as well as funding by the EPSRC Strategic Support Package ``Engineering of Active Materials by Multiscale/Multiphysics Computational Mechanics''.
+
+\todo{Add back of the envelope calculations by Veselin Dobrev? See {https://github.com/CEED/Forum/issues/1}.}
 
 \ifijnme
 \bibliographystyle{wileyj}
