@@ -36,8 +36,7 @@ using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
-test(const unsigned int n_cells = 22528) // 90112 active cells in 2D for p=4 =>
-                                         // num of cell batches ~ 90112/4
+test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_elements)
 {
   constexpr int n_q_points = Utilities::pow(degree + 1, dim);
 
