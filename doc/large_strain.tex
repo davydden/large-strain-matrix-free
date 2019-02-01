@@ -187,8 +187,7 @@ are widely adopted in the fluid mechanics community.
 Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, ljungkvist2017multigrid}.
 
 To the best of our knowledge, matrix-free methods are not widely adopted within the solid mechanics community.
-We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018} and a recent master's thesis produced by a student of the first two of the authors \cite{Mentler2017},
-{\color{red} which is also limited to small strain linear elasticity.}\todo{omit?}
+We are only aware of a single paper currently in preparation that deals with small strain linear elasticity \cite{Clevenger2018}.
 One possible reason is that the tangent operators\footnote{Here and
 below 'operator' denotes a finite-dimensional linear operator defined on the vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
 Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
@@ -197,19 +196,24 @@ more elaborate as compared to the operators used often in both linear and non-li
 Another reason could be the frequent use of lower order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
 whereas higher order elements are rarely employed.
-This can potentially reduce the advantage of matrix-free methods, that are generally more competitive for higher order elements\todo{reference?}.
+This can potentially reduce the advantage of matrix-free methods, that are generally more competitive for higher order elements\todo{reference? Martin's papers?}.
 However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
 
-In this work, we investigate different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost
-and performance {\color{red} on a single node of an higher performance computing cluster.}
+In this work, we perform \changeJP{a preliminary investigation of} different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost
+and performance {\color{red} on a single node of a high performance computing cluster.}
+\changeJP{
+The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI parallelization together with a \changeJP{generalized matrix-free framework that incorporates SIMD vectorization} and an interface to high-performance, MPI distributed matrix-based libraries, is used for this study.
+}
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
-MPI parallelization together with SIMD vectorization
-{\color{red}
-are provided by the \texttt{deal.II} \cite{dealII90} finite element library, used for this study.
-}
 
-The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics. Sections \ref{sec:fe} and \ref{sec:mf} cover the finite element discretization and the different matrix-free operator evaluation approaches. In Section \ref{sec:gmg} we propose a geometric multigrid preconditioner suitable for finite-strain hyperelasticity. The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}. The results are summarized in Section \ref{sec:summary}.
+The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics. 
+\changeJP{
+Sections \ref{sec:fe} and \ref{sec: Description of numerical framework} cover the finite element discretization and provide details of the numerical framework with which this study is implemented.
+In \ref{sec:mf} we describe the different matrix-free operator evaluation approaches that are evaluated in this study, and in section \ref{sec:gmg} we propose a geometric multigrid preconditioner that is suitable for finite-strain hyperelasticity.
+}
+The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}. 
+\changeJP{Lastly, the} results are summarized in Section \ref{sec:summary}.
 
 \section{Theoretical background}
 \label{sec:theory}
@@ -429,7 +433,9 @@ Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration, whereas the integration is done in the referential configuration.
 
-\section{\changeJP{Description of numerical framework}}
+\section{\changeJP{Description of numerical framework}
+\label{sec: Description of numerical framework}
+}
 
 The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling} were implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
 This library offers a number of paradigms by which to parallelize a finite-element code.
