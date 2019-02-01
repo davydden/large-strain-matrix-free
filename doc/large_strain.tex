@@ -749,14 +749,7 @@ Note that although a relatively coarse mesh is used at the coarsest multigrid le
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ direction for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$ whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
-{\color{red}
-The geometric multigrid algorithm uses a V-cycle with two pre- and post-smoothing steps using Chebyshev polynomials \cite{Varga2009} of fourth degree, provided
-by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
-The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
-is set to target the range $[0.6\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
-On the coarsest level we use {\color{red}the Chebyshev preconditioner as a solver \cite{Varga2009}} to reduce the residual by three orders of magnitude.
-Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.}
-
+%
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
 %
 \begin{figure}[!ht]
@@ -830,20 +823,33 @@ Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the
   \label{tab:input_parameters_3d}
 \end{table}
 
-{\color{red}In this study, we limit ourselves to a comparison on a node level, which should already indicate the differences between the matrix-free and matrix-based approaches.}
+\changeJP{%
+Aligned with the approach taken in similar previous investigations \cite{}\todo{Cite Martin's papers?}, in this study we limit ourselves to comparisons made on a node level.
+Examinations performed in this manner should already indicate the differences between the matrix-free and matrix-based approaches, and give some preliminary understanding of the scalability potential of the numerical implementation without confounding factors related to data exchange though interconnects via MPI.
+}
 The benchmark calculations are performed for 2D and 3D problems with various combinations of polynomial degrees and number of global refinements, as is stated in Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
 {\color{red}
-We chose a problem size around $10^6$ DoFs for each test case as this was an upper limit due to the memory requirements of the matrix-based approach.
-On the other hand, the problem size is large enough so that the sparse matrix will not fit into the L3 cache and therefore we can observe that the matrix-based approach is memory bound.
+We chose a problem size around $10^6$ DoFs for each test case as this was an upper limit due to the memory requirements of the matrix-based approach \changeJP{with a high polynomial order finite element}.
+\changeJP{Even so, the problem size is large enough so that the sparse matrix (in excess of $1$ Gb when using the lowest polynomial order finite element discretization) will not fit into the L3 cache (on the order of tens of Mb in size), and therefore we can observe that the matrix-based approach is memory bound}.
 }
+
+%
+% Below are are implementational details that might affect the comparative result
 %
 The results of the matrix-free approach with a geometric multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML \cite{Gee2006a} of the Trilinos \cite{Heroux2005} library.
 The aggregation threshold for the AMG preconditioner is taken as $10^{-4}$.
+{\color{red}
+The geometric multigrid algorithm uses a V-cycle with two pre- and post-smoothing steps using Chebyshev polynomials \cite{Varga2009} of fourth degree, provided
+by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
+The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
+is set to target the range $[0.6\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
+On the coarsest level we use {\color{red}the Chebyshev preconditioner as a solver \cite{Varga2009}} to reduce the residual by three orders of magnitude.
+Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.}
 
 Computations \changeJP{were performed} on a single node of two clusters:
 A node on the ``Emmy'' cluster at RRZE, FAU has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB shared cache per chip and 64 GB of RAM. Intel's compiler version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
 The ``IWR'' results were obtained on a single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
-{\color{red}Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. fully occupied node.}
+{\color{red}Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. \changeJP{one} fully occupied node.}
 
 \subsection{Matrix-vector multiplication}
 
