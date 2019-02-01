@@ -698,6 +698,7 @@ For more information about the implementation details and data structures for su
 Efficient and scalable matrix-vector products are not enough to obtain a method suitable for large computations. In particular, linear scaling with respect to the number $N$ of unknown DoFs is desirable.
 The efficiency of standard iterative solvers and preconditioners deteriorates for large systems of linear equations due to increasing iteration counts under mesh refinement.
 In contrast to other preconditioners, geometric multigrid (GMG) preconditioners \cite{Bramble1990, Briggs2000, Janssen2011,May2015} can be proven to result in iteration counts that are independent of the number of mesh refinements by smoothing the residual on a hierarchy of meshes. For further information about geometric multigrid methods we refer the reader to \cite{Briggs2000,Hackbusch1985,Wesseling1992}.
+\changeJP{Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.}
 
 For this work we adopt the matrix-free level operators within the GMG.
 In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}\footnote{
@@ -757,7 +758,7 @@ On the coarsest level we use {\color{red}the Chebyshev preconditioner as a solve
 Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.}
 
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
-
+%
 \begin{figure}[!ht]
   \centering
   \begin{subfigure}[b]{0.45\textwidth}
@@ -773,7 +774,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \caption{Deformed meshes at the final loading step with quadratic elements and two global mesh refinements.}%
   \label{fig:miehe_deformed}
 \end{figure}
-
+%
 \begin{figure}[!ht]
   \centering
   \begin{subfigure}[b]{0.8\textwidth}
@@ -788,8 +789,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 %
 \changeJP{The same distributed approach to mesh decomposition (as most evident on the finest level) is adopted on the multigrid levels.}
 Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements \changeJP{for the mesh introduced in figure \ref{fig:miehe_fine_level}}.
-{\color{red}
-Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.}
+%
 \begin{table}
   \centering
   \begin{tabular}{ccccc}
