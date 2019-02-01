@@ -148,6 +148,9 @@ COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
 COMMENT "Switch CMAKE_BUILD_TYPE to Release"
 )
 
+# Benchmarks
+ADD_SUBDIRECTORY(benchmark)
+
 # Enable testing and descent into tests/ subdirectory:
 ENABLE_TESTING()
 INCLUDE(CTest)
