@@ -361,7 +361,11 @@ For the current study, we use the compressible Neo-Hookean model
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
   + \lambda \ln^{2}\left( J \right)
 \end{gather}
-where $\mu$ and $\lambda$ denote the shear modulus and Lam\'{e} parameter respectively. It can be shown that the first and second derivatives of the strain energy function are given by
+where $\mu$ and $\lambda$ denote the shear modulus and Lam\'{e} parameter respectively.
+\changeJP{
+Derived using statistical thermodynamics applied to cross-linked polymers, the Neo-Hookean model \cite{Treloar1975a,Treloar1976a} is commonly used to model rubber-like materials in the finite-strain regime.
+}
+It can be shown that the first and second derivatives of the strain energy function are given by
 \begin{align}
 \frac{d \psi \left( \mathbf{C} \right)}{d \mathbf{C}}
   &= \frac{\mu}{2} \mathbf{I} - \frac{1}{2} \left[ \mu - 2\lambda\ln\left( J \right) \right] \mathbf{C}^{-1} \\
