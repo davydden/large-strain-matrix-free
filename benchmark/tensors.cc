@@ -42,7 +42,11 @@ test(const unsigned int n_cells = 22528) // 90112 active cells in 2D for p=4 =>
             << VectorizedArray<number>::n_array_elements << std::endl
             << "n_cell_batches     = " << n_cells << std::endl
             << "n_q_points         = " << n_q_points << std::endl
-            << "number of products = " << n_cells * n_q_points << std::endl;
+            << "number of products = " << n_cells * n_q_points << std::endl
+            << "multiplier         = " // Runtime * MFLOP/s * multiplier = FLOP for a single operation
+            << 1000000. / (n_cells * n_q_points *
+                           VectorizedArray<number>::n_array_elements)
+            << std::endl;
 
   Table<2, Tensor<2, dim, VectorizedArray<number>>>          cached_tensor2;
   Table<2, SymmetricTensor<4, dim, VectorizedArray<number>>> cached_tensor4;
