@@ -2,6 +2,9 @@
 // benchmark double dot product between symmetric tensors and single dot
 // between two second order tensors
 
+#include <deal.II/base/config.h>
+
+#include <deal.II/base/revision.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/table.h>
 #include <deal.II/base/tensor.h>
@@ -11,6 +14,7 @@
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
 #include <config.h>
+#include <version.h>
 
 #ifdef WITH_LIKWID
 #  include <likwid.h>
@@ -28,7 +32,7 @@
 #endif
 
 using namespace dealii;
-
+using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
@@ -36,6 +40,32 @@ test(const unsigned int n_cells = 22528) // 90112 active cells in 2D for p=4 =>
                                          // num of cell batches ~ 90112/4
 {
   constexpr int n_q_points = Utilities::pow(degree + 1, dim);
+
+  std::cout
+    << "-----------------------------------------------------------------------------"
+    << std::endl
+#ifdef DEBUG
+    << "--     . running in DEBUG mode" << std::endl;
+#else
+    << "--     . running in OPTIMIZED mode" << std::endl;
+#endif
+
+  std::cout << "--     . vectorization over "
+            << VectorizedArray<number>::n_array_elements
+            << " elements, VECTORIZATION_LEVEL="
+            << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
+
+  std::cout << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV
+            << " on branch " << GIT_BRANCH << ")" << std::endl;
+  std::cout << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
+            << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
+            << ")" << std::endl;
+
+  std::cout
+    << "-----------------------------------------------------------------------------"
+    << std::endl
+    << std::endl;
+
   std::cout << "dim                = " << dim << std::endl
             << "degree             = " << degree << std::endl
             << "SIMD width         = "
