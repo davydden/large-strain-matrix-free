@@ -559,7 +559,7 @@ More information on matrix-free techniques can be found in \cite{kronbichler12,v
 %
 In order to obtain gradients with respect to the spatial configuration,
 {\color{red}
-that appear in the tangent operator \eqref{eq:algebraic_tangent} of the finite-strain elasticity problem,}
+that appear in the tangent operator \eqref{eq:algebraic_tangent} of the finite-strain elasticity problem \changeJP{derived with a Lagrangian formulation},}
 we used the \textit{MappingQEulerian} class from the \texttt{deal.II} \cite{dealII90} library.
 In addition to the standard mapping from the reference (isoparametric) element to the element in real space, this class computes the mapping to the spatial configuration given a displacement field.
 %
@@ -567,7 +567,8 @@ Due to the specifics of matrix-free operator evaluation implemented in \texttt{d
 Therefore, we have to additionally divide by the Jacobian $J$ of the deformation map at a given quadrature point to express the integral in the referential configuration.
 
 {\color{red}
-Below, we propose three algorithms to implement the tangent operator of finite-strain elasticity (see \eqref{eq:algebraic_tangent}) using the matrix-free approach.
+Below, we propose three algorithms to implement the tangent operator of finite-strain elasticity (see \eqref{eq:algebraic_tangent}) using the matrix-free approach \changeJP{, each of which have a different level of abstraction, algorithmic complexity, and memory requirements}.
+\changeJP{They are introduced in order of lowest memory footprint to largest:}
 }
 
 \begin{algorithm}[!ht]
@@ -667,8 +668,13 @@ in \texttt{deal.II} \cite{dealII90}
 }
 is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'').
 {\color{red}
-The main reason is that the operations are typically the same on all elements.
-For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements\footnote{For the heterogeneous materials considered here,
+The main reason is that, apart from the point-wise computation of the stresses and elastic tangents, the operations are typically the same on all elements\footnote{%
+\changeJP{In general, not all quadrature points in each element group are endowed with identical, non-dissipative constitutive laws that follow the same code path during evaluation or the kinetic quantities and tangents.
+This motivates the caching strategy employed in Algorithm 3, as the pre-caching of the chosen data ensures a context in which SIMD parallelization of subsequent operations is guaranteed.
+Algorithms 1 and 2 sacrifice some of this generality for decreased memory requirements.}
+}.
+For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements\footnote{%
+For the heterogeneous materials considered here,
 the elements are first grouped according to the material type (matrix or inclusion) and then the SIMD vectorization is applied for each group of elements.
 This functionality is provided by the \texttt{deal.II} library in the \textit{MatrixFree} class.
 }.
