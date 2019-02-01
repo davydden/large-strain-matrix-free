@@ -1,4 +1,3 @@
-
 // benchmark double dot product between symmetric tensors and single dot
 // between two second order tensors
 
@@ -13,8 +12,8 @@
 
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
-#include <config.h>
-#include <version.h>
+//#include <config.h>
+//#include <version.h>
 
 #ifdef WITH_LIKWID
 #  include <likwid.h>
@@ -32,7 +31,6 @@
 #endif
 
 using namespace dealii;
-using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
@@ -53,12 +51,6 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
             << VectorizedArray<number>::n_array_elements
             << " elements, VECTORIZATION_LEVEL="
             << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
-
-  std::cout << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV
-            << " on branch " << GIT_BRANCH << ")" << std::endl;
-  std::cout << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
-            << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
-            << ")" << std::endl;
 
   std::cout
     << "-----------------------------------------------------------------------------"
@@ -108,9 +100,9 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
   // the double loop. This will change computational intensity (won't need to
   // fetch data), but as far as Tensor<>::operator* is concerned, we should get
   // the same accurate measurements
-  const Tensor<2, dim, VectorizedArray<number>> grad_Nx_v =
+  Tensor<2, dim, VectorizedArray<number>> grad_Nx_v =
     one * Physics::Elasticity::StandardTensors<dim>::I;
-  const SymmetricTensor<2, dim, VectorizedArray<number>> symm_grad_Nx_v =
+  SymmetricTensor<2, dim, VectorizedArray<number>> symm_grad_Nx_v =
     one * Physics::Elasticity::StandardTensors<dim>::I;
 
   TimerOutput timer(std::cout, TimerOutput::summary, TimerOutput::wall_times);
@@ -124,7 +116,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
     for (unsigned int q = 0; q < n_q_points; ++q)
       {
         // the result which goes to FEEvaluation::submit_symmetric_gradient()
-        const SymmetricTensor<2, dim, VectorizedArray<number>> res =
+        symm_grad_Nx_v =
           cached_tensor4(cell, q) * symm_grad_Nx_v;
       }
   LIKWID_MARKER_STOP("tensor4");
@@ -139,7 +131,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
     for (unsigned int q = 0; q < n_q_points; ++q)
       {
         // the results which goes to FEEvaluation::submit_gradient()
-        const Tensor<2, dim, VectorizedArray<number>> res =
+        grad_Nx_v =
           grad_Nx_v * cached_tensor2(cell, q);
       }
   LIKWID_MARKER_STOP("tensor2");
@@ -152,7 +144,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
     for (unsigned int q = 0; q < n_q_points; ++q)
       {
         // the results which goes to FEEvaluation::submit_gradient()
-        const Tensor<2, dim, VectorizedArray<number>> res =
+        grad_Nx_v =
           contract<1,0>(grad_Nx_v, cached_tensor2(cell, q));
       }
   LIKWID_MARKER_STOP("tensor2_c10");
@@ -165,7 +157,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
     for (unsigned int q = 0; q < n_q_points; ++q)
       {
         // the results which goes to FEEvaluation::submit_gradient()
-        const Tensor<2, dim, VectorizedArray<number>> res =
+        grad_Nx_v =
           contract<1,1>(grad_Nx_v, cached_tensor2(cell, q)); // use the fact that \tau is symmetric
       }
   LIKWID_MARKER_STOP("tensor2_c11");
@@ -179,7 +171,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
       {
         // the results which goes to FEEvaluation::submit_gradient()
         Tensor<2, dim, VectorizedArray<number>> res;
-        const Tensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2(cell, q);
+        Tensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2(cell, q);
         for (unsigned int i = 0; i < dim; ++i)
           {
             auto & res_i = res[i];
@@ -190,7 +182,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
                 auto & rhs_j = rhs[j];
                 res_ij = zero;
                 for (unsigned int k = 0; k < dim; ++k)
-                  res_ij += grad_Nx_v_i[k] * rhs_j[k]; // rhs is symmetric, actually
+                  rhs[i][j] += grad_Nx_v_i[k] * rhs_j[k]; // rhs is symmetric, actually
               }
           }
       }
@@ -205,7 +197,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
       {
         // the results which goes to FEEvaluation::submit_gradient()
         Tensor<2, dim, VectorizedArray<number>> res;
-        const SymmetricTensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2sym(cell, q);
+        SymmetricTensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2sym(cell, q);
         for (unsigned int i = 0; i < dim; ++i)
           {
             auto & res_i = res[i];
@@ -215,7 +207,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
                 auto & res_ij = res_i[j];
                 res_ij = zero;
                 for (unsigned int k = 0; k < dim; ++k)
-                  res_ij += grad_Nx_v_i[k] * rhs[j][k]; // rhs is symmetric, actually
+                  rhs[i][j] += grad_Nx_v_i[k] * rhs[j][k]; // rhs is symmetric, actually
               }
           }
       }
