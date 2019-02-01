@@ -460,6 +460,7 @@ For the linear solver, \texttt{deal.II}'s implementation of the preconditioned c
 For the matrix-based approach, the Trilinos \cite{Heroux2005} library, version 12.12.1 was leveraged; 
 the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the package ML package \cite{Gee2006a}.
 The second implementation, which is discussed in detail in the following Sections, utilized a matrix-free approach in conjunction with a geometric-multigrid preconditioner.
+As will be detailed later, the pre-existing matrix-free framework that was used offers further opportunity for low-level parallelism that may be exploited.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
