@@ -13,8 +13,10 @@
 
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
-//#include <config.h>
-//#include <version.h>
+// we need to include our config to see if we build with LIKWID:
+#include <config.h>
+// we may as well include version:
+#include <version.h>
 
 #ifdef WITH_LIKWID
 #  include <likwid.h>
@@ -70,7 +72,7 @@ inline __attribute__((always_inline)) void DoNotOptimize(Tp const& value) {
 #endif
 
 using namespace dealii;
-//using namespace Cook_Membrane;
+using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
@@ -92,8 +94,8 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
             << " elements, VECTORIZATION_LEVEL="
             << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
-  //std::cout << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV
-  //          << " on branch " << GIT_BRANCH << ")" << std::endl;
+  std::cout << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV
+            << " on branch " << GIT_BRANCH << ")" << std::endl;
   std::cout << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
             << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
             << ")" << std::endl;
@@ -280,10 +282,19 @@ int
 main(int argc, char *argv[])
 {
   Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
-  test<2,10>();
-  test<3,10>();
-  test<3,4>();
-  test<2,4>();
+
+  const int dim = (argc > 1 ? Utilities::string_to_int(argv[1]) : 2);
+
+  // note that degree (second parameter) will only affect the inner loop
+  // size over quadrature points.
+  if (dim == 2)
+    {
+      test<2,4>();
+    }
+  else
+    {
+      test<3,4>();
+    }
 
   return 0;
 }
