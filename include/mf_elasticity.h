@@ -130,7 +130,7 @@ namespace Cook_Membrane
     class Misc
     {
     public:
-      std::string output_folder           = "";
+      std::string output_folder           = std::string("");
       bool        output_solution         = true;
       bool        always_assemble_tangent = true;
       bool        output_abs_norms        = false;
