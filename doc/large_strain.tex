@@ -983,7 +983,7 @@ As expected, the matrix-based approach is memory bound and (on average) achieves
 The matrix-free implementations of the fine-strain elastic tangent operator (on average) lead to a much better performance of
 $\pgfmathprintnumber{18.8047083222}\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
 The achieved performance is about 10.6\% of the peak arithmetic performance. This is much lower than the
-70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}.
+70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}, but similar to what was obtained in \cite[Figure 14]{kronbichler2017fast} when not optimizing for Cartesian meshes.
 Unfortunately, performance measurements for non-Cartesian meshes were not reported in \cite{kronbichler12}.
 
 When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}) caching strategy,
