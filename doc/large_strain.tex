@@ -192,7 +192,7 @@ more elaborate as compared to the operators used often in both linear and non-li
 Another reason could be the frequent use of lower-order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
 whereas higher order elements are rarely employed.
-This can potentially reduce the advantage of matrix-free methods, that are generally more competitive for higher order elements\todo{reference? Martin's papers?}.
+This can potentially reduce the advantage of matrix-free methods using sum-factorization techniques, that are generally more competitive for higher order elements \cite{kronbichler12,kronbichler2017fast,muthing2017high}.
 However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
 
 In this work, we perform \changeJP{a preliminary investigation of} different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost
@@ -455,7 +455,7 @@ In this work we employ \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4es
 %
 Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on the fine mesh level for the 2D problem that will be introduced later in Section \ref{sec:example}.
 
-In practice this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of investigation in this manuscript, has been achieved using MPI.
+In practice, this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of investigation in this manuscript, has been achieved using MPI.
 For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently used, leaving the choice for method of assembly and linear system preconditioning remaining.
 For the matrix-based approach, the Trilinos \cite{Heroux2005} library, version 12.12.1 was leveraged;
 the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the package ML package \cite{Gee2006a}.
@@ -824,7 +824,8 @@ Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the
 \end{table}
 
 \changeJP{%
-Aligned with the approach taken in similar previous investigations \cite{}\todo{Cite Martin's papers?}, in this study we limit ourselves to comparisons made on a node level.
+Aligned with the approach taken in similar previous investigations, compare e.g. \cite{kronbichler2017fast}, 
+we limit ourselves to comparisons made on a node level in this study.
 Examinations performed in this manner should already indicate the differences between the matrix-free and matrix-based approaches, and give some preliminary understanding of the scalability potential of the numerical implementation without confounding factors related to data exchange through interconnects via MPI.
 }
 The benchmark calculations are performed for 2D and 3D problems with various combinations of polynomial degrees and number of global refinements, as is stated in Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
@@ -941,7 +942,7 @@ It is therefore feasible to define highly performant generic operators that are 
 As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
 Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} demonstrate that even with caching one fourth-order symmetric tensor and one second-order tensor at each quadrature point \changeJP{(``tensor4'')}, the matrix-free approach takes much less memory than its matrix-based counterpart.
 {\color{red}
-In those graphs we report the \changeJP{overall} memory needed to cache additional quantities required for the tangent operator here considered,
+In those graphs, we report the \changeJP{overall} memory needed to cache additional quantities required for the tangent operator here considered,
 as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
 from unit to real cell \cite{kronbichler12}.
 Note that for Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both \changeJP{deformed} and undeformed
@@ -1026,10 +1027,6 @@ independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_
   \label{fig:breakdown}
 \end{figure}
 
-\todo{Discuss MPI/SIMD}
-\input{parallelization_2d.tex}
-\input{parallelization_3d.tex}
-
 In order to have a better understanding of the behavior of the most promising ``tensor4'' implementation,
 we collect its performance data and computing times for various stages inside the element loop (see Algorithm \ref{alg:mf_tensor4}):
 (i) `read / write' denotes reading and writing from/to a global vector (\changeJP{lines 2 and 13});
@@ -1050,6 +1047,10 @@ double contraction between a symmetric second order tensor and a fourth order te
 % improve the performance.
 % Such studies, however, are beyond the scope of the current work.
 }
+
+\input{parallelization_2d.tex}
+\input{parallelization_3d.tex}
+Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to MPI. For these rather small count of MPI processes, the results confirm that the performance gained is independent. Furthermore, the improvement due to explicit intrinsics for the data used in the quadrature loop, is comparable to the ones in \cite[Figure 6]{kronbichler2017fastcomputer} where the speedup factor is $1.2-1.8$ for a similar architecture.
 
 {\color{red}
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
@@ -1186,7 +1187,7 @@ Most importantly, the wall time per degree of freedom for solving the problem is
 On the other hand, the matrix-based implementation with AMG becomes prohibitively expensive for higher-order bases.
 We conclude that the matrix-free implementations of tangent operators for finite-strain elasticity together with
 the geometric multigrid preconditioner is a very competitive solution strategy, as compared to more traditional matrix-based approach.
-Our future work will be focused on adopting the proposed matrix-free multigrid solution approach to $FE^2$ homogenization
+Our future work will be focused on adopting the proposed matrix-free multigrid solution approach to $\operatorname{FE}^2$ homogenization
 as well studying its behavior on the cluster level
 % as opposed to node level considered here.
 }
@@ -1210,7 +1211,7 @@ for Exascale Computing'' (SPPEXA).
 
 P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible, as well as funding by the EPSRC Strategic Support Package ``Engineering of Active Materials by Multiscale/Multiphysics Computational Mechanics''.
 
-\todo{Add back of the envelope calculations by Veselin Dobrev? See {https://github.com/CEED/Forum/issues/1}.}
+% \todo{Add back of the envelope calculations by Veselin Dobrev? See {https://github.com/CEED/Forum/issues/1}.}
 
 \ifijnme
 \bibliographystyle{wileyj}
