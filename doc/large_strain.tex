@@ -824,7 +824,7 @@ Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the
 \end{table}
 
 \changeJP{%
-Aligned with the approach taken in similar previous investigations, compare e.g. \cite{kronbichler2017fast}, 
+Aligned with the approach taken in similar previous investigations, compare e.g. \cite{kronbichler2017fast},
 we limit ourselves to comparisons made on a node level in this study.
 Examinations performed in this manner should already indicate the differences between the matrix-free and matrix-based approaches, and give some preliminary understanding of the scalability potential of the numerical implementation without confounding factors related to data exchange through interconnects via MPI.
 }
@@ -1172,7 +1172,8 @@ that the matrix-free implementation of the tangent operator can be applied to an
 The roofline model indicates that the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity.
 We identified that one of the bottlenecks is related to the quadrature loop on each element where double contractions of fourth-order and second-order symmetric tensor
 as well as single contraction of two second-order tensors is performed.
-% Further studies are required to identify means to improve the computational intensity and performance of the matrix-free framework provided by \texttt{deal.II}.}
+% Further studies are required to identify means to improve the computational intensity and performance of the matrix-free framework provided by \texttt{deal.II}.
+}
 
 {\color{red}
 We also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner}
