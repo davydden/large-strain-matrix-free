@@ -1058,7 +1058,7 @@ namespace Cook_Membrane
 
     if (n_vect_bits == 64)
       timer_out << "disabled";
-    if (n_vect_bits == 128)
+    else if (n_vect_bits == 128)
       timer_out << "SSE2";
     else if (n_vect_bits == 256)
       timer_out << "AVX";
