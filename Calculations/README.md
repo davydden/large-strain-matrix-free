@@ -40,3 +40,27 @@ additionally configure with `-DWITH_BREAKDOWN=TRUE`
 python pre_process.py --likwid --breakdown --prefix=/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build_breakdown/
 qsub likwid_emmy_benchmark_intel.sh
 ```
+
+# Post-processing / plotting
+
+## general benchmark
+```
+python post_process.py
+```
+
+## LIKWID
+
+### Roofline
+```
+python post_process_likwid.py --dim=2
+python post_process_likwid.py --dim=3
+python post_process_likwid.py --dim=2 --breakdown
+python post_process_likwid.py --dim=3 --breakdown
+```
+
+### Speedup (SIMD/MPI)
+
+```
+python post_process_likwid_simd.py --dim=2
+python post_process_likwid_simd.py --dim=3
+```
