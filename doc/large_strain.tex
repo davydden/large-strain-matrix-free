@@ -916,6 +916,7 @@ Finally, we analyze the node-level performance of the two approaches using the R
 Memory bandwidth (MBytes/s) and the number of floating point operations per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
 The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket, whose
 memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \textit{likwid-bench} \cite{likwid}.} and peak performance are $B=47.2 \,\rm{GB/s}$ and $P=176\, \rm{GFlop/s}$, respectively.
+Turbo mode of CPU was disabled.
 }
 
 \begin{figure}[!ht]
@@ -940,10 +941,10 @@ memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \
 
 {\color{red}
 Figure \ref{fig:roofline} shows results of the Roofline performance model.
-As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $8.4\,\rm{GFlop/s}$ (4.5\% of the peak performance) in 2D.
+As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $\pgfmathprintnumber{8.2093245}\,\rm{GFlop/s}$ (4.6\% of the peak performance) in 2D.
 The matrix-free implementations of the fine-strain elastic tangent operator (on average) lead to a much better performance of
-$22.0\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
-The achieved performance is about 13\% of the peak arithmetic performance. This is much lower than the
+$\pgfmathprintnumber{18.8047083222}\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
+The achieved performance is about 10.6\% of the peak arithmetic performance. This is much lower than the
 70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}.
 Unfortunately, performance measurements for non-Cartesian meshes were not reported in \cite{kronbichler12}.
 
