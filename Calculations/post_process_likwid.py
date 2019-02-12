@@ -49,7 +49,8 @@ sections = [
     'Memory bandwidth [MBytes/s] STAT',
     'Operational intensity STAT',
     'Runtime unhalted [s] STAT',
-    'Runtime (RDTSC) [s] STAT' # spoke with Georg Haager, this shall be closest to the walltime.
+    'Runtime (RDTSC) [s] STAT', # spoke with Georg Haager, this shall be closest to the walltime.
+    'Clock [MHz] STAT'
 ]
 
 # NODE data:
@@ -161,13 +162,18 @@ for f in files:
             if len(columns) > 1:
                 for idx, s in enumerate(sections):
                     if s == columns[1]:
-                        if 'Runtime' in s:
+                        if ('Runtime' in s) or ('Clock' in s):
                             # Take "Max" (third number)
                             val = float(columns[4])
                         else:
                             # Take "Sum" (first number)
                             val = float(columns[2])
                         print '   {0} {1}'.format(s,val)
+                        # make sure we run with clockspeed we use for Roofline:
+                        if 'Clock' in s:
+                            # allow 0.1% variation
+                            assert abs(val - clock_speed * 1000) < clock_speed
+
                         # we should get here only once for each region:
                         assert np.isnan(timing[r_idx][idx])
                         timing[r_idx][idx] = val

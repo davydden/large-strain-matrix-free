@@ -15,10 +15,12 @@ parser.add_argument('--dim', metavar='dim', default=2, type=int,
 
 args = parser.parse_args()
 
+# expected blockspeed:
+clock_speed = 2.2  # GHz
 
 # serial | MPI | SIMD | MPI+SIMD
 suffixes = [
-    '_1proc_novec',
+    '_novec_1proc',
     '_novec',
     '_1proc',
     ''
@@ -68,10 +70,12 @@ for idx, s in enumerate(suffixes):
             data = result['Metric']
             flops = data['MFLOP/s'][0]
             runtime = data['Runtime (RDTSC) [s]'][0]
+            assert abs(float(data['Clock [MHz]'][0]) - clock_speed * 1000) < clock_speed
         else:
             data = result['Metric_Sum']
             flops = data['MFLOP/s STAT'][0]                # take Sum
             runtime = data['Runtime (RDTSC) [s] STAT'][2]  # take Max
+            assert abs(float(data['Clock [MHz] STAT'][2]) - clock_speed * 1000) < clock_speed
 
         runtime = float(runtime) / 10  # FIXME: hard-code that we run 10 times
         flops = float(flops) / 1000  # MFLOP/s -> GFLOP/s
