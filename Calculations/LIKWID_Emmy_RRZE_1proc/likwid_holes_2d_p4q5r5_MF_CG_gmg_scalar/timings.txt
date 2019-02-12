@@ -2,7 +2,7 @@
 --     . running in OPTIMIZED mode
 --     . running with 1 MPI process
 --     . vectorization over 4 doubles = 256 bits (AVX), VECTORIZATION_LEVEL=2
---     . version 1.0 (revision 1d9e13d on branch no_parallelization)
+--     . version 1.0 (revision 3de8dd3 on branch redo_likwid)
 --     . deal.II 9.1.0-pre (revision 6b6ce30 on branch master)
 -----------------------------------------------------------------------------
 
@@ -19,13 +19,13 @@ Average CG iter = 0
 
 
 +---------------------------------------------+------------+------------+
-| Total wallclock time elapsed since start    |      64.9s |            |
+| Total wallclock time elapsed since start    |      87.2s |            |
 |                                             |            |            |
 | Section                         | no. calls |  wall time | % of total |
 +---------------------------------+-----------+------------+------------+
-| Assemble linear system          |         1 |      10.7s |        17% |
-| Setup matrix-free               |         1 |      30.3s |        47% |
-| Setup system                    |         1 |      16.8s |        26% |
-| vmult (MF)                      |        10 |      3.64s |       5.6% |
+| Assemble linear system          |         1 |      14.6s |        17% |
+| Setup matrix-free               |         1 |      40.7s |        47% |
+| Setup system                    |         1 |        23s |        26% |
+| vmult (MF)                      |        10 |      4.95s |       5.7% |
 +---------------------------------+-----------+------------+------------+
 
