@@ -1163,6 +1163,7 @@ Consequently, we can conclude that for the here considered finite strain elastic
 \changeJP{%
 Additionally, we compare solution times of the preconditioned iterative solvers.
 Our goal is to \changeJP{determine} whether the matrix-free approach with a GMG preconditioner can be faster than the matrix-based approach with a well-established implementation of an AMG preconditioner.
+We note specifically that the comparison is restricted to the choice of level operators used with the pre-existing GMG framework, and not the framework itself. 
 }
 %\changeJP{We note that although the well-established implementation of the AMG preconditioner \cite{Gee2006a} is the best available choice for the matrix-based implementation of the boundary value problem, the current implementation of the matrix-free GMG preconditioner is not yet optimized and can be improved further.}
 Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution times for {\color{red}all} polynomial degrees.
