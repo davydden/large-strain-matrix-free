@@ -461,9 +461,9 @@ Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on
 In practice, this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of investigation in this manuscript, has been achieved using MPI.
 For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently used, leaving the choice for method of assembly and linear system preconditioning remaining.
 For the matrix-based approach, the Trilinos \cite{Heroux2005} library, version 12.12.1 was leveraged;
-the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the package ML package \cite{Gee2006a}.
+the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the ML package \cite{Gee2006a}.
 The second implementation, which is discussed in detail in the following Sections, utilized a matrix-free approach in conjunction with a geometric-multigrid preconditioner.
-As will be detailed later, the pre-existing matrix-free framework that was used offers further opportunity for low-level parallelism that may be exploited.
+As will be detailed later, the pre-existing matrix-free framework that was used offers further opportunity for low-level parallelism that we exploit.
 }
 
 \section{Matrix-free operator evaluation}
