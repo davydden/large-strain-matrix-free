@@ -678,9 +678,11 @@ This motivates the caching strategy employed in Algorithm 3, as the pre-caching 
 Algorithms 1 and 2 sacrifice some of this generality for decreased memory requirements.}
 }.
 For a given quadrature point, we simultaneously perform tensor evaluations and contractions on all elements\footnote{%
+{\color{red}
 For the heterogeneous materials considered here,
 the elements are first grouped according to the material type (matrix or inclusion) and then the SIMD vectorization is applied for each group of elements.
 This functionality is provided by the \texttt{deal.II} library in the \textit{MatrixFree} class.
+}
 }.
 For example, {\color{red}the} deformation gradient $\gz F = \gz I + \Grad \, \overline{\gz u^h}$ (second-order tensor) is evaluated at the specific quadrature point of all elements within the ``block''.
 This is achieved using templated number types within the \textit{Tensor} class of the \texttt{deal.II} library.
