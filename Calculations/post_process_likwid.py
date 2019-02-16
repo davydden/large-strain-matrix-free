@@ -259,7 +259,7 @@ for d in likwid_data:
 plt.xlabel('intensity (Flop/byte)')
 plt.ylabel('performance (GFlop/s)')
 #plt.ylim(top=300,bottom=1)
-ymin = 2**2 if not args.breakdown else 2**(0) - 0.1
+ymin = 2**2 if not args.breakdown else 2**(0) - 0.3
 plt.ylim(top=2**8,bottom=ymin)
 xmax = 2**6 + 10 if args.breakdown else 2**4
 xmin = 2**(-4)+0.01 if not args.breakdown else 2**(-5) + 1./80
@@ -269,8 +269,8 @@ plt.axes().yaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}
 plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '1/{0}'.format(int(round(1./x))) if x < 1.0 else '{0}'.format(int(round(x))) ))
 
 ang = 45
-y_pos = 13
-plt.text(xmin, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang)
+y_pos = 7.5 if args.breakdown else 8.5
+plt.text(xmin, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang, fontsize=14)
 
 x_pos = 4 if not args.breakdown else 16
 plt.text(x_pos,200,'Peak DP', fontsize=14)
