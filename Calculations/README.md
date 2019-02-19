@@ -3,7 +3,7 @@
 
 ## general benchmark
 ```
-python pre_process.py --likwid --dir=Emmy_RRZE
+python pre_process.py --dir=Emmy_RRZE
 qsub emmy_benchmark_intel.sh
 ```
 
