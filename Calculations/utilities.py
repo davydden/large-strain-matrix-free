@@ -45,6 +45,7 @@ def parse_timing_file(f):
     timing = {}
     # reset CG iterations in case AMG did not have enough memory
     cg_iterations = np.nan
+    tot_cg_iterations = np.nan
     for line in fin:
         if 'running with' in line:
             cores = int(re.findall(pattern,line)[0])
@@ -72,6 +73,8 @@ def parse_timing_file(f):
 
         elif 'Average CG iter =' in line:
             cg_iterations = int(re.findall(pattern,line)[0])
+        elif 'Total CG iter = ' in line:
+            tot_cg_iterations = int(re.findall(pattern,line)[0])
 
         if ready:
             if dividers in line:
@@ -95,7 +98,7 @@ def parse_timing_file(f):
             ready = True
 
     # return data as a tuple
-    return tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations, cores))
+    return tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations, tot_cg_iterations, cores))
 
 
 def parse_likwid_file(filename, last_line = ''):

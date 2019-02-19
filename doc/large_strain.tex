@@ -1064,7 +1064,9 @@ double contraction between a symmetric second order tensor and a fourth order te
 
 \input{parallelization_2d.tex}
 \input{parallelization_3d.tex}
+{\color{red}
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to MPI. For these rather small count of MPI processes, the results confirm that the performance gained is independent. Furthermore, the improvement due to explicit intrinsics for the data used in the quadrature loop, is comparable to the ones in \cite[Figure 6]{kronbichler2017fastcomputer} where the speedup factor is $1.2-1.8$ for a similar architecture.
+}
 
 {\color{red}
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
@@ -1171,9 +1173,14 @@ Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}
 \changeJP{In comparison}, the wall time of the matrix-based iterative solver grows rapidly with increasing polynomial degree.
 Clearly this is related both to the performance of the preconditioner from the linear algebra perspective as well as the matrix-vector products, studied in the previous section.
 Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for \changeJP{engineering problems
-with compressible hyperelastic} finite strain material models.
-Extension of this study from the node level to the cluster level is beyond the scope of this work,
-however we hypothesize that the matrix-free and multigrid frameworks provided by \texttt{deal.II} library would provide a competitive solution for that case as well.}
+with compressible hyperelastic} finite strain material models.}
+
+\changeJP{Extension of this study from the node level to the cluster level is beyond the scope of this work,
+however we provide a preliminary weak scaling results that confirm that the matrix-free and multigrid frameworks provided by \texttt{deal.II} library can provide a competitive solution for that case as well.
+Table \ref{tab:weak_3d} demonstrates a very good weak scaling up to 1280 processes (64 nodes, the maximum we could request on the local HPC cluster) of the wall time for a single matrix-vector product and a single iteration in the CG solver for the 3D problem with quadratic basis.
+}
+
+\input{weak_scaling_3d.tex}
 
 \section{Summary and Conclusions}
 \label{sec:summary}
