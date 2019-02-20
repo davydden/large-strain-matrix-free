@@ -1179,8 +1179,8 @@ Based on these results, we conclude that the matrix-free approach with the adopt
 with compressible hyperelastic} finite strain material models.}
 
 \changeJP{Extension of this study from the node level to the cluster level is beyond the scope of this work,
-however we provide a preliminary weak scaling results that confirm that the matrix-free and multigrid frameworks provided by \texttt{deal.II} library can provide a competitive solution for that case as well.
-Table \ref{tab:weak_3d} demonstrates a very good weak scaling up to 1280 processes (64 nodes, the maximum we could request on the local HPC cluster) of the wall time for a single matrix-vector product and a single iteration in the CG solver for the 3D problem with quadratic basis.
+however we show preliminary weak scaling results that confirm that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for that case as well.
+Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes (64 nodes, the maximum we could request on the local HPC cluster) of the wall time for a single matrix-vector product and a single iteration in the CG solver for the 3D problem with quadratic basis.
 }
 
 \input{weak_scaling_3d.tex}
