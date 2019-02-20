@@ -1,0 +1,37 @@
+
+include holes.prm
+
+subsection Finite element system
+  set Polynomial degree = 2
+  set Quadrature order  = 3
+end
+
+subsection Geometry
+  set Global refinement  = 3
+  set Dimension          = 3
+end
+
+subsection Linear solver
+  set Solver type                = MF_CG
+  set Preconditioner type        = gmg
+  set MF caching                 = tensor4
+  set Preconditioner AMG aggregation threshold = 1e-4
+  set MF Chebyshev coarse accurate eigenvalues = false
+  set MF Chebyshev coarse = true
+end
+
+subsection Misc
+  set Output folder = Emmy_RRZE_scaling/holes_3d_p2q3r3_MF_CG_gmg_tensor4
+  set Output points = 0,0,0.5e-3
+  set Output solution = false
+end
+
+subsection Boundary conditions
+  set Dirichlet IDs and expressions = 1:0,0,0;2:0,0,0
+  set Dirichlet IDs and component mask = 1:true,true,true;2:false,false,true
+  set Neumann IDs and expressions = 11:12.5e3*t,0,12.5e3*t
+end
+
+subsection Time
+  set End time  = 1.0
+end

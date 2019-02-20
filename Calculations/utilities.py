@@ -1,6 +1,7 @@
 import os
 import fileinput
 import re
+import numpy as np
 
 def remove_creation_date(file_name):
     '''remove creationg data from .eps file in place'''
@@ -19,8 +20,85 @@ def collection_toutput_files(prefix):
 
     return files
 
+def collect_timing_files(prefix):
+    '''inside prefix get all files prefix/some_dir/timings.txt'''
+    return [os.path.join(prefix, k,'timings.txt') for k in os.listdir(prefix) if os.path.isfile(os.path.join(prefix, k,'timings.txt'))]
+
 def get_regex_pattern():
     return r'[+\-]?(?:[0-9]\d*)(?:\.\d*)?(?:[eE][+\-]?\d+)?'
+
+
+def parse_timing_file(f):
+    '''Parse timing.txt file
+
+    Return:
+        a tuple consiting of
+        p, dofs, tr_memory, mf_memory, timing, cg_iterations, cores
+    '''
+    fin = open(f, 'r')
+    ready = False
+    pattern = get_regex_pattern()
+
+    dividers = '+---------------------------------'
+    inside_table = False
+
+    timing = {}
+    # reset CG iterations in case AMG did not have enough memory
+    cg_iterations = np.nan
+    tot_cg_iterations = np.nan
+    for line in fin:
+        if 'running with' in line:
+            cores = int(re.findall(pattern,line)[0])
+
+        elif 'dim   =' in line:
+            dim = int(re.findall(pattern,line)[0])
+
+        elif 'p     =' in line:
+            p = int(re.findall(pattern,line)[0])
+
+        elif 'q     =' in line:
+            q = int(re.findall(pattern,line)[0])
+
+        elif 'cells =' in line:
+            cells = int(re.findall(pattern,line)[0])
+
+        elif 'dofs  =' in line:
+            dofs = int(re.findall(pattern,line)[0])
+
+        elif 'Trilinos memory =' in line:
+            tr_memory = float(re.findall(pattern,line)[0])
+
+        elif 'MF cache memory =' in line:
+            mf_memory = float(re.findall(pattern,line)[0])
+
+        elif 'Average CG iter =' in line:
+            cg_iterations = int(re.findall(pattern,line)[0])
+        elif 'Total CG iter = ' in line:
+            tot_cg_iterations = int(re.findall(pattern,line)[0])
+
+        if ready:
+            if dividers in line:
+                inside_table = not inside_table
+            elif inside_table:
+                # main parsring logic is here
+
+                # get the columns, disregard empty first and last
+                columns = [s.strip() for s in line.split('|')][1:-1]
+
+                key = columns[0]
+                val = []
+
+                for v in columns[1:]:
+                    val.append(re.findall(pattern, v)[0])
+
+                timing[key] = val
+
+        if 'Section' in line and 'wall time' in line:
+            # print 'dim={0} p={1} q={2} cells={3} dofs={4} tr_memory={5} mf_memory={6} cg_it={7} file={8}'.format(dim, p, q, cells, dofs, tr_memory, mf_memory, cg_iterations, f)
+            ready = True
+
+    # return data as a tuple
+    return tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations, tot_cg_iterations, cores))
 
 
 def parse_likwid_file(filename, last_line = ''):

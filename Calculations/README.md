@@ -3,8 +3,15 @@
 
 ## general benchmark
 ```
-python pre_process.py --likwid --dir=Emmy_RRZE
+python pre_process.py --dir=Emmy_RRZE
 qsub emmy_benchmark_intel.sh
+```
+
+## weak scaling
+```
+qsub emmy_benchmark_intel_1n.sh
+qsub emmy_benchmark_intel_8n.sh
+qsub emmy_benchmark_intel_64n.sh
 ```
 
 ## LIKWID runs
@@ -46,6 +53,11 @@ qsub likwid_emmy_benchmark_intel.sh
 ## general benchmark
 ```
 python post_process.py
+```
+
+## weak scaling
+```
+python post_process_weak.py
 ```
 
 ## LIKWID

@@ -1,0 +1,14 @@
+\begin{table}
+\centering
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+cores  & DoFs & $N_{gref}$ & vmult [s] & CG iteration [s] \\
+\hline
+20 & 4442880 & 3 & \pgfmathprintnumber{0.0675} & \pgfmathprintnumber{0.529553679131} \\
+160 & 35071488 & 4 & \pgfmathprintnumber{0.0705} & \pgfmathprintnumber{0.562637362637} \\
+1280 & 278694912 & 5 & \pgfmathprintnumber{0.083} & \pgfmathprintnumber{0.688792165397} \\
+\hline
+\end{tabular}
+\caption{Weak scaling of Algorithm \ref{alg:mf_tensor4} in 3D for quadratic polynomial basis.}
+\label{tab:weak_3d}
+\end{table}

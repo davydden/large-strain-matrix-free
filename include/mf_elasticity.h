@@ -1151,7 +1151,9 @@ namespace Cook_Membrane
       }
 
     // for post-processing, print average CG iterations over the whole run:
-    timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl;
+    timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl
+              << "Total CG iter = " << total_n_cg_iterations << std::endl
+              << "Total CG solve = " << total_n_cg_solve << std::endl;
 #ifdef WITH_LIKWID
     pcout << "LIKWID_MARKER_CLOSE" << std::endl;
     LIKWID_MARKER_CLOSE;

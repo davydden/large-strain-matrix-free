@@ -1002,8 +1002,11 @@ Unfortunately, performance measurements for non-Cartesian meshes were not report
 
 When comparing the data for ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}) caching strategy,
 we observe a marginal increase in computational intensity and almost unchanged performance.
-This coincides with our expectation that the latter algorithm requires transferring fewer bytes to perform operations on a single quadrature point.
+This coincides with our expectation that the latter algorithm requires transferring fewer bytes to perform operations on a single quadrature point
+(compare line 9 in Algorithm \ref{alg:mf_tensor4} that loads a symmetric rank-4 tensor to the line 9 in Algorithm \ref{alg:mf_tensor2} that evaluates the
+same contraction by loading two scalars $c_1$ and $c_2$).
 On the other hand, the ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates a higher computational intensity.
+This is not surprising as at each quadrature point we need to re-evaluate the Kirchoff stress $\gz \tau$.
 Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations, an additional
 second-order tensor per quadrature point (inverse of the Jacobian transformation) will be cached as compared to the Algorithm \ref{alg:mf_tensor2}.
 As a result both algorithms will have comparable memory requirements (also confirmed by Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3}),
@@ -1064,7 +1067,9 @@ double contraction between a symmetric second order tensor and a fourth order te
 
 \input{parallelization_2d.tex}
 \input{parallelization_3d.tex}
+{\color{red}
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to MPI. For these rather small count of MPI processes, the results confirm that the performance gained is independent. Furthermore, the improvement due to explicit intrinsics for the data used in the quadrature loop, is comparable to the ones in \cite[Figure 6]{kronbichler2017fastcomputer} where the speedup factor is $1.2-1.8$ for a similar architecture.
+}
 
 {\color{red}
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
@@ -1163,7 +1168,7 @@ Consequently, we can conclude that for the here considered finite strain elastic
 \changeJP{%
 Additionally, we compare solution times of the preconditioned iterative solvers.
 Our goal is to \changeJP{determine} whether the matrix-free approach with a GMG preconditioner can be faster than the matrix-based approach with a well-established implementation of an AMG preconditioner.
-We note specifically that the comparison is restricted to the choice of level operators used with the pre-existing GMG framework, and not the framework itself. 
+We note specifically that the comparison is restricted to the choice of level operators used with the pre-existing GMG framework, and not the framework itself.
 }
 %\changeJP{We note that although the well-established implementation of the AMG preconditioner \cite{Gee2006a} is the best available choice for the matrix-based implementation of the boundary value problem, the current implementation of the matrix-free GMG preconditioner is not yet optimized and can be improved further.}
 Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution times for {\color{red}all} polynomial degrees.
@@ -1171,9 +1176,14 @@ Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}
 \changeJP{In comparison}, the wall time of the matrix-based iterative solver grows rapidly with increasing polynomial degree.
 Clearly this is related both to the performance of the preconditioner from the linear algebra perspective as well as the matrix-vector products, studied in the previous section.
 Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for \changeJP{engineering problems
-with compressible hyperelastic} finite strain material models.
-Extension of this study from the node level to the cluster level is beyond the scope of this work,
-however we hypothesize that the matrix-free and multigrid frameworks provided by \texttt{deal.II} library would provide a competitive solution for that case as well.}
+with compressible hyperelastic} finite strain material models.}
+
+\changeJP{Extension of this study from the node level to the cluster level is beyond the scope of this work,
+however we show preliminary weak scaling results that confirm that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for that case as well.
+Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes (64 nodes, the maximum we could request on the local HPC cluster) of the wall time for a single matrix-vector product and a single iteration in the CG solver for the 3D problem with quadratic basis.
+}
+
+\input{weak_scaling_3d.tex}
 
 \section{Summary and Conclusions}
 \label{sec:summary}
