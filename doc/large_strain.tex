@@ -65,7 +65,7 @@
 \DeclareMathOperator{\trace}{tr}
 \newcommand{\diff}{\mathop{}\!\mathrm{d}}
 
-\newcommand{\changeJP}[1]{\textcolor{blue}{#1}}
+\newcommand{\changeJP}[1]{\textcolor{red}{#1}}
 \newcommand{\todojp}[1]{\todo[inline,color=red!40,size=\small]{TODO (J-P): #1}}
 
 \begin{document}
@@ -1178,9 +1178,13 @@ Clearly this is related both to the performance of the preconditioner from the l
 Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for \changeJP{engineering problems
 with compressible hyperelastic} finite strain material models.}
 
-\changeJP{Extension of this study from the node level to the cluster level is beyond the scope of this work,
-however we show preliminary weak scaling results that confirm that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for that case as well.
-Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes (64 nodes, the maximum we could request on the local HPC cluster) of the wall time for a single matrix-vector product and a single iteration in the CG solver for the 3D problem with quadratic basis.
+\changeJP{Extension of this study from the node level to the cluster level is beyond the scope of this work.
+However, as a step in this direction we have performed a preliminary study of the weak scalability of the implementation.
+Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes\footnote{%
+This corresponds to 64 nodes, which is the maximum we could request on the RRZE Emmy HPC cluster.
+} of the wall time per matrix-vector product and per iteration in the CG solver for the 3D problem with a tri-quadratic basis.
+This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well,
+also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CPU cores and 34.4 billion degrees of freedom for an incompressible flow problem.
 }
 
 \input{weak_scaling_3d.tex}
