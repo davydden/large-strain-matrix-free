@@ -1183,7 +1183,8 @@ However, as a step in this direction we have performed a preliminary study of th
 Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes\footnote{%
 This corresponds to 64 nodes, which is the maximum we could request on the RRZE Emmy HPC cluster.
 } of the wall time per matrix-vector product and per iteration in the CG solver for the 3D problem with a tri-quadratic basis.
-This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well.
+This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well,
+also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147'456 CPU cores and 34.4 billion degrees of freedom for an incompressible flow problem.
 }
 
 \input{weak_scaling_3d.tex}
