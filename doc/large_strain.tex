@@ -423,7 +423,6 @@ In this work we employ \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4es
   \begin{subfigure}[b]{0.8\textwidth}
     \centering
     \includegraphics[width=\textwidth]{fine_level_2d.png}
-    % \caption{2D multigrid mesh with 2 global refinements}
   \end{subfigure}
   \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
   \label{fig:miehe_fine_level}
@@ -745,7 +744,6 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \begin{subfigure}[b]{0.8\textwidth}
     \centering
     \includegraphics[width=\textwidth]{gmg_2d_4procs.png}
-    % \caption{2D multigrid mesh with 2 global refinements}
   \end{subfigure}
   \caption{2D multigrid mesh after two global refinements distributed into four MPI processes. The color indicates the process owning the element.}%
   \label{fig:miehe_gmg}
@@ -1215,5 +1213,6 @@ P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering o
 \fi
 
 \bibliography{bibliography}
+%\input{large_strain.bbl}
 
 \end{document}
