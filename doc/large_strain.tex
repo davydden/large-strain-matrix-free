@@ -1004,8 +1004,44 @@ In this case the, quadrature loop consists of, essentially, a
 single contraction between two second order tensors (step 7 in Algorithm \ref{alg:mf_tensor4}) and a
 double contraction between a symmetric second order tensor and a fourth order tensor (step 9 in Algorithm \ref{alg:mf_tensor4}).
 
-\input{parallelization_2d.tex}
-\input{parallelization_3d.tex}
+\begin{table}
+  \centering
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{|c|cc|ccc|ccc|ccc|}
+  \hline
+                & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\
+  \hline
+  p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\
+  \hline
+  2& \pgfmathprintnumber{0.71685} & \pgfmathprintnumber{0.8747712} & \pgfmathprintnumber{0.07427} & \pgfmathprintnumber{8.57318} & \pgfmathprintnumber{9.65194560388} & \pgfmathprintnumber{0.3939} & \pgfmathprintnumber{1.6528706} & \pgfmathprintnumber{1.81987814166} & \pgfmathprintnumber{0.04142} & \pgfmathprintnumber{16.0073657} & \pgfmathprintnumber{17.306856591} \\
+  4& \pgfmathprintnumber{0.47603} & \pgfmathprintnumber{1.3088965} & \pgfmathprintnumber{0.0511} & \pgfmathprintnumber{12.3860771} & \pgfmathprintnumber{9.3156555773} & \pgfmathprintnumber{0.25747} & \pgfmathprintnumber{2.3690572} & \pgfmathprintnumber{1.84887559716} & \pgfmathprintnumber{0.02786} & \pgfmathprintnumber{22.2420699} & \pgfmathprintnumber{17.0865039483} \\
+  6& \pgfmathprintnumber{0.24683} & \pgfmathprintnumber{1.5497601} & \pgfmathprintnumber{0.02636} & \pgfmathprintnumber{14.8125524} & \pgfmathprintnumber{9.36380880121} & \pgfmathprintnumber{0.13089} & \pgfmathprintnumber{2.8544567} & \pgfmathprintnumber{1.88578195431} & \pgfmathprintnumber{0.01487} & \pgfmathprintnumber{26.0509717} & \pgfmathprintnumber{16.5991930061} \\
+  \hline
+  \end{tabular}
+  }
+  \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
+  vectorization and parallelization.}
+  \label{tab:numbers_2d}
+\end{table}
+
+\begin{table}
+  \centering
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{|c|cc|ccc|ccc|ccc|}
+  \hline
+                & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\
+  \hline
+  p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\
+  \hline
+  2& \pgfmathprintnumber{1.82927} & \pgfmathprintnumber{1.4408182} & \pgfmathprintnumber{0.19184} & \pgfmathprintnumber{13.75528} & \pgfmathprintnumber{9.5353940784} & \pgfmathprintnumber{1.24738} & \pgfmathprintnumber{2.2390063} & \pgfmathprintnumber{1.46648976254} & \pgfmathprintnumber{0.13397} & \pgfmathprintnumber{21.0187594} & \pgfmathprintnumber{13.6543255953} \\
+  4& \pgfmathprintnumber{1.14988} & \pgfmathprintnumber{1.7483867} & \pgfmathprintnumber{0.1211} & \pgfmathprintnumber{16.6162812} & \pgfmathprintnumber{9.49529314616} & \pgfmathprintnumber{0.74974} & \pgfmathprintnumber{2.7527409} & \pgfmathprintnumber{1.53370501774} & \pgfmathprintnumber{0.08166} & \pgfmathprintnumber{25.4865287} & \pgfmathprintnumber{14.0813127602} \\
+  \hline
+  \end{tabular}
+  }
+  \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \ref{alg:mf_tensor4} in 3D for various combinations of polynomial degrees,
+  vectorization and parallelization.}
+  \label{tab:numbers_3d}
+\end{table}
 
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to MPI. For these rather small count of MPI processes, the results confirm that the performance gained is independent. Furthermore, the improvement due to explicit intrinsics for the data used in the quadrature loop, is comparable to the ones in \cite[Figure 6]{kronbichler2017fastcomputer} where the speedup factor is $1.2-1.8$ for a similar architecture.
 
@@ -1112,7 +1148,20 @@ This corresponds to 64 nodes, which is the maximum we could request on the RRZE 
 This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well,
 also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CPU cores and 34.4 billion degrees of freedom for an incompressible flow problem.
 
-\input{weak_scaling_3d.tex}
+\begin{table}
+  \centering
+  \begin{tabular}{|r|r|c|r|c|}
+  \hline
+  cores  & $N_{DoF}$ & $N_{gref}$ & vmult [s] & CG [s / iteration] \\
+  \hline
+  20 & 4,442,880 & 3 & \pgfmathprintnumber{0.0675} & \pgfmathprintnumber{0.529553679131} \\
+  160 & 35,071,488 & 4 & \pgfmathprintnumber{0.0705} & \pgfmathprintnumber{0.562637362637} \\
+  1280 & 278,694,912 & 5 & \pgfmathprintnumber{0.083} & \pgfmathprintnumber{0.688792165397} \\
+  \hline
+  \end{tabular}
+  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor4} in 3D for quadratic polynomial basis.}
+  \label{tab:weak_3d}
+\end{table}
 
 \section{Summary and Conclusions}
 \label{sec:summary}
