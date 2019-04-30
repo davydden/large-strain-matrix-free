@@ -51,16 +51,13 @@
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
 
-\def\gz  #1{           \mbox{$\boldsymbol{#1}$}}
-\def\Grad #1 {{\rm Grad} #1}
-\def\grad {\mbox{grad}}
-\def\Div {\mbox{Div\,}}
-\def\div {\mbox{div\,}}
-\def\d {{\rm d}}
-\def\D {{\rm D}}
-\def\mcl  #1{               {\mathcal #1}}
+\newcommand*{\gz}[1]{\boldsymbol{#1}}
+\newcommand*{\Grad}{\mathrm{Grad}}
+\newcommand*{\grad}{\mathrm{grad}}
+\renewcommand*{\d}{\mathrm{d}}
+\newcommand*{\D}{\mathrm{D}}
+\newcommand*{\mcl}[1]{\mathcal{#1}}
 \DeclareMathOperator{\trace}{tr}
-\newcommand{\diff}{\mathop{}\!\mathrm{d}}
 
 \begin{document}
 
