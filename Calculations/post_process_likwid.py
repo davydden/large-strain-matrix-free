@@ -328,6 +328,18 @@ else:
         for k in range(i-1):
           bar_data_bottom[i][j] = bar_data_bottom[i][j] + bar_data[k][j]
 
+  print '============ Bar data {0}d ============'.format(args.dim)
+  print 'Label             2                 4'
+  for d, t in zip(bar_data, region_labels):
+    print '{0}'.format(t.ljust(18)) + '{0}'.format(d[0]).ljust(18) + '{0}'.format(d[1]).ljust(18)
+  print ''
+
+  print '============ Bar bottom {0}d ============'.format(args.dim)
+  print 'Label             2                 4'
+  for d, t in zip(bar_data_bottom, region_labels):
+    print '{0}'.format(t.ljust(18)) + '{0}'.format(d[0]).ljust(18) + '{0}'.format(d[1]).ljust(18)
+  print ''
+
   width = 0.5
   bars = [i for i in range(len(region_labels))]
   for i in range(len(region_labels)):
