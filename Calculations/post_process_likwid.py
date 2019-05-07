@@ -325,7 +325,7 @@ else:
   for i in range(len(region_labels)):
     if i > 0:
       for j in range(len(ind)):
-        for k in range(i-1):
+        for k in range(i):
           bar_data_bottom[i][j] = bar_data_bottom[i][j] + bar_data[k][j]
 
   print '============ Bar data {0}d ============'.format(args.dim)
