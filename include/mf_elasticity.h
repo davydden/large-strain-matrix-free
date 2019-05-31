@@ -2130,7 +2130,7 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
 
               // FIXME: looks like there are some severe round-off errors.
-              const unsigned int ulp = 1e+9;
+              const double ulp = 1.e+10;
 
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
@@ -2153,7 +2153,7 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
-                        10000. * std::numeric_limits<double>::epsilon() *
+                        100000. * std::numeric_limits<double>::epsilon() *
                           std::abs(dst_mf.local_element(i)),
                       ExcMessage(
                         "MF and MB Jacobi are different on local element " +
