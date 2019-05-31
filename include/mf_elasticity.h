@@ -1901,9 +1901,9 @@ namespace Cook_Membrane
             {
               // [1.2 \lambda_{max}/range, 1.2 \lambda_{max}]
               smoother_data[level].smoothing_range = 2;
-              // With degree zero, the Jacobi method with optimal damping
+              // With degree one, the Jacobi method with optimal damping
               // parameter is retrieved
-              smoother_data[level].degree = 4;
+              smoother_data[level].degree = 5;
               // number of CG iterataions to estimate the largest eigenvalue:
               smoother_data[level].eig_cg_n_iterations =
                 parameters.mf_chebyshev_n_cg_iterations;
