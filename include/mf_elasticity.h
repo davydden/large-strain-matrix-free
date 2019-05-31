@@ -2130,7 +2130,7 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
 
               // FIXME: looks like there are some severe round-off errors.
-              const unsigned int ulp = std::pow(10, 9);
+              const unsigned int ulp = 1e+9;
 
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
