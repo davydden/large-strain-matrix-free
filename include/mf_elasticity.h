@@ -2097,6 +2097,63 @@ namespace Cook_Membrane
 #endif
               }
 
+          // adjust ghost according to MF data
+          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), dst_mf);
+          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), src);
+
+          // 1. zero
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) zero");
+              LIKWID_MARKER_START("vmult_MF_zero");
+              dst_mf = 0.;
+              LIKWID_MARKER_STOP("vmult_MF_zero");
+            }
+
+          // 2. MPI comm
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) MPI");
+              LIKWID_MARKER_START("vmult_MF_mpi");
+              src.update_ghost_values();
+              dst_mf.compress(VectorOperation::add);
+              LIKWID_MARKER_STOP("vmult_MF_mpi");
+            }
+
+          // to get timing within the cell loop for RW, SF and QD
+          // we need 3 measurements:
+          // 3.1 Local loop
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) Cell loop");
+              LIKWID_MARKER_START("vmult_MF_cell");
+              mf_nh_operator.template vmult<MFMask::CellLoop>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell");
+            }
+
+          // 3.2 Local loop with RW only
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) RW");
+              LIKWID_MARKER_START("vmult_MF_cell_RW");
+              mf_nh_operator.template vmult<MFMask::RW>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell_RW");
+            }
+
+          // 3.3 Local loop with RW and SF
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) RWSF");
+              LIKWID_MARKER_START("vmult_MF_cell_RWSF");
+              mf_nh_operator.template vmult<MFMask::RWSF>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell_RWSF");
+            }
+
           MPI_Barrier(mpi_communicator);
           for (unsigned int i = 0; i < n_times; ++i)
             {
