@@ -1901,9 +1901,9 @@ namespace Cook_Membrane
             {
               // [1.2 \lambda_{max}/range, 1.2 \lambda_{max}]
               smoother_data[level].smoothing_range = 2;
-              // With degree zero, the Jacobi method with optimal damping
+              // With degree one, the Jacobi method with optimal damping
               // parameter is retrieved
-              smoother_data[level].degree = 4;
+              smoother_data[level].degree = 5;
               // number of CG iterataions to estimate the largest eigenvalue:
               smoother_data[level].eig_cg_n_iterations =
                 parameters.mf_chebyshev_n_cg_iterations;
@@ -2097,6 +2097,63 @@ namespace Cook_Membrane
 #endif
               }
 
+          // adjust ghost according to MF data
+          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), dst_mf);
+          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), src);
+
+          // 1. zero
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) zero");
+              LIKWID_MARKER_START("vmult_MF_zero");
+              dst_mf = 0.;
+              LIKWID_MARKER_STOP("vmult_MF_zero");
+            }
+
+          // 2. MPI comm
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) MPI");
+              LIKWID_MARKER_START("vmult_MF_mpi");
+              src.update_ghost_values();
+              dst_mf.compress(VectorOperation::add);
+              LIKWID_MARKER_STOP("vmult_MF_mpi");
+            }
+
+          // to get timing within the cell loop for RW, SF and QD
+          // we need 3 measurements:
+          // 3.1 Local loop
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) Cell loop");
+              LIKWID_MARKER_START("vmult_MF_cell");
+              mf_nh_operator.template vmult<MFMask::CellLoop>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell");
+            }
+
+          // 3.2 Local loop with RW only
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) RW");
+              LIKWID_MARKER_START("vmult_MF_cell_RW");
+              mf_nh_operator.template vmult<MFMask::RW>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell_RW");
+            }
+
+          // 3.3 Local loop with RW and SF
+          MPI_Barrier(mpi_communicator);
+          for (unsigned int i = 0; i < n_times; ++i)
+            {
+              TimerOutput::Scope t(timer, "vmult (MF) RWSF");
+              LIKWID_MARKER_START("vmult_MF_cell_RWSF");
+              mf_nh_operator.template vmult<MFMask::RWSF>(dst_mf, src);
+              LIKWID_MARKER_STOP("vmult_MF_cell_RWSF");
+            }
+
           MPI_Barrier(mpi_communicator);
           for (unsigned int i = 0; i < n_times; ++i)
             {
@@ -2130,7 +2187,7 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
 
               // FIXME: looks like there are some severe round-off errors.
-              const unsigned int ulp = std::pow(10, 9);
+              const double ulp = 1.e+10;
 
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
@@ -2153,7 +2210,7 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
-                        10000. * std::numeric_limits<double>::epsilon() *
+                        100000. * std::numeric_limits<double>::epsilon() *
                           std::abs(dst_mf.local_element(i)),
                       ExcMessage(
                         "MF and MB Jacobi are different on local element " +
