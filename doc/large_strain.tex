@@ -799,7 +799,7 @@ Even so, the problem size is large enough so that the sparse matrix (in excess o
 We conduct two performance studies using the described discretization, the first being for only matrix-vector multiplication, and the second for the preconditioned iterative linear solver.
 The results of the matrix-free approach with a geometric multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML \cite{Gee2006a} of the Trilinos \cite{Heroux2005} library version 12.12.1.
 The aggregation threshold for the AMG preconditioner is taken as $10^{-4}$.
-The geometric multigrid algorithm uses a V-cycle with two pre- and post-smoothing steps using Chebyshev polynomials \cite{Varga2009} of fourth degree, provided
+The geometric multigrid algorithm uses a V-cycle with two pre- and post-smoothing steps using Chebyshev polynomials \cite{Varga2009} of fifth degree, provided
 by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
 The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
 is set to target the range $[0.6\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
