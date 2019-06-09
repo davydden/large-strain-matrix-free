@@ -749,7 +749,8 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 % The same distributed approach to mesh decomposition (as most evident on the finest level) is adopted on the multigrid levels.
 % Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements for the mesh introduced in figure \ref{fig:miehe_fine_level}.
 %
-\begin{table}
+\begin{table}[!htb]
+  \begin{subtable}{.5\linewidth}
   \centering
   \begin{tabular}{ccccc}
   \hline
@@ -765,13 +766,10 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
     8 & 9 & 4 & 22528 & 2887680 \\
   \hline
   \end{tabular}
-  \caption{Parameters for the 2D benchmark: $p$ is the polynomial degree,
-  $q$ is the number of quadrature points in 1D, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
-  }
+  \caption{2D}
   \label{tab:input_parameters_2d}
-\end{table}
-
-\begin{table}
+  \end{subtable}
+  \begin{subtable}{.5\linewidth}
   \centering
   \begin{tabular}{ccccc}
   \hline
@@ -783,10 +781,12 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
     4 & 5 & 2 & 22528 & 4442880 \\
   \hline
   \end{tabular}
-  \caption{Parameters for the 3D benchmark: $p$ is the polynomial degree,
+  \caption{3D}
+  \label{tab:input_parameters_3d}
+  \end{subtable}
+  \caption{Parameters for the benchmark: $p$ is the polynomial degree,
   $q$ is the number of quadrature points in 1D, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
   }
-  \label{tab:input_parameters_3d}
 \end{table}
 
 Aligned with the approach taken in similar previous investigations, compare e.g. \cite{kronbichler2017fast},
