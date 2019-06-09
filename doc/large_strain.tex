@@ -418,7 +418,7 @@ Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradie
 Classically, in order to solve \eqref{eq:linear_system} the matrix $\gz A$ and the residual force vector $\gz F$ corresponding to the discretization are assembled (that is, the non-zero matrix elements $A_{ij}$ are individually computed and stored) and a direct or iterative solver is used to solve the linear system.
 In this case, the matrix-vector product $\gz A \gz x$ results from the product of the individual matrix elements with the elements in the vector, and is usually implemented with the aid of specialized linear algebra packages.
 On modern computer architectures however, loading sparse matrix data into the CPU registers is significantly slower than performing the arithmetic operations when solving.
-For this reason, recent implementations often focus on so-called matrix-free approaches where the matrix is not assembled but rather the result of its operation on a vector is directly calculated.
+For this reason, recent implementations often focus on so-called matrix-free approaches \cite{kronbichler12, kronbichler2017fast} where the matrix is not assembled but rather the result of its operation on a vector is directly calculated.
 The idea is to perform the operations within the solver on-the-fly rather than loading matrix elements from memory.
 For iterative solvers, this is possible since it is sufficient to compute matrix-vector products alone.
 %
