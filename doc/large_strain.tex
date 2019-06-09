@@ -670,9 +670,12 @@ For further information about geometric multigrid methods we refer the reader to
 %
 In this work, we adopt the matrix-free level operators within the GMG.
 In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}.
-In this approach, the fine-scale displacement is decomposed into long-wave and short-wave contributions by an additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch.
-However, for a patch of elements consisting of the same material, the transfer operators reduce to the standard geometric transfer.
-Based on this observation we adopt the following approach: It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
+Such operators are, however, computationally very demanding.
+In this work we propose a different approach:
+% In this approach, the fine-scale displacement is decomposed into long-wave and short-wave contributions by an additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch.
+% However, for a patch of elements consisting of the same material, the transfer operators reduce to the standard geometric transfer.
+% Based on this observation we adopt the following approach:
+It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
 In this case, the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators.
 We define the level operators as follows: Recall that the fine scale tangent operator \eqref{eq:algebraic_tangent} is obtained by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to all multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}.
 Essentially, level operators correspond to the linearization around the smoothed representation of displacement field.
