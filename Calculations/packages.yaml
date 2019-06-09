@@ -1,0 +1,52 @@
+packages:
+  all:
+    compiler: [gcc,intel]
+    providers:
+      mpi: [openmpi,intel-mpi]
+      blas: [openblas, intel-mkl]
+      lapack: [openblas, intel-mkl]
+      scalapack: [netlib-scalapack]
+#  python:
+#    version: [2.7.12]
+#    paths:
+#      python@2.7.12: /usr/
+#    buildable: False
+  trilinos:
+    variants: ~mumps
+  suite-sparse:
+    version: [5.1.0]
+  openmpi:
+    version: [3.1.3] #, 2.0.2] # , 2.0.1]
+    paths:
+      openmpi@3.1.3%gcc@8.2.0: /apps/SPACK/opt/linux-centos7-x86_64/gcc-8.2.0/openmpi-3.1.3-q6rr7pdujdjqvbzr3kefqzrbz2m3upyu/
+      # openmpi@2.0.2%gcc@4.8.5: /apps/OpenMPI/2.0.2-gcc/
+      # openmpi@2.0.1%gcc@4.8.5: /apps/OpenMPI/2.0.1-gcc/
+    buildable: False
+  intel-mpi:
+    version: [2018.3.222]
+    paths:
+      intel-mpi@2018.3.222%intel@18.0.3: /apps/intel/ComposerXE2018/
+    buildable: False
+# see https://github.com/spack/spack/issues/8324#issuecomment-393418311
+  intel-mkl:
+    version: [2018.3.222]
+    paths:
+      intel-mkl@2018.3.222%intel@18.0.3: /apps/intel/ComposerXE2018/
+    buildable: False
+  cmake:
+    version: [3.6.0]
+    paths:
+      # cmake@3.6.0%intel@17.0.5: /apps/cmake/3.6.0/
+      cmake@3.6.0%intel@18.0.3: /apps/cmake/3.6.0/
+    buildable: False
+  # cmake:
+  #   version: ['3.6.0']
+  #     cmake@3.6.0%intel@17.0.5: /apps/cmake/3.6.0/
+  #   buildable: False
+  metis:
+    variants: +real64
+  elemental:
+    variants: ~hybrid
+  dealii:
+    version: [develop]
+    variants: ~adol-c~arpack~assimp~cuda~doc~gmsh+gsl~hdf5~int64+metis+mpi~nanoflann~netcdf~oce+optflags+p4est~petsc~python~scalapack~slepc~sundials+trilinos
