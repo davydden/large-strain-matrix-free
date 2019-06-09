@@ -191,9 +191,14 @@ The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI 
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
 
-The paper is organized as follows: In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics.
-Sections \ref{sec:fe} and \ref{sec: Description of numerical framework} cover the finite element discretization and provide details of the numerical framework with which this study is implemented.
-In \ref{sec:mf} we describe the different matrix-free operator implementations that are evaluated in this study, and in section \ref{sec:gmg} we propose a geometric multigrid preconditioner that is suitable for the matrix-free implementation of finite-strain hyperelasticity.
+The paper is organized as follows:
+In Section \ref{sec:theory} we briefly introduce the partial differential equations used in  finite-strain solid mechanics.
+Sections \ref{sec:fe} cover the finite element discretization.
+In \ref{sec:mf} we describe the different matrix-free operator implementations that are evaluated in this study.
+Section \ref{sec:framework} provides details of the numerical framework with which this study is implemented,
+where we also propose a method by which to construct level tangent operators for
+a geometric multigrid preconditioner that is suitable for the matrix-free implementation of finite-strain hyperelasticity.
+%
 The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material simulated in two and three dimensions in Section \ref{sec:example}.
 Lastly, the results are summarized in Section \ref{sec:summary}.
 
@@ -407,37 +412,6 @@ Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration, whereas the integration is done in the referential configuration.
 
-\section{Description of the utilized numerical framework
-\label{sec: Description of numerical framework}
-}
-
-The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling} were implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
-This library offers a number of paradigms by which to parallelize a finite-element code, and as a member of the xSDK (Extreme-scale Scientific Software Development Kit) ecosystem \citep{Bartlett2017b} aims to support exascale computing.
-In this work we employ \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4est} library to perform a standard domain decomposition, whereafter each MPI process ``owns'' only a subset of elements and the mesh is distributed across all MPI processes.
-%
-\begin{figure}[!ht]
-  \centering
-  \begin{subfigure}[b]{0.8\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{fine_level_2d.png}
-  \end{subfigure}
-  \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
-  \label{fig:miehe_fine_level}
-\end{figure}
-%
-%
-Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on the fine mesh level for the 2D problem that will be introduced later in Section \ref{sec:example}.
-
-In practice, this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of investigation in this manuscript, has been achieved using MPI.
-For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently used, leaving the choice for method of assembly and linear system preconditioning remaining.
-
-The discrete tangent operator described by \eqref{eq:algebraic_tangent} can be implemented in one of two ways, namely through a classical matrix-based approach or, alternatively, a matrix-free approach.
-For the matrix-based approach adopted in this study, the Trilinos \cite{Heroux2005} library was leveraged;
-the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the ML package \cite{Gee2006a}.
-This is the most highly performant matrix-based approach using the Trilinos framework that, to date, is possible in  \texttt{deal.II}.
-
-The second implementation, which is discussed in detail in the following Sections, utilized a matrix-free approach in conjunction with a geometric-multigrid preconditioner.
-As will be detailed later, the pre-existing matrix-free framework that was used offers further opportunity for low-level parallelism that we exploit.
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
@@ -660,36 +634,58 @@ Distributed memory MPI parallelization of the matrix-free operators is done usin
 For more information about the implementation details and data structures for sum factorization approaches in \texttt{deal.II} (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and distributed memory parallelization as well SIMD vectorization) and performance tests, see \cite{kronbichler12}.
 
 
+\section{Description of the utilized numerical framework
+\label{sec:framework}
+}
 
+The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling} were implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
+This library offers a number of paradigms by which to parallelize a finite-element code, and as a member of the xSDK (Extreme-scale Scientific Software Development Kit) ecosystem \citep{Bartlett2017b} aims to support exascale computing.
+In this work we employ \texttt{deal.II}'s interface to \texttt{p4est} \cite{p4est} library to perform a standard domain decomposition, whereafter each MPI process ``owns'' only a subset of elements and the mesh is distributed across all MPI processes.
+%
+\begin{figure}[!ht]
+  \centering
+  \begin{subfigure}[b]{0.8\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{fine_level_2d.png}
+  \end{subfigure}
+  \caption{2D mesh after two global refinements distributed into three MPI processes. The color indicates the process owning the element.}%
+  \label{fig:miehe_fine_level}
+\end{figure}
+%
+%
+Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on the fine mesh level for the 2D problem that will be introduced later in Section \ref{sec:example}.
 
-\section{Geometric multigrid preconditioning}
-\label{sec:gmg}
+In practice, this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver (as well as various pre- and post-processing steps), both of which are the focal points of investigation in this manuscript, has been achieved using MPI.
+For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently used, leaving the choice for method of assembly and linear system preconditioning remaining.
 
-Efficient and scalable matrix-vector products are not enough to obtain a method suitable for large computations. In particular, linear scaling with respect to the number $N$ of unknown DoFs is desirable.
-The efficiency of standard iterative solvers and preconditioners deteriorates for large systems of linear equations due to increasing iteration counts under mesh refinement.
-In contrast to other preconditioners, geometric multigrid (GMG) preconditioners \cite{Bramble1990, Briggs2000, Janssen2011,May2015} can be proven to result in iteration counts that are independent of the number of mesh refinements by smoothing the residual on a hierarchy of meshes. For further information about geometric multigrid methods we refer the reader to \cite{Briggs2000,Hackbusch1985,Wesseling1992}.
-Implementational details of the MPI-parallel multigrid method in \texttt{deal.II} are discussed in \cite{Clevenger2018}.
+The discrete tangent operator described by \eqref{eq:algebraic_tangent} can be implemented in one of two ways, namely through a classical matrix-based approach or, alternatively, a matrix-free approach.
+For the matrix-based approach adopted in this study, the Trilinos \cite{Heroux2005} library was leveraged;
+the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} from the Epetra package \cite{Heroux2005b} sparse data structure and the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the ML package \cite{Gee2006a}.
+This is the most highly performant matrix-based approach using the Trilinos framework that, to date, is possible in \texttt{deal.II}.
 
-For this work, we adopt the matrix-free level operators within the GMG.
-In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}\footnote{
-  We note that this approach is limited to the case where for each quadrature point within an element the fourth-order tangent stiffness tensor is the same.
-}.
+The second implementation utilized a matrix-free approach in conjunction with a geometric-multigrid (GMG) preconditioner.
+GMG preconditioners \cite{Bramble1990, Briggs2000, Janssen2011,May2015} can be proven to result in iteration counts that are independent of the number of mesh refinements by smoothing the residual on a hierarchy of meshes.
+For further information about geometric multigrid methods we refer the reader to \cite{Briggs2000,Hackbusch1985,Wesseling1992}.
+%
+%
+In this work, we adopt the matrix-free level operators within the GMG.
+In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}.
 In this approach, the fine-scale displacement is decomposed into long-wave and short-wave contributions by an additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch.
 However, for a patch of elements consisting of the same material, the transfer operators reduce to the standard geometric transfer.
 Based on this observation we adopt the following approach: It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
 In this case, the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators.
 We define the level operators as follows: Recall that the fine scale tangent operator \eqref{eq:algebraic_tangent} is obtained by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to all multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}.
-Essentially, level operators correspond to the linearization around the smoothed representation of displacement field\footnote{
+Essentially, level operators correspond to the linearization around the smoothed representation of displacement field.
 Note that this differs from the classical approach where the (tangent) operator $\gz A^{l+1}$ on level $l+1$ is directly related to the (tangent) operator $\gz A^{l}$ on level $l$ via $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, where $\gz I^l_{l+1}$ and $\gz I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
-}.
 
-To summarize, in this section we propose a method by which to construct level tangent operators for finite-strain elasticity to be employed within the GMG preconditioner.
-The other parts of the GMG preconditioner such as level smoothers, matrix-free interlevel transfer operators and the coarse level iterative solver are provided by the \texttt{deal.II} library.
-The efficiency of the preconditioner with the considered level operators will be assessed by numerical examples in the next section.
+The other parts of the GMG preconditioner such as level smoothers, matrix-free interlevel transfer operators and the coarse level iterative solver are provided by the \texttt{deal.II} library, implementational details are discussed in \cite{Clevenger2018}.
+%
+The efficiency of the GMG preconditioner with the considered level operators will be assessed by numerical examples in the next section.
 We will, however, refrain from studying the machine performance aspects of the multigrid preconditioner as a whole as the focus of this paper is the matrix-free implementation of tangent operators of finite-strain elasticity both at the fine mesh level as well as the coarser multigrid levels.
+%
 Finally, we note that at the time of writing, a $p-$ version of the GMG was not available within the \texttt{deal.II} library and therefore not considered here.
-
-For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.
+%
+% For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.
 
 \section{Numerical examples}
 \label{sec:example}
