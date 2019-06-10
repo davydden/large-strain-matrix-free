@@ -1,6 +1,13 @@
 
 # Summary of runs on Emmy RRZE
 
+`pre_process` script generates `run.sh` script which is sourced
+from scripts that submit jobs (e.g. `likwid_emmy_benchmark_intel.sh`).
+Exceptions are `emmy_benchmark_intel_*` which have hard-coded paths and parameters
+to do the run.
+Unless executed on RRZE with DD's account, pre-process scripts should get custom
+`--prefix` and `--calc` parameters and `cd` in _submit_ scripts should be modified.
+
 ## general benchmark
 ```
 python pre_process.py --dir=Emmy_RRZE

@@ -1,0 +1,77 @@
+compilers:
+- compiler:
+    environment: {}
+    extra_rpaths: []
+    flags: {}
+    modules: []
+    operating_system: centos7
+    paths:
+      cc: /usr/bin/gcc
+      cxx: /usr/bin/g++
+      f77: /usr/bin/gfortran
+      fc: /usr/bin/gfortran
+    spec: gcc@4.8.5
+- compiler:
+    environment:
+      set:
+        INTEL_LICENSE_FILE: 1713@license4
+    extra_rpaths:
+    - /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/compiler/lib/intel64
+    - /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/compiler/lib/intel64_lin
+    flags: {}
+    modules: []
+    operating_system: centos7
+    paths:
+      cc: /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/bin/intel64/icc
+      cxx: /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/bin/intel64/icpc
+      f77: /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/bin/intel64/ifort
+      fc: /apps/intel/ComposerXE2017/compilers_and_libraries_2017.5.239/linux/bin/intel64/ifort
+    spec: intel@17.0.5
+    target: x86_64
+- compiler:
+    environment:
+      set:
+        INTEL_LICENSE_FILE: 1713@license4
+    extra_rpaths:
+    - /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/ipp/lib/intel64
+    - /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/compiler/lib/intel64_lin
+    flags: {}
+    modules: []
+    operating_system: centos7
+    paths:
+      cc: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/bin/intel64/icc
+      cxx: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/bin/intel64/icpc
+      f77: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/bin/intel64/ifort
+      fc: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.2.199/linux/bin/intel64/ifort
+    spec: intel@18.0.2
+    target: x86_64
+- compiler:
+    environment:
+      set:
+        INTEL_LICENSE_FILE: 1713@license4
+    extra_rpaths:
+    - /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/ipp/lib/intel64
+    - /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/compiler/lib/intel64_lin
+    flags: {}
+    modules: []
+    operating_system: centos7
+    paths:
+      cc: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/bin/intel64/icc
+      cxx: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/bin/intel64/icpc
+      f77: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/bin/intel64/ifort
+      fc: /apps/intel/ComposerXE2018/compilers_and_libraries_2018.3.222/linux/bin/intel64/ifort
+    spec: intel@18.0.3
+    target: x86_64
+- compiler:
+    environment: {}
+    extra_rpaths: []
+    flags: {}
+    modules: []
+    operating_system: centos7
+    paths:
+      cc: /apps/SPACK/opt/linux-centos7-x86_64/gcc-4.8.5/gcc-8.2.0-rhsxipz3bgh3f63qrlb4mw6pmzzmgrit/bin/gcc
+      cxx: /apps/SPACK/opt/linux-centos7-x86_64/gcc-4.8.5/gcc-8.2.0-rhsxipz3bgh3f63qrlb4mw6pmzzmgrit/bin/g++
+      f77: /apps/SPACK/opt/linux-centos7-x86_64/gcc-4.8.5/gcc-8.2.0-rhsxipz3bgh3f63qrlb4mw6pmzzmgrit/bin/gfortran
+      fc: /apps/SPACK/opt/linux-centos7-x86_64/gcc-4.8.5/gcc-8.2.0-rhsxipz3bgh3f63qrlb4mw6pmzzmgrit/bin/gfortran
+    spec: gcc@8.2.0
+    target: x86_64
