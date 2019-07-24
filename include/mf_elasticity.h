@@ -1613,7 +1613,7 @@ namespace Cook_Membrane
   Solid<dim, degree, n_q_points_1d, NumberType>::setup_matrix_free(
     const int &it_nr)
   {
-    timer.enter_subsection("Setup matrix-free");
+    timer.enter_subsection("Setup MF: AdditionalData");
 
     const unsigned int max_level = triangulation.n_global_levels() - 1;
 
@@ -1673,6 +1673,9 @@ namespace Cook_Membrane
         mg_additional_data[level].level_mg_handler = level;
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: MGTransferMatrixFree");
+
     if (it_nr <= 1)
       {
         mg_transfer =
@@ -1684,6 +1687,9 @@ namespace Cook_Membrane
         mg_mf_data_reference.resize(triangulation.n_global_levels());
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: interpolate_to_mg");
+
     // transfer displacement to MG levels:
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
@@ -1691,6 +1697,9 @@ namespace Cook_Membrane
     mg_transfer->interpolate_to_mg(dof_handler,
                                    mg_solution_total,
                                    solution_total_transfer);
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: MappingQEulerian");
 
     if (it_nr <= 1)
       {
@@ -1804,6 +1813,9 @@ namespace Cook_Membrane
           }
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: ghost range");
+
     // adjust ghost range if needed
     {
       const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
@@ -1834,6 +1846,9 @@ namespace Cook_Membrane
         adjust_ghost_range_if_necessary(partitioner, mg_solution_total[level]);
         mg_solution_total[level].update_ghost_values();
       }
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: cache() and diagonal()");
 
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
@@ -1877,6 +1892,9 @@ namespace Cook_Membrane
                     << mg_solution_total[level].l2_norm() << std::endl;
           }
       }
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: GMG setup");
 
     // setup GMG preconditioner
     const bool cheb_coarse = parameters.mf_coarse_chebyshev;
