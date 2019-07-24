@@ -669,6 +669,9 @@ namespace Cook_Membrane
     void
     make_constraints(const int &it_nr);
 
+    bool
+    check_convergence(const unsigned int newton_iteration);
+
     // Solve for the displacement using a Newton-Raphson method. We break this
     // function into the nonlinear loop and the function that solves the
     // linearized Newton-Raphson step:
@@ -2026,6 +2029,46 @@ namespace Cook_Membrane
 
   // @sect4{Solid::solve_nonlinear_timestep}
 
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  bool
+  Solid<dim, degree, n_q_points_1d, NumberType>::check_convergence(const unsigned int newton_iteration)
+  {
+    if (newton_iteration == 0)
+      error_residual_0 = error_residual;
+
+    // We can now determine the normalised residual error and check for
+    // solution convergence:
+    error_residual_norm = error_residual;
+    error_residual_norm.normalise(error_residual_0);
+
+    bool converged = false;
+
+    // do at least 3 NR iterations before converging,
+    if (newton_iteration > 2)
+      {
+
+        // first check abosolute tolerance
+        if (error_residual.u <= parameters.tol_f_abs ||
+            error_update.u <= parameters.tol_u_abs)
+          converged = true;
+
+
+        if (error_residual_norm.u <= parameters.tol_f &&
+            error_update_norm.u <= parameters.tol_u)
+          converged = true;
+
+        if (converged)
+          {
+            pcout << " CONVERGED! " << std::endl;
+            print_conv_footer();
+
+            bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
+          }
+      }
+
+    return converged;
+  }
+
   // The next function is the driver method for the Newton-Raphson scheme. At
   // its top we create a new vector to store the current Newton update step,
   // reset the error storage objects and print solver header.
@@ -2241,38 +2284,8 @@ namespace Cook_Membrane
 #endif
         }
 
-        if (newton_iteration == 0)
-          error_residual_0 = error_residual;
-
-        // We can now determine the normalised residual error and check for
-        // solution convergence:
-        error_residual_norm = error_residual;
-        error_residual_norm.normalise(error_residual_0);
-
-        // do at least 3 NR iterations before converging,
-        if (newton_iteration > 2)
-          {
-            bool converged = false;
-            // first check abosolute tolerance
-            if (error_residual.u <= parameters.tol_f_abs ||
-                error_update.u <= parameters.tol_u_abs)
-              converged = true;
-
-
-            if (error_residual_norm.u <= parameters.tol_f &&
-                error_update_norm.u <= parameters.tol_u)
-              converged = true;
-
-            if (converged)
-              {
-                pcout << " CONVERGED! " << std::endl;
-                print_conv_footer();
-
-                bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
-
-                break;
-              }
-          }
+        if (check_convergence(newton_iteration))
+          break;
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
           solve_linear_system(newton_update, newton_update_trilinos);
