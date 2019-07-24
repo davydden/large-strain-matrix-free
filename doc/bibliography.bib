@@ -49,14 +49,17 @@
 
 @Article{kronbichler2017fast,
   author  = {Martin Kronbichler and Katharina Kormann},
-  title   = {Fast matrix-free evaluation of discontinuous Galerkin finite element operators},
+  title   = {Fast matrix-free evaluation of discontinuous {G}alerkin finite element operators},
   journal = {ACM Transactions on Mathematical Software},
   year    = {2019},
-  note    = {In press},
+  volume  = {45},
+  number  = {3},
+  pages   = {29:1--29:40},
+  doi     = {10.1145/3325864},
 }
 
   @inproceedings{kronbichler2017fastcomputer,
-  title={Fast matrix-free discontinuous Galerkin kernels on modern computer architectures},
+  title={Fast matrix-free discontinuous {G}alerkin kernels on modern computer architectures},
   author={Kronbichler, Martin and Kormann, Katharina and Pasichnyk, Igor and Allalen, Momme},
   booktitle={International Supercomputing Conference},
   pages={237--255},
@@ -64,11 +67,30 @@
   organization={Springer}
 }
 
+@article{gholami2016,
+author = {Gholami, A. and Malhotra, D. and Sundar, H. and Biros, G.},
+title = {{FFT}, {FMM}, or Multigrid? {A} comparative Study of State-Of-the-Art {P}oisson Solvers for Uniform and Nonuniform Grids in the Unit Cube},
+journal = {SIAM J. Sci. Comput.},
+volume = 38,
+number = 3,
+pages = {C280--C306},
+year = 2016,
+doi = {10.1137/15M1010798},
+}
+
+
+@article{ibeid2018,
+  title={{FFT}, {FMM}, and Multigrid on the Road to Exascale: performance challenges and opportunities},
+  author={Ibeid, Huda and Olson, Luke and Gropp, William},
+  journal={arXiv preprint arXiv:1810.11883},
+  year={2018},
+}
+
 @article{muthing2017high,
-  title={High-performance Implementation of Matrix-free High-order Discontinuous Galerkin Methods},
+  title={High-performance Implementation of Matrix-free High-order Discontinuous {G}alerkin Methods},
   author={M{\"u}thing, Steffen and Piatkowski, Marian and Bastian, Peter},
   journal={arXiv preprint arXiv:1711.10885},
-  year={2017}
+  year={2017},
 }
 
 @Article{Arndt2017a,
@@ -406,10 +428,13 @@ address = {{San Diego CA}},
   Publisher                = {Elsevier}
 }
 
-@techreport{ljungkvist2017multigrid,
-  title={{Multigrid for matrix-free finite element computations on graphics processors}},
-  author={Ljungkvist, Karl and Kronbichler, Martin},
-  year={2017},
-  institution={Technical Report 2017-006, Department of Information Technology, Uppsala University}
+@article{ljungkvist2017multigrid,
+title = {Multigrid for matrix-free high-order finite element computations on graphics processors},
+author={Kronbichler, M. and Ljungkvist, K.},
+journal={ACM Transactions on Parallel Computing},
+volume={6},
+number={1},
+pages={2:1--2:32},
+doi={10.1145/3322813},
+year={2019}
 }
-
