@@ -2127,12 +2127,15 @@ namespace Cook_Membrane
         // update total solution prior to assembly
         set_total_solution();
 
-        // setup matrix-free part:
-        setup_matrix_free(newton_iteration);
-
         // now ready to go-on and assmble linearized problem around solution_n +
         // solution_delta for this iteration.
         assemble_system();
+
+        if (check_convergence(newton_iteration))
+          break;
+
+        // setup matrix-free part:
+        setup_matrix_free(newton_iteration);
 
         // check vmult of matrix-based and matrix-free for a random vector:
         {
@@ -2283,9 +2286,6 @@ namespace Cook_Membrane
             }
 #endif
         }
-
-        if (check_convergence(newton_iteration))
-          break;
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
           solve_linear_system(newton_update, newton_update_trilinos);
