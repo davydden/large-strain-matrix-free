@@ -669,6 +669,9 @@ namespace Cook_Membrane
     void
     make_constraints(const int &it_nr);
 
+    bool
+    check_convergence(const unsigned int newton_iteration);
+
     // Solve for the displacement using a Newton-Raphson method. We break this
     // function into the nonlinear loop and the function that solves the
     // linearized Newton-Raphson step:
@@ -1613,7 +1616,7 @@ namespace Cook_Membrane
   Solid<dim, degree, n_q_points_1d, NumberType>::setup_matrix_free(
     const int &it_nr)
   {
-    timer.enter_subsection("Setup matrix-free");
+    timer.enter_subsection("Setup MF: AdditionalData");
 
     const unsigned int max_level = triangulation.n_global_levels() - 1;
 
@@ -1673,6 +1676,9 @@ namespace Cook_Membrane
         mg_additional_data[level].level_mg_handler = level;
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: MGTransferMatrixFree");
+
     if (it_nr <= 1)
       {
         mg_transfer =
@@ -1684,6 +1690,9 @@ namespace Cook_Membrane
         mg_mf_data_reference.resize(triangulation.n_global_levels());
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: interpolate_to_mg");
+
     // transfer displacement to MG levels:
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
@@ -1691,6 +1700,9 @@ namespace Cook_Membrane
     mg_transfer->interpolate_to_mg(dof_handler,
                                    mg_solution_total,
                                    solution_total_transfer);
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: MappingQEulerian");
 
     if (it_nr <= 1)
       {
@@ -1804,6 +1816,9 @@ namespace Cook_Membrane
           }
       }
 
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: ghost range");
+
     // adjust ghost range if needed
     {
       const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
@@ -1834,6 +1849,9 @@ namespace Cook_Membrane
         adjust_ghost_range_if_necessary(partitioner, mg_solution_total[level]);
         mg_solution_total[level].update_ghost_values();
       }
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: cache() and diagonal()");
 
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
@@ -1877,6 +1895,9 @@ namespace Cook_Membrane
                     << mg_solution_total[level].l2_norm() << std::endl;
           }
       }
+
+    timer.leave_subsection();
+    timer.enter_subsection("Setup MF: GMG setup");
 
     // setup GMG preconditioner
     const bool cheb_coarse = parameters.mf_coarse_chebyshev;
@@ -2008,6 +2029,46 @@ namespace Cook_Membrane
 
   // @sect4{Solid::solve_nonlinear_timestep}
 
+  template <int dim, int degree, int n_q_points_1d, typename NumberType>
+  bool
+  Solid<dim, degree, n_q_points_1d, NumberType>::check_convergence(const unsigned int newton_iteration)
+  {
+    if (newton_iteration == 0)
+      error_residual_0 = error_residual;
+
+    // We can now determine the normalised residual error and check for
+    // solution convergence:
+    error_residual_norm = error_residual;
+    error_residual_norm.normalise(error_residual_0);
+
+    bool converged = false;
+
+    // do at least 3 NR iterations before converging,
+    if (newton_iteration > 2)
+      {
+
+        // first check abosolute tolerance
+        if (error_residual.u <= parameters.tol_f_abs ||
+            error_update.u <= parameters.tol_u_abs)
+          converged = true;
+
+
+        if (error_residual_norm.u <= parameters.tol_f &&
+            error_update_norm.u <= parameters.tol_u)
+          converged = true;
+
+        if (converged)
+          {
+            pcout << " CONVERGED! " << std::endl;
+            print_conv_footer();
+
+            bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
+          }
+      }
+
+    return converged;
+  }
+
   // The next function is the driver method for the Newton-Raphson scheme. At
   // its top we create a new vector to store the current Newton update step,
   // reset the error storage objects and print solver header.
@@ -2066,12 +2127,15 @@ namespace Cook_Membrane
         // update total solution prior to assembly
         set_total_solution();
 
-        // setup matrix-free part:
-        setup_matrix_free(newton_iteration);
-
         // now ready to go-on and assmble linearized problem around solution_n +
         // solution_delta for this iteration.
         assemble_system();
+
+        if (check_convergence(newton_iteration))
+          break;
+
+        // setup matrix-free part:
+        setup_matrix_free(newton_iteration);
 
         // check vmult of matrix-based and matrix-free for a random vector:
         {
@@ -2222,39 +2286,6 @@ namespace Cook_Membrane
             }
 #endif
         }
-
-        if (newton_iteration == 0)
-          error_residual_0 = error_residual;
-
-        // We can now determine the normalised residual error and check for
-        // solution convergence:
-        error_residual_norm = error_residual;
-        error_residual_norm.normalise(error_residual_0);
-
-        // do at least 3 NR iterations before converging,
-        if (newton_iteration > 2)
-          {
-            bool converged = false;
-            // first check abosolute tolerance
-            if (error_residual.u <= parameters.tol_f_abs ||
-                error_update.u <= parameters.tol_u_abs)
-              converged = true;
-
-
-            if (error_residual_norm.u <= parameters.tol_f &&
-                error_update_norm.u <= parameters.tol_u)
-              converged = true;
-
-            if (converged)
-              {
-                pcout << " CONVERGED! " << std::endl;
-                print_conv_footer();
-
-                bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
-
-                break;
-              }
-          }
 
         const std::tuple<unsigned int, double, double> lin_solver_output =
           solve_linear_system(newton_update, newton_update_trilinos);
