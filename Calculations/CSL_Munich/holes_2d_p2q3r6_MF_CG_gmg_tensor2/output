@@ -1,0 +1,30 @@
+Grid:
+  Reference volume: 9.29316e-07
+Triangulation:
+  Number of active cells: 360448
+  Number of degrees of freedom: 2887680
+
+Timestep 1 @ 0.2s
+Converged in 4 Newton iterations
+Solution @ 0 0
+  displacement: 6.59304e-06 1.04079e-06
+
+Timestep 2 @ 0.4s
+Converged in 4 Newton iterations
+Solution @ 0 0
+  displacement: 1.31791e-05 2.05967e-06
+
+Timestep 3 @ 0.6s
+Converged in 4 Newton iterations
+Solution @ 0 0
+  displacement: 1.97611e-05 3.0577e-06
+
+Timestep 4 @ 0.8s
+Converged in 4 Newton iterations
+Solution @ 0 0
+  displacement: 2.63415e-05 4.03578e-06
+
+Timestep 5 @ 1s
+Converged in 4 Newton iterations
+Solution @ 0 0
+  displacement: 3.29231e-05 4.99464e-06
