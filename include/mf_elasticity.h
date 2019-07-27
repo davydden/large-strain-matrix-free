@@ -415,7 +415,7 @@ namespace Cook_Membrane
         prm.add_parameter("MF caching",
                           mf_caching,
                           "Type of caching for matrix-free operator",
-                          Patterns::Selection("scalar|tensor2|tensor4"));
+                          Patterns::Selection("scalar|tensor2|tensor4|tensor4_ns"));
 
         prm.add_parameter(
           "MF Chebyshev number CG iterations",
