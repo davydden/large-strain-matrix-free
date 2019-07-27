@@ -1,0 +1,48 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 40 MPI processes
+--     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+--     . version 1.0 (revision b8b665b on branch master)
+--     . deal.II 9.2.0-pre (revision 180ab00 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 3
+q     = 4
+cells = 22528
+dofs  = 1891008
+
+Trilinos memory = 0 Mb
+MF cache memory = 205 Mb
+
+Average CG iter = 75
+Total CG iter = 1125
+Total CG solve = 15
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      93.3s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        20 |      21.3s |        23% |
+| Coarse solve level 0            |      1125 |      8.98s |       9.6% |
+| Coarse solve level 1            |      1125 |     0.103s |      0.11% |
+| Coarse solve level 2            |      1125 |     0.452s |      0.48% |
+| Linear solver                   |        15 |      45.6s |        49% |
+| Post-smoothing level 1          |      1125 |      2.01s |       2.2% |
+| Post-smoothing level 2          |      1125 |      11.9s |        13% |
+| Pre-smoothing level 1           |      1125 |      1.92s |       2.1% |
+| Pre-smoothing level 2           |      1125 |        11s |        12% |
+| Prolongation level 1            |      1125 |    0.0804s |         0% |
+| Prolongation level 2            |      1125 |     0.383s |      0.41% |
+| Setup matrix-free               |        20 |      20.7s |        22% |
+| Setup system                    |         1 |      1.61s |       1.7% |
+| vmult (MF)                      |       200 |     0.741s |      0.79% |
+| vmult (MF) Cell loop            |       200 |     0.718s |      0.77% |
+| vmult (MF) MPI                  |       200 |    0.0244s |         0% |
+| vmult (MF) RW                   |       200 |     0.114s |      0.12% |
+| vmult (MF) RWSF                 |       200 |     0.218s |      0.23% |
+| vmult (MF) zero                 |       200 |   0.00599s |         0% |
++---------------------------------+-----------+------------+------------+
+

@@ -22,6 +22,6 @@ cd /home/kronbichler/sw/denis/large-strain-matrix-free/Calculations
 
 module load gcc/9 mpi/openmpi-4.0.1
 
-python pre_process.py --mpirun mpirun --dir=CSL_Munich --prefix=/home/kronbichler/sw/denis/large-strain-matrix-free/build_avx512/ --calc=/home/kronbichler/sw/denis/large-strain-matrix-free/Calculations/
+python pre_process.py --mpirun="mpirun -n 20 -bind-to core --map-by core" --dir=CSL_Munich --prefix=/home/kronbichler/sw/denis/large-strain-matrix-free/build_avx512/ --calc=/home/kronbichler/sw/denis/large-strain-matrix-free/Calculations/
 
 source run.sh 

@@ -1,0 +1,52 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 40 MPI processes
+--     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+--     . version 1.0 (revision b8b665b on branch master)
+--     . deal.II 9.2.0-pre (revision 180ab00 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 2
+q     = 3
+cells = 180224
+dofs  = 4442880
+
+Trilinos memory = 0 Mb
+MF cache memory = 2063 Mb
+
+Average CG iter = 57
+Total CG iter = 868
+Total CG solve = 15
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       172s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assemble linear system          |        20 |      12.4s |       7.2% |
+| Coarse solve level 0            |       868 |         3s |       1.7% |
+| Coarse solve level 1            |       868 |    0.0426s |         0% |
+| Coarse solve level 2            |       868 |     0.125s |         0% |
+| Coarse solve level 3            |       868 |     0.754s |      0.44% |
+| Linear solver                   |        15 |       112s |        65% |
+| Post-smoothing level 1          |       868 |     0.702s |      0.41% |
+| Post-smoothing level 2          |       868 |      4.62s |       2.7% |
+| Post-smoothing level 3          |       868 |      36.9s |        21% |
+| Pre-smoothing level 1           |       868 |     0.741s |      0.43% |
+| Pre-smoothing level 2           |       868 |      4.47s |       2.6% |
+| Pre-smoothing level 3           |       868 |      34.3s |        20% |
+| Prolongation level 1            |       868 |    0.0359s |         0% |
+| Prolongation level 2            |       868 |     0.106s |         0% |
+| Prolongation level 3            |       868 |     0.726s |      0.42% |
+| Setup matrix-free               |        20 |      29.6s |        17% |
+| Setup system                    |         1 |      2.32s |       1.4% |
+| vmult (MF)                      |       200 |      3.08s |       1.8% |
+| vmult (MF) Cell loop            |       200 |      3.02s |       1.8% |
+| vmult (MF) MPI                  |       200 |    0.0435s |         0% |
+| vmult (MF) RW                   |       200 |     0.463s |      0.27% |
+| vmult (MF) RWSF                 |       200 |     0.785s |      0.46% |
+| vmult (MF) zero                 |       200 |    0.0156s |         0% |
++---------------------------------+-----------+------------+------------+
+

@@ -1,9 +1,9 @@
 -----------------------------------------------------------------------------
 --     . running in OPTIMIZED mode
---     . running with 40 MPI processes
+--     . running with 20 MPI processes
 --     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
---     . version 1.0 (revision b8b665b on branch master)
---     . deal.II 9.2.0-pre (revision 180ab00 on branch master)
+--     . version 1.0 (revision ab02416 on branch martin)
+--     . deal.II 9.2.0-pre (revision 175c902 on branch master)
 -----------------------------------------------------------------------------
 
 dim   = 2
@@ -12,29 +12,35 @@ q     = 8
 cells = 22528
 dofs  = 2211328
 
-Trilinos memory = 4282 Mb
-MF cache memory = 91 Mb
+Trilinos memory = 4292 Mb
+MF cache memory = 102 Mb
 
-Average CG iter = 268
-Total CG iter = 5361
+Average CG iter = 259
+Total CG iter = 5192
 Total CG solve = 20
 
 
-+---------------------------------------------+------------+------------+
-| Total wallclock time elapsed since start    |       665s |            |
-|                                             |            |            |
-| Section                         | no. calls |  wall time | % of total |
-+---------------------------------+-----------+------------+------------+
-| Assemble linear system          |        25 |      30.9s |       4.7% |
-| Linear solver                   |        20 |       612s |        92% |
-| Setup matrix-free               |        25 |      12.1s |       1.8% |
-| Setup system                    |         1 |      1.15s |      0.17% |
-| vmult (MF)                      |       250 |     0.567s |         0% |
-| vmult (MF) Cell loop            |       250 |      0.56s |         0% |
-| vmult (MF) MPI                  |       250 |   0.00744s |         0% |
-| vmult (MF) RW                   |       250 |    0.0933s |         0% |
-| vmult (MF) RWSF                 |       250 |     0.206s |         0% |
-| vmult (MF) zero                 |       250 |    0.0066s |         0% |
-| vmult (Trilinos)                |       250 |      5.13s |      0.77% |
-+---------------------------------+-----------+------------+------------+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |  1.26e+03s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |        25 |      59.1s |       4.7% |
+| Linear solver                    |        20 |  1.17e+03s |        93% |
+| Setup MF: AdditionalData         |        20 |   0.00839s |         0% |
+| Setup MF: GMG setup              |        20 |   0.00327s |         0% |
+| Setup MF: MGTransferMatrixFree   |        20 |     0.377s |         0% |
+| Setup MF: MappingQEulerian       |        20 |      2.81s |      0.22% |
+| Setup MF: cache() and diagonal() |        20 |      14.6s |       1.2% |
+| Setup MF: ghost range            |        20 |    0.0413s |         0% |
+| Setup MF: interpolate_to_mg      |        20 |     0.789s |         0% |
+| Setup system                     |         1 |      2.13s |      0.17% |
+| vmult (MF)                       |       200 |     0.891s |         0% |
+| vmult (MF) Cell loop             |       200 |      0.87s |         0% |
+| vmult (MF) MPI                   |       200 |   0.00583s |         0% |
+| vmult (MF) RW                    |       200 |     0.217s |         0% |
+| vmult (MF) RWSF                  |       200 |      0.36s |         0% |
+| vmult (MF) zero                  |       200 |   0.00973s |         0% |
+| vmult (Trilinos)                 |       200 |      7.83s |      0.62% |
++----------------------------------+-----------+------------+------------+
 
