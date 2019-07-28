@@ -1,0 +1,16 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+--     . version 1.0 (revision b2403e8 on branch martin)
+--     . deal.II 9.2.0-pre (revision 175c902 on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 4
+q     = 5
+cells = 22528
+dofs  = 4442880
+
+Trilinos memory = 33791 Mb
+MF cache memory = 397 Mb
