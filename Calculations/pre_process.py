@@ -61,6 +61,7 @@ solvers = [
     ('MF_CG', 'gmg', 'scalar'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
+    ('MF_CG', 'gmg', 'tensor4_ns'),
     ('CG',    'amg', 'scalar'),
 ]
 
@@ -68,6 +69,7 @@ solvers_likwid = [
     ('MF_CG', 'gmg', 'scalar'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
+    ('MF_CG', 'gmg', 'tensor4_ns'),
     ('CG',    'amg', 'scalar'),
 ]
 
@@ -76,6 +78,7 @@ if args.single:
     ('MF_CG', 'gmg', 'scalar'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
+    ('MF_CG', 'gmg', 'tensor4_ns'),
   ]
 
 
