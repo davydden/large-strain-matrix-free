@@ -751,7 +751,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                       " does not match between two MatrixFree objects."));
 
   using NumberType                     = VectorizedArray<number>;
-  static constexpr number dim_f        = dim;
+  static constexpr number inv_dim_f    = 1.0 / dim;
   static constexpr number two_over_dim = 2.0 / dim;
   const number            kappa        = cell_mat->kappa;
   const number            c_1          = cell_mat->c_1;
@@ -820,7 +820,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               // 2.0 * c_1 * b_bar
               const NumberType tr_tau_bar = trace(tau_bar);
 
-              const NumberType tr_tau_bar_dim = tr_tau_bar / dim_f;
+              const NumberType tr_tau_bar_dim = tr_tau_bar * inv_dim_f;
 
               // Derivative of the volumetric free energy with respect to
               // $J$ return $\frac{\partial
@@ -862,7 +862,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
                 SymmetricTensor<2, dim, NumberType> dev_src(symm_grad_Nx_v);
                 for (unsigned int i = 0; i < dim; ++i)
-                  dev_src[i][i] -= tr / dim_f;
+                  dev_src[i][i] -= tr * inv_dim_f;
 
                 // 1) The volumetric part of the tangent $J
                 // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
@@ -940,12 +940,12 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               // \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $. the
               // product is actually  GradN * tau^T but due to symmetry of tau we
               // can do GradN * tau
+              const VectorizedArray<number> inv_det_F = number(1.0) / det_F;
               const Tensor<2, dim, VectorizedArray<number>> tau_ns(tau);
               const Tensor<2, dim, VectorizedArray<number>> geo =
                 grad_Nx_v * tau_ns;
               phi_current.submit_gradient(
-                (Tensor<2,dim,VectorizedArray<number>>(jc_part)+
-                 geo) / det_F
+                (jc_part + geo) * inv_det_F
                 // Note: We need to integrate over the reference element,
                 // thus we divide by det_F so that FEEvaluation with
                 // mapping does the right thing.
@@ -979,9 +979,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                   tau[d][d] -= cached_scalar(cell, q);
               }
 
-              SymmetricTensor<2, dim, VectorizedArray<number>> jc_part;
+              SymmetricTensor<2, dim, VectorizedArray<number>>
+              jc_part = (number(2.0) * cached_scalar(cell, q)) * symm_grad_Nx_v;
               {
-                jc_part = number(2.0) * cached_scalar(cell, q) * symm_grad_Nx_v;
                 const NumberType tmp = number(2.0) * lambda * trace(symm_grad_Nx_v);
                 for (unsigned int i = 0; i < dim; ++i)
                   jc_part[i][i] += tmp;
@@ -1020,8 +1020,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const Tensor<2, dim, VectorizedArray<number>> tau_ns(tau);
               const Tensor<2, dim, VectorizedArray<number>> geo =
                 grad_Nx_v * tau_ns;
-              phi_current.submit_gradient((Tensor<2, dim, VectorizedArray<number>>(jc_part) +
-                                           geo) / det_F, q);
+              const NumberType inv_det_F = number(1.0) / det_F;
+              phi_current.submit_gradient((jc_part + geo) * inv_det_F, q);
             }
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor2)
@@ -1034,16 +1034,16 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const SymmetricTensor<2, dim, NumberType> symm_grad_Nx_v =
                 symmetrize(grad_Nx_v);
 
-              SymmetricTensor<2, dim, VectorizedArray<number>> jc_part;
-              {
+              SymmetricTensor<2, dim, VectorizedArray<number>>
                 jc_part = cached_scalar(cell, q) * symm_grad_Nx_v;
+              {
                 const NumberType tmp =
                   cached_second_scalar(cell, q) * trace(symm_grad_Nx_v);
                 for (unsigned int i = 0; i < dim; ++i)
                   jc_part[i][i] += tmp;
               }
 
-              phi_current.submit_gradient(Tensor<2, dim, NumberType>(jc_part) +
+              phi_current.submit_gradient(jc_part +
                                           grad_Nx_v * cached_tensor2(cell, q), q);
             }
         }
@@ -1058,8 +1058,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 symmetrize(grad_Nx_v);
 
               phi_current.submit_gradient(grad_Nx_v * cached_tensor2(cell, q) +
-                                          Tensor<2,dim,NumberType>(cached_tensor4(cell, q) *
-                                                                   symm_grad_Nx_v), q);
+                                          cached_tensor4(cell, q) *
+                                          symm_grad_Nx_v, q);
             }
         }
       else
