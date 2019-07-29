@@ -24,6 +24,9 @@ parser.add_argument('--dim', metavar='dim', default=2, type=int,
                     help='Dimension (2 or 3)')
 parser.add_argument('--breakdown', help='Post process breakdown results of vmult', action="store_true")
 
+parser.add_argument('--clockspeed', metavar='clockspeed', default=2.2, type=float,
+                    help='CPU clock speed')
+
 args = parser.parse_args()
 
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
@@ -54,7 +57,7 @@ sections = [
 ]
 
 # NODE data:
-clock_speed = 2.2  # GHz
+clock_speed = args.clockspeed  # GHz
 # memory bandwidth
 # likwid-bench -t load_avx -w S0:1GB:10:1:2
 B=47.16855 # 50 GB/s single socket
