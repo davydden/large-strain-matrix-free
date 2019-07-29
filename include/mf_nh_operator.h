@@ -24,7 +24,7 @@
   outer_product_iljk(const Tensor<2, dim, NumberType> &A,
                      const Tensor<2, dim, NumberType> &B)
   {
-    Tensor<4, dim, NumberType> A_il_B_jk;
+    Tensor<4, dim, NumberType> A_il_B_jk{};
 
     for (unsigned int i = 0; i < dim; ++i)
       {
@@ -52,7 +52,7 @@
   outer_product_ikjl(const Tensor<2, dim, NumberType> &A,
                      const Tensor<2, dim, NumberType> &B)
   {
-    Tensor<4, dim, NumberType> A_ik_B_jl;
+    Tensor<4, dim, NumberType> A_ik_B_jl{};
     for (unsigned int i = 0; i < dim; ++i)
       {
         for (unsigned int j = 0; j < dim; ++j)
@@ -1239,12 +1239,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
               // double_contract<2,3,0,1>(cached_tensor4_ns(cell, q), grad_Nx_v)
               // does not work with VectorizedArray
-              Tensor<2, dim, NumberType> res;
+              Tensor<2, dim, NumberType> res{};
               for (unsigned int i = 0; i < dim; ++i)
                 for (unsigned int j = 0; j < dim; ++j)
                   {
                     auto & res_ij = res[i][j];
-                    res_ij = make_vectorized_array<number>(0.);
                     for (unsigned int k = 0; k < dim; ++k)
                       for (unsigned int l = 0; l < dim; ++l)
                         res_ij += cached_tensor4_ns(cell, q)[i][j][k][l] * grad_Nx_v[k][l];
