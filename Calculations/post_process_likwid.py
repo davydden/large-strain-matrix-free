@@ -141,8 +141,11 @@ for f in files:
         # Check if we found one of the regions:
         if 'Region:' in line:
             found_region = False
+            this_line_region = line.split()[1]
             for idx, s in enumerate(regions):
-                if s in line:
+                # we could have regions starting from the same part,
+                # so do exact comparison here
+                if s == this_line_region:
                     found_region = True
                     r_idx = idx
 
