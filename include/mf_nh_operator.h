@@ -15,6 +15,61 @@
 #include <config.h>
 #include <material.h>
 
+  // Define an operation that takes two tensors $ \mathbf{A} $ and
+  // $ \mathbf{B} $ such that their outer-product
+  // $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{il} B_{jk}
+  // $
+  template <int dim, typename NumberType>
+  Tensor<4, dim, NumberType>
+  outer_product_iljk(const Tensor<2, dim, NumberType> &A,
+                     const Tensor<2, dim, NumberType> &B)
+  {
+    Tensor<4, dim, NumberType> A_il_B_jk{};
+
+    for (unsigned int i = 0; i < dim; ++i)
+      {
+        for (unsigned int j = 0; j < dim; ++j)
+          {
+            for (unsigned int k = 0; k < dim; ++k)
+              {
+                for (unsigned int l = 0; l < dim; ++l)
+                  {
+                    A_il_B_jk[i][j][k][l] += A[i][l] * B[j][k];
+                  }
+              }
+          }
+      }
+
+    return A_il_B_jk;
+  }
+
+  // Define an operation that takes two tensors $ \mathbf{A} $ and
+  // $ \mathbf{B} $ such that their outer-product
+  // $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{ik} B_{jl}
+  // $
+  template <int dim, typename NumberType>
+  Tensor<4, dim, NumberType>
+  outer_product_ikjl(const Tensor<2, dim, NumberType> &A,
+                     const Tensor<2, dim, NumberType> &B)
+  {
+    Tensor<4, dim, NumberType> A_ik_B_jl{};
+    for (unsigned int i = 0; i < dim; ++i)
+      {
+        for (unsigned int j = 0; j < dim; ++j)
+          {
+            for (unsigned int k = 0; k < dim; ++k)
+              {
+                for (unsigned int l = 0; l < dim; ++l)
+                  {
+                    A_ik_B_jl[i][j][k][l] += A[i][k] * B[j][l];
+                  }
+              }
+          }
+      }
+
+    return A_ik_B_jl;
+  }
+
 // mask for various ops in MF operator
 enum class MFMask : unsigned
 {
@@ -219,6 +274,7 @@ private:
   Table<2, VectorizedArray<number>>                 cached_second_scalar;
   Table<2, Tensor<2, dim, VectorizedArray<number>>> cached_tensor2;
   Table<2, SymmetricTensor<4, dim, VectorizedArray<number>>> cached_tensor4;
+  Table<2, Tensor<4, dim, VectorizedArray<number>>> cached_tensor4_ns;
 
   bool diagonal_is_available;
 
@@ -227,13 +283,12 @@ private:
      none,
      scalar,
      tensor2,
-     tensor4
+     tensor4,
+     tensor4_ns
     };
   MFCaching mf_caching;
 
-  Tensor<2, dim, VectorizedArray<number>> zero_t2;
-  SymmetricTensor<2, dim, VectorizedArray<number>> zero_t2s;
-
+  Tensor<4, dim, VectorizedArray<number>> IxI_ikjl;
 };
 
 
@@ -243,15 +298,26 @@ std::size_t
 NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
   const
 {
-  return cached_scalar.memory_consumption() +
+  auto res = cached_scalar.memory_consumption() +
          cached_second_scalar.memory_consumption() +
          cached_tensor2.memory_consumption() +
          cached_tensor4.memory_consumption() +
-         // matrix-free data:
-         data_current->memory_consumption() +
-         (mf_caching == MFCaching::scalar ? data_reference->memory_consumption() : 0);
+         cached_tensor4_ns.memory_consumption();
+
+  // matrix-free data:
+  if (mf_caching == MFCaching::tensor4_ns)
+    {
+      res += data_reference->memory_consumption();
+    }
+  else
+    {
+      res += data_current->memory_consumption() +
+        (mf_caching == MFCaching::scalar ? data_reference->memory_consumption() : 0);
+    }
+
   // note: do not include diagonals, we want to measure only memory needed for vmult
   // for performance analysis.
+  return res;
 }
 
 
@@ -262,12 +328,12 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::NeoHookOperator()
   , diagonal_is_available(false)
   , mf_caching(MFCaching::none)
 {
+  Tensor<2,dim,VectorizedArray<number>> I;
   for (unsigned int i = 0; i < dim; ++i)
     for (unsigned int j = 0; j < dim; ++j)
-      {
-        zero_t2[i][j] = make_vectorized_array<number>(0.);
-        zero_t2s[i][j] = make_vectorized_array<number>(0.);
-      }
+      I[i][j] = make_vectorized_array<number>(i==j);
+
+  IxI_ikjl = outer_product_ikjl(I, I);
 }
 
 
@@ -350,6 +416,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::initialize(
       mf_caching = MFCaching::tensor4;
       cached_tensor2.reinit(n_cells, phi.n_q_points);
       cached_tensor4.reinit(n_cells, phi.n_q_points);
+    }
+  else if (caching == "tensor4_ns")
+    {
+      mf_caching = MFCaching::tensor4_ns;
+      cached_tensor4_ns.reinit(n_cells, phi.n_q_points);
     }
   else
     {
@@ -451,6 +522,23 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
                       Physics::Elasticity::StandardTensors<dim>::S +
                     (cell_mat->lambda * 2. / det_F) *
                       Physics::Elasticity::StandardTensors<dim>::IxI;
+                }
+              else if (mf_caching == MFCaching::tensor4_ns)
+                {
+                  const Tensor<2, dim, VectorizedArray<number>> F_inv = invert(F);
+                  const Tensor<2, dim, VectorizedArray<number>> F_inv_t(transpose(F_inv));
+                  const VectorizedArray<number>                 ln_J = std::log(det_F);
+
+                  const Tensor<4, dim, VectorizedArray<number>> F_inv_t_otimes_F_inv_t =
+                    outer_product(F_inv_t, F_inv_t);
+
+                  const Tensor<4, dim, VectorizedArray<number>> F_inv_t_F_inv =
+                    outer_product_iljk(F_inv_t, F_inv);
+
+                  cached_tensor4_ns(cell, q) =
+                    (2. * cell_mat->lambda) * F_inv_t_otimes_F_inv_t +
+                    (cell_mat->mu - 2.0 * cell_mat->lambda * ln_J) * F_inv_t_F_inv +
+                    cell_mat->mu * IxI_ikjl;
                 }
               else
                 {
@@ -599,10 +687,20 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
 #endif
       if (mask & MFMask::RW)
         {
-          phi_current.reinit(cell);
+          if (mf_caching == MFCaching::tensor4_ns)
+            // fully referential
+            {
+              phi_reference.reinit(cell);
+              phi_reference.read_dof_values(src);
+            }
+          else
+            // gradients in deformed configuration
+            {
+              phi_current.reinit(cell);
 
-          // read-in total displacement and src vector and evaluate gradients
-          phi_current.read_dof_values(src);
+              // read-in total displacement and src vector and evaluate gradients
+              phi_current.read_dof_values(src);
+            }
 
           if (mf_caching == MFCaching::scalar)
             {
@@ -623,7 +721,14 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
 
       if (mask & MFMask::RW)
         {
-          phi_current.distribute_local_to_global(dst);
+          if (mf_caching == MFCaching::tensor4_ns)
+            {
+              phi_reference.distribute_local_to_global(dst);
+            }
+          else
+            {
+              phi_current.distribute_local_to_global(dst);
+            }
         }
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
       LIKWID_MARKER_STOP("vmult_reinit_read_write");
@@ -650,6 +755,60 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
     *data_current);
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> phi_reference(
     *data_reference);
+
+  // keep fully referntial here and bail out if needed
+  if (mf_caching == MFCaching::tensor4_ns)
+    {
+      for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
+        {
+          phi_reference.reinit(cell);
+          AlignedVector<VectorizedArray<number>> local_diagonal_vector(
+            phi_reference.dofs_per_component * phi_reference.n_components);
+
+          // Loop over all DoFs and set dof values to zero everywhere but i-th DoF.
+          // With this input (instead of read_dof_values()) we do the action and
+          // store the result in a diagonal vector
+          for (unsigned int i = 0; i < phi_reference.dofs_per_component; ++i)
+            for (unsigned int ic = 0; ic < phi_reference.n_components; ++ic)
+              {
+                for (unsigned int j = 0; j < phi_reference.dofs_per_component; ++j)
+                  for (unsigned int jc = 0; jc < phi_reference.n_components; ++jc)
+                    {
+                      const auto ind_j = j + jc * phi_reference.dofs_per_component;
+                      phi_reference.begin_dof_values()[ind_j]   = zero;
+                    }
+
+                const auto ind_i = i + ic * phi_reference.dofs_per_component;
+
+                phi_reference.begin_dof_values()[ind_i] = one;
+
+                do_operation_on_cell(phi_current,
+                                    phi_reference,
+                                    cell);
+
+                local_diagonal_vector[ind_i] =
+                  phi_reference.begin_dof_values()[ind_i];
+              }
+
+          // Finally, in order to distribute diagonal, write it again into one of
+          // FEEvaluations and do the standard distribute_local_to_global.
+          // Note that here non-diagonal matrix elements are ignored and so the
+          // result is not equivalent to matrix-based case when hanging nodes are
+          // present. see Section 5.3 in Korman 2016, A time-space adaptive method
+          // for the Schrodinger equation, doi: 10.4208/cicp.101214.021015a for a
+          // discussion.
+          for (unsigned int i = 0; i < phi_reference.dofs_per_component; ++i)
+            for (unsigned int ic = 0; ic < phi_reference.n_components; ++ic)
+              {
+                const auto ind_i = i + ic * phi_reference.dofs_per_component;
+                phi_reference.begin_dof_values()[ind_i] =
+                  local_diagonal_vector[ind_i];
+              }
+
+          phi_reference.distribute_local_to_global(dst);
+        } // end of cell loop
+      return;
+    }
 
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
     {
@@ -764,10 +923,17 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
   if (mask & MFMask::SF)
     {
-      if (mf_caching == MFCaching::scalar)
-        phi_reference.evaluate(false, true, false);
+      if (mf_caching == MFCaching::tensor4_ns)
+        {
+          phi_reference.evaluate(false, true, false);
+        }
+      else
+        {
+          if (mf_caching == MFCaching::scalar)
+            phi_reference.evaluate(false, true, false);
 
-      phi_current.evaluate(false, true, false);
+          phi_current.evaluate(false, true, false);
+        }
     }
 
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
@@ -781,6 +947,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   if (mask & MFMask::QD)
     {
       if (cell_mat->formulation == 0)
+        // volumetric/deviatoric formulation (like step-44)
         {
           for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
             {
@@ -1062,16 +1229,47 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                                           symm_grad_Nx_v, q);
             }
         }
+      else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor4_ns)
+        // dP/dF, fully referential
+        {
+          for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
+            {
+              const Tensor<2, dim, NumberType> &grad_Nx_v =
+                phi_reference.get_gradient(q);
+
+              // double_contract<2,3,0,1>(cached_tensor4_ns(cell, q), grad_Nx_v)
+              // does not work with VectorizedArray
+              Tensor<2, dim, NumberType> res{};
+              for (unsigned int i = 0; i < dim; ++i)
+                for (unsigned int j = 0; j < dim; ++j)
+                  {
+                    auto & res_ij = res[i][j];
+                    for (unsigned int k = 0; k < dim; ++k)
+                      for (unsigned int l = 0; l < dim; ++l)
+                        res_ij += cached_tensor4_ns(cell, q)[i][j][k][l] * grad_Nx_v[k][l];
+                  }
+
+              phi_reference.submit_gradient(
+                res,
+                q);
+            }
+        }
       else
         AssertThrow(false, ExcMessage("Unknown material formulation/caching"));
 
     } // quadrature loop compile-time enum
   else
     {
-      // need to submit something.
-      // for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
+      // need to submit something to avoid debug asserts
       const unsigned int q = 0;
-      phi_current.submit_gradient(zero_t2, q);
+      if (mf_caching == MFCaching::tensor4_ns)
+        {
+          phi_reference.submit_gradient(Tensor<2, dim, NumberType>(), q);
+        }
+      else
+        {
+          phi_current.submit_gradient(Tensor<2, dim, NumberType>(), q);
+        }
     }
 
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
@@ -1085,7 +1283,14 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
   if (mask & MFMask::SF)
     {
-      phi_current.integrate(false, true);
+      if (mf_caching == MFCaching::tensor4_ns)
+        {
+          phi_reference.integrate(false, true);
+        }
+      else
+        {
+          phi_current.integrate(false, true);
+        }
     }
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
   LIKWID_MARKER_STOP("vmult_sum_factorization");
