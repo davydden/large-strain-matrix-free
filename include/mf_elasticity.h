@@ -1921,7 +1921,7 @@ namespace Cook_Membrane
           else
             {
               // [1.2 \lambda_{max}/range, 1.2 \lambda_{max}]
-              smoother_data[level].smoothing_range = 2;
+              smoother_data[level].smoothing_range = 20;
               // With degree one, the Jacobi method with optimal damping
               // parameter is retrieved
               smoother_data[level].degree = 5;
