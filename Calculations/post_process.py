@@ -92,8 +92,11 @@ for f in files:
             ready = True
 
         if ready:
+            # we could have sections starting from the same part
+            line_split = line.split("|")
+            line_sec = line_split[1].strip() if len(line_split) > 1 else ''
             for idx, s in enumerate(sections):
-                if s in line:
+                if s == line_sec:
                     nums = re.findall(pattern, "".join(line.rsplit(s)))
                     # do time of a single vmult and the reset -- total time
                     n = int(nums[0]) if 'vmult (' in s else int(1)  # how many times
