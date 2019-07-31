@@ -175,6 +175,18 @@ time3d_t2    = [tup[4][0]/tup[1] for tup in mf3d_data_tensor2]
 time3d_t4    = [tup[4][0]/tup[1] for tup in mf3d_data_tensor4]
 time3d_t4_ns = [tup[4][0]/tup[1] for tup in mf3d_data_tensor4_ns]
 
+through2d_tr    = [tup[1]/tup[4][1] for tup in mb2d_data]
+through2d_sc    = [tup[1]/tup[4][0] for tup in mf2d_data_scalar]
+through2d_t2    = [tup[1]/tup[4][0] for tup in mf2d_data_tensor2]
+through2d_t4    = [tup[1]/tup[4][0] for tup in mf2d_data_tensor4]
+through2d_t4_ns = [tup[1]/tup[4][0] for tup in mf2d_data_tensor4_ns]
+
+through3d_tr    = [tup[1]/tup[4][1] for tup in mb3d_data]
+through3d_sc    = [tup[1]/tup[4][0] for tup in mf3d_data_scalar]
+through3d_t2    = [tup[1]/tup[4][0] for tup in mf3d_data_tensor2]
+through3d_t4    = [tup[1]/tup[4][0] for tup in mf3d_data_tensor4]
+through3d_t4_ns = [tup[1]/tup[4][0] for tup in mf3d_data_tensor4_ns]
+
 # solver time per dof
 solver2d_tr        = [tup[4][2]/tup[1] for tup in mb2d_data]
 solver2d_sc        = [tup[4][2]/tup[1] for tup in mf2d_data_scalar]
@@ -280,6 +292,36 @@ leg = plt.legend(loc='best', ncol=1)
 plt.tight_layout()
 plt.savefig(fig_prefix + 'timing3d.eps', format='eps')
 remove_creation_date(fig_prefix + 'timing3d.eps')
+
+# clear
+plt.clf()
+
+plt.plot(deg2d,through2d_tr, 'rs--', label='Trilinos')
+plt.plot(deg2d,through2d_sc, 'bo--', label='MF scalar')
+plt.plot(deg2d,through2d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg2d,through2d_t4, 'cv--', label='MF tensor4')
+plt.xlabel('polynomial degree')
+plt.ylabel('vmult DoF / s')
+leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
+plt.savefig(fig_prefix + 'throughput2d.eps', format='eps')
+remove_creation_date(fig_prefix + 'throughput2d.eps')
+
+# clear
+plt.clf()
+
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+plt.plot(deg3d,through3d_tr, 'rs--', label='Trilinos')
+plt.plot(deg3d,through3d_sc, 'bo--', label='MF scalar')
+plt.plot(deg3d,through3d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg3d,through3d_t4, 'cv--', label='MF tensor4')
+plt.xlabel('polynomial degree')
+plt.ylabel('vmult DoF / s')
+leg = plt.legend(loc='best', ncol=1)
+plt.tight_layout()
+plt.savefig(fig_prefix + 'throughput3d.eps', format='eps')
+remove_creation_date(fig_prefix + 'throughput3d.eps')
 
 # clear
 plt.clf()
