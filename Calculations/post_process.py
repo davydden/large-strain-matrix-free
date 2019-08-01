@@ -37,7 +37,14 @@ sections = [
     'vmult (Trilinos)',
     'Linear solver',
     'Assemble linear system',
-    'Coarse solve level 0'
+    'Coarse solve level 0',
+    'Setup MF: AdditionalData',
+    'Setup MF: GMG setup',
+    'Setup MF: MGTransferMatrixFree',
+    'Setup MF: MappingQEulerian',
+    'Setup MF: cache() and diagonal()',
+    'Setup MF: ghost range',
+    'Setup MF: interpolate_to_mg'
 ]
 
 start_line = 'Total wallclock time elapsed since start'
@@ -186,6 +193,38 @@ solver3d_t4_coarse = [tup[4][4]/tup[1] for tup in mf3d_data_tensor4]
 assembly2d_tr = [tup[4][3]/tup[1] for tup in mb2d_data]
 assembly3d_tr = [tup[4][3]/tup[1] for tup in mb3d_data]
 
+mf_gmg_2d_t4    = [(tup[4][5]  + \
+                    tup[4][6]  + \
+                    tup[4][7]  + \
+                    tup[4][8]  + \
+                    tup[4][9]  + \
+                    tup[4][10] + \
+                    tup[4][11])/tup[1] for tup in mf2d_data_tensor4]
+
+mf_gmg_3d_t4    = [(tup[4][5]  + \
+                    tup[4][6]  + \
+                    tup[4][7]  + \
+                    tup[4][8]  + \
+                    tup[4][9]  + \
+                    tup[4][10] + \
+                    tup[4][11])/tup[1] for tup in mf3d_data_tensor4]
+
+mf_gmg_2d_t4_ns = [(tup[4][5]  + \
+                    tup[4][6]  + \
+                    tup[4][7]  + \
+                    # tup[4][8]  + \  # without MappingQEulerian
+                    tup[4][9]  + \
+                    tup[4][10] + \
+                    tup[4][11])/tup[1] for tup in mf2d_data_tensor4_ns]
+
+mf_gmg_3d_t4_ns = [(tup[4][5]  + \
+                    tup[4][6]  + \
+                    tup[4][7]  + \
+                    # tup[4][8]  + \ # without MappingQEulerian
+                    tup[4][9]  + \
+                    tup[4][10] + \
+                    tup[4][11])/tup[1] for tup in mf3d_data_tensor4_ns]
+
 # CG iterations
 cg2d_tr = [tup[5] for tup in mb2d_data]
 cg2d_t4 = [tup[5] for tup in mf2d_data_tensor4]
@@ -284,7 +323,9 @@ plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
 # plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg2d,solver2d_t4_ns, 'mD--', label='MF Solver P')  # tensor4')
+plt.plot(deg2d,mf_gmg_2d_t4_ns,'mo--', label='MF Solver P setup')
 plt.plot(deg2d,solver2d_t4, 'cv--', label='MF Solver')  # tensor4')
+plt.plot(deg2d,mf_gmg_2d_t4, 'c>--', label='MF Solver setup')  # tensor4')
 plt.plot(deg2d,solver2d_t4_coarse, 'g^--', label='MF Coarse Solver')
 plt.xlabel('polynomial degree')
 plt.ylabel('wall time (s) / DoF')
@@ -304,7 +345,9 @@ plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
 # plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,solver3d_t4_ns, 'mD--', label='MF Solver P')
+plt.plot(deg3d,mf_gmg_3d_t4_ns,'mo--', label='MF Solver P setup')
 plt.plot(deg3d,solver3d_t4, 'cv--', label='MF Solver')
+plt.plot(deg3d,mf_gmg_3d_t4, 'c>--', label='MF Solver setup')
 plt.plot(deg3d,solver3d_t4_coarse, 'g^--', label='MF Coarse Solver')
 plt.plot(deg3d,assembly3d_tr, 'bp--', label='Trilinos Assembly')
 plt.xlabel('polynomial degree')
