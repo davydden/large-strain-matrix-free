@@ -1,0 +1,58 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 2 doubles = 128 bits (SSE2), VECTORIZATION_LEVEL=1
+--     . version 2.0 (revision ac4cc91 on branch master)
+--     . deal.II 9.1.0-pre (revision b2a625825b on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 2
+q     = 3
+cells = 180224
+dofs  = 4442880
+
+Trilinos memory = 0 Mb
+MF cache memory = 2059 Mb
+
+Average CG iter = 43
+Total CG iter = 645
+Total CG solve = 15
+
+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |       598s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |        20 |      69.3s |        12% |
+| Coarse solve level 0             |       645 |      2.92s |      0.49% |
+| Coarse solve level 1             |       645 |    0.0544s |         0% |
+| Coarse solve level 2             |       645 |     0.307s |         0% |
+| Coarse solve level 3             |       645 |      2.11s |      0.35% |
+| Linear solver                    |        15 |       398s |        67% |
+| Post-smoothing level 1           |       645 |     0.935s |      0.16% |
+| Post-smoothing level 2           |       645 |      16.5s |       2.8% |
+| Post-smoothing level 3           |       645 |       134s |        22% |
+| Pre-smoothing level 1            |       645 |      1.25s |      0.21% |
+| Pre-smoothing level 2            |       645 |        16s |       2.7% |
+| Pre-smoothing level 3            |       645 |       129s |        22% |
+| Prolongation level 1             |       645 |    0.0422s |         0% |
+| Prolongation level 2             |       645 |     0.199s |         0% |
+| Prolongation level 3             |       645 |      2.37s |       0.4% |
+| Setup MF: AdditionalData         |        15 |    0.0866s |         0% |
+| Setup MF: GMG setup              |        15 |   0.00562s |         0% |
+| Setup MF: MGTransferMatrixFree   |        15 |      2.79s |      0.47% |
+| Setup MF: MappingQEulerian       |        15 |      14.6s |       2.4% |
+| Setup MF: cache() and diagonal() |        15 |      46.3s |       7.7% |
+| Setup MF: ghost range            |        15 |     0.171s |         0% |
+| Setup MF: interpolate_to_mg      |        15 |      2.71s |      0.45% |
+| Setup system                     |         1 |      6.45s |       1.1% |
+| vmult (MF)                       |       150 |      11.3s |       1.9% |
+| vmult (MF) Cell loop             |       150 |      11.1s |       1.9% |
+| vmult (MF) MPI                   |       150 |     0.082s |         0% |
+| vmult (MF) RW                    |       150 |       1.4s |      0.23% |
+| vmult (MF) RWSF                  |       150 |      2.08s |      0.35% |
+| vmult (MF) zero                  |       150 |     0.047s |         0% |
++----------------------------------+-----------+------------+------------+
+

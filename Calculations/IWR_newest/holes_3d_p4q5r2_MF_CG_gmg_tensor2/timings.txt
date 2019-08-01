@@ -1,0 +1,54 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 2 doubles = 128 bits (SSE2), VECTORIZATION_LEVEL=1
+--     . version 2.0 (revision ac4cc91 on branch master)
+--     . deal.II 9.1.0-pre (revision b2a625825b on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 3
+p     = 4
+q     = 5
+cells = 22528
+dofs  = 4442880
+
+Trilinos memory = 0 Mb
+MF cache memory = 420 Mb
+
+Average CG iter = 79
+Total CG iter = 1190
+Total CG solve = 15
+
+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |  1.26e+03s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |        20 |       754s |        60% |
+| Coarse solve level 0             |      1190 |      20.1s |       1.6% |
+| Coarse solve level 1             |      1190 |     0.528s |         0% |
+| Coarse solve level 2             |      1190 |      3.16s |      0.25% |
+| Linear solver                    |        15 |       297s |        24% |
+| Post-smoothing level 1           |      1190 |         9s |      0.72% |
+| Post-smoothing level 2           |      1190 |      92.7s |       7.4% |
+| Pre-smoothing level 1            |      1190 |      8.95s |      0.71% |
+| Pre-smoothing level 2            |      1190 |      86.1s |       6.9% |
+| Prolongation level 1             |      1190 |     0.339s |         0% |
+| Prolongation level 2             |      1190 |      3.66s |      0.29% |
+| Setup MF: AdditionalData         |        15 |    0.0162s |         0% |
+| Setup MF: GMG setup              |        15 |    0.0059s |         0% |
+| Setup MF: MGTransferMatrixFree   |        15 |      2.04s |      0.16% |
+| Setup MF: MappingQEulerian       |        15 |      14.3s |       1.1% |
+| Setup MF: cache() and diagonal() |        15 |       132s |        10% |
+| Setup MF: ghost range            |        15 |     0.176s |         0% |
+| Setup MF: interpolate_to_mg      |        15 |      14.4s |       1.1% |
+| Setup system                     |         1 |      17.8s |       1.4% |
+| vmult (MF)                       |       150 |      3.69s |      0.29% |
+| vmult (MF) Cell loop             |       150 |      3.48s |      0.28% |
+| vmult (MF) MPI                   |       150 |    0.0686s |         0% |
+| vmult (MF) RW                    |       150 |     0.716s |         0% |
+| vmult (MF) RWSF                  |       150 |       1.3s |       0.1% |
+| vmult (MF) zero                  |       150 |    0.0467s |         0% |
++----------------------------------+-----------+------------+------------+
+
