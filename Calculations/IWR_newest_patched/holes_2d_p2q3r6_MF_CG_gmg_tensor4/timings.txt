@@ -1,0 +1,70 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 20 MPI processes
+--     . vectorization over 2 doubles = 128 bits (SSE2), VECTORIZATION_LEVEL=1
+--     . version 2.0 (revision 16e809e on branch add_IWR_newest)
+--     . deal.II 9.2.0-pre (revision fb96ffec85 on branch force_inlining)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 2
+q     = 3
+cells = 360448
+dofs  = 2887680
+
+Trilinos memory = 0 Mb
+MF cache memory = 450 Mb
+
+Average CG iter = 38
+Total CG iter = 776
+Total CG solve = 20
+
+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |       190s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |        25 |      5.98s |       3.1% |
+| Coarse solve level 0             |       776 |     0.842s |      0.44% |
+| Coarse solve level 1             |       776 |    0.0167s |         0% |
+| Coarse solve level 2             |       776 |    0.0218s |         0% |
+| Coarse solve level 3             |       776 |    0.0356s |         0% |
+| Coarse solve level 4             |       776 |    0.0758s |         0% |
+| Coarse solve level 5             |       776 |      0.38s |       0.2% |
+| Coarse solve level 6             |       776 |      1.32s |       0.7% |
+| Linear solver                    |        20 |       147s |        77% |
+| Post-smoothing level 1           |       776 |    0.0698s |         0% |
+| Post-smoothing level 2           |       776 |      0.12s |         0% |
+| Post-smoothing level 3           |       776 |     0.315s |      0.17% |
+| Post-smoothing level 4           |       776 |      1.05s |      0.55% |
+| Post-smoothing level 5           |       776 |      9.03s |       4.8% |
+| Post-smoothing level 6           |       776 |      43.2s |        23% |
+| Pre-smoothing level 1            |       776 |     0.107s |         0% |
+| Pre-smoothing level 2            |       776 |     0.179s |         0% |
+| Pre-smoothing level 3            |       776 |     0.446s |      0.23% |
+| Pre-smoothing level 4            |       776 |      1.45s |      0.77% |
+| Pre-smoothing level 5            |       776 |      9.22s |       4.9% |
+| Pre-smoothing level 6            |       776 |      43.1s |        23% |
+| Prolongation level 1             |       776 |    0.0158s |         0% |
+| Prolongation level 2             |       776 |    0.0178s |         0% |
+| Prolongation level 3             |       776 |    0.0265s |         0% |
+| Prolongation level 4             |       776 |    0.0608s |         0% |
+| Prolongation level 5             |       776 |     0.241s |      0.13% |
+| Prolongation level 6             |       776 |      1.47s |      0.78% |
+| Setup MF: AdditionalData         |        20 |    0.0739s |         0% |
+| Setup MF: GMG setup              |        20 |   0.00646s |         0% |
+| Setup MF: MGTransferMatrixFree   |        20 |      1.22s |      0.64% |
+| Setup MF: MappingQEulerian       |        20 |      7.75s |       4.1% |
+| Setup MF: cache() and diagonal() |        20 |      4.46s |       2.3% |
+| Setup MF: ghost range            |        20 |    0.0787s |         0% |
+| Setup MF: interpolate_to_mg      |        20 |     0.805s |      0.42% |
+| Setup system                     |         1 |     0.904s |      0.48% |
+| vmult (MF)                       |       200 |      3.75s |         2% |
+| vmult (MF) Cell loop             |       200 |      3.66s |       1.9% |
+| vmult (MF) MPI                   |       200 |    0.0176s |         0% |
+| vmult (MF) RW                    |       200 |      1.07s |      0.57% |
+| vmult (MF) RWSF                  |       200 |       1.4s |      0.73% |
+| vmult (MF) zero                  |       200 |    0.0335s |         0% |
++----------------------------------+-----------+------------+------------+
+
