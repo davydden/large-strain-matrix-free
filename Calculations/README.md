@@ -23,13 +23,13 @@ qsub emmy_benchmark_intel_64n.sh
 
 ## LIKWID runs
 configure code with `-DWITH_LIKWID=TRUE -DLIKWID_DIR=/apps/likwid/4.2.1/`.
-This is used both for Roofline plot and indirect breakdown measurements.
 
 ### standard (SIMD + MPI)
 ```
 python pre_process.py --likwid
 qsub likwid_emmy_benchmark_intel.sh
 ```
+This is used both for Roofline plot and indirect breakdown measurements.
 
 ### SIMD only
 ```
