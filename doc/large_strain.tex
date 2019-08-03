@@ -125,18 +125,12 @@
 
 
   \begin{abstract}
-    The performance of finite element solvers on modern computer architectures is typically memory bound for sufficiently large problems.
-    The main cause for this is that loading matrix elements from RAM into CPU cache is significantly slower than performing the arithmetic operations when solving the problem.
-    In order to improve the performance of iterative solvers within the high-performance computing context, so-called matrix-free methods are
-    widely adopted in the fluid mechanics community, where matrix-vector products are computed on-the-fly.
-
-    To date, there have been few (if any) assessments into the applicability of the matrix-free approach to problems in solid mechanics.
-    In this work, we perform an initial investigation on the application of the matrix-free approach to problems in quasi-static finite-strain hyperelasticity to determine whether it is viable for further extension.
-    Specifically, we study different numerical implementations of the finite element tangent operator, and determine whether generalized methods of incorporating complex constitutive behavior might be feasible.
+    This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Matrix-free algorithms have emerged as an attractive alternative to iterative solvers with sparse matrices in the fluid dynamics and wave propagation context because they significantly reduce the memory traffic, the limiting factor in classical finite element solvers.
+    Specifically, we study different matrix-free realizations of the finite element tangent operator, and determine whether generalized methods of incorporating complex constitutive behavior might be feasible.
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner on a single node for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
-    We conclude that the application of matrix-free methods to finite-strain solid mechanics is promising, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.
+    We conclude that matrix-free methods for finite-strain solid mechanics are very promising, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.
   \end{abstract}
 
 \ifijnme
@@ -166,27 +160,29 @@
 \section{Introduction}
 
 The performance of finite element solvers on modern computer architectures is typically memory bound for sufficiently large problems.
-The main cause for this is that loading pre-computed matrix elements from RAM into CPU cache is significantly slower than performing the arithmetic operations when solving the problem.
+The main cause for this is that loading pre-computed matrix elements from RAM memory into the CPU cores is significantly slower than actually performing the arithmetic operations.
 In order to improve the performance of iterative solvers, so-called matrix-free methods,
 where matrix-vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016},
 are widely adopted in the fluid mechanics community.
 Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, ljungkvist2017multigrid}.
 
-To the best of our knowledge, matrix-free methods are not widely adopted within the solid mechanics community.
-We are only aware of a single paper that deals with small strain linear elasticity \cite{Clevenger2018}.
-One possible reason is that the tangent operators\footnote{Here and
+Within the solid mechanics community, however, matrix-free methods are currently not widely adopted.
+One reason is that the tangent operators\footnote{Here and
 below 'operator' denotes a finite-dimensional linear operator defined on the vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
 Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
-} (stemming from linearization of the nonlinear balance equations) are
-more elaborate as compared to the operators used often in both linear and non-linear fluid mechanics, and it is not obvious whether matrix-free methods can be advantageous in this case.
+} derived from linearization of the nonlinear balance equations are
+more elaborate as compared to the common operators in linear and non-linear fluid mechanics. For matrix-free schemes using fast integration via sum factorization, the most common matrix-free variant for polynomial degrees $p\geq 2$, the main challenge is to find a representation of the linearization point, either in referential or spatial configurations, at the quadrature points that is cheap enough to be evaluated on the fly.
 Another reason could be the frequent use of lower-order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
 whereas higher order elements are rarely employed.
-This can potentially reduce the advantage of matrix-free methods using sum-factorization techniques, that are generally more competitive for higher order elements \cite{kronbichler12,kronbichler2017fast,muthing2017high}.
-However, we note that, even with linear FEM, large scale computations with $10^{12}$ unknowns inevitably require a matrix-free approach as there is simply not enough memory to store the sparse tangent matrix \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
+This can potentially reduce the advantage of matrix-free methods using sum-factorization techniques, that are generally more competitive for higher order elements \cite{kronbichler12,kronbichler2017fast,muthing2017high,Fischer2019}.
+However, we note that, even with linear FEM, large scale computations with as many as $10^{12}$ unknowns are possible with a matrix-free approach but infeasible with sparse matrices as there is simply not enough memory to store the sparse tangent matrix even on large supercomputers \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
 
-In this work, we perform a preliminary investigation of different implementations of the finite-strain hyperelastic tangent operator with respect to their computational cost
-and performance on a single node of a high performance computing cluster.
+In this work, we investigate different matrix-free representations of the
+finite-strain hyperelastic tangent operator with respect to the computational cost
+and the performance on a single node of a high performance computing cluster.
+Particular emphasis is on the tradeoff between computations at quadrature points versus
+pre-computation with a higher memory access.
 The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI parallelization together with a generalized matrix-free framework that incorporates SIMD vectorization and an interface to high-performance, MPI distributed matrix-based libraries, is used for this study.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
@@ -270,9 +266,9 @@ and therefore
 \label{eq:weak_form}
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$
-is involved due to the symmetry of $\gz \tau$.
+is involved due to the symmetry of $\gz \tau$. Here, `$\grad$' denotes the gradient with respect to the spatial configuration, as opposed to the gradient in the referential setting `$\Grad$'.
 Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
-that is $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
+that is, $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
 
@@ -526,10 +522,9 @@ They are introduced in order of lowest memory footprint to largest:
   cached $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
-        extract local vector values on this element $\overline{\gz u^h}_K$, $\gz x_K$ \;
+        gather local vector values on this element $\overline{\gz u^h}_K$, $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
         \enskip $\Grad \, \overline{\gz u^h}_K$ \tcp*{2nd order}
-        \enskip $\gz g_s := \overline{\grad^s} \gz x_K$ \tcp*{2nd order symmetric}
         \enskip $\gz g := \overline{\grad} \gz x_K$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\gz F = \gz I + \Grad \, \overline{\gz u^h}$ \tcp*{2nd order}
@@ -537,12 +532,12 @@ They are introduced in order of lowest memory footprint to largest:
           evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
           evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \gz \tau/J$ \tcp*{2nd order}
-          queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
+          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \left[2 c_1 \gz g_s + 2 \lambda\, \textrm{tr}( \gz g_s) \gz I \right]/J$ \tcp*{2nd order symmetric}
-          queue $\boldsymbol{\mathcal{C}} \gz g_s$ for contraction $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
+          queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
       evaluate queued contractions using sum factorization \;
-      distribute results to the destination vector
+      scatter results to the destination vector
   }
   \caption{Matrix-free tangent operator: cache scalar quantities only}
   \label{alg:mf_scalar}
@@ -560,18 +555,17 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
-        extract local vector values on this element $\gz x_K$ \;
+        gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
-        \enskip$\gz g_s := \overline{\grad^s} \gz x_K$ \tcp*{2nd order symmetric}
         \enskip$\gz g := \overline{\grad} \gz x_K$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\boldsymbol{\mathcal{G}}\gz g := \gz g \cdot \left[\gz \tau/J \right]$ \tcp*{2nd order}
-          queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : \boldsymbol{\mathcal{G}} \gz g$ \;
+          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}} \gz g_s := c_1 \gz g_s + c_2 \, \textrm{tr}(\gz g_s) \gz I$ \tcp*{2nd order symmetric}
-          queue $\boldsymbol{\mathcal{C}} \gz g_s$ contraction $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}} \gz g_s $ \;
+          queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
         evaluate queued contractions using sum factorization \;
-        distribute results to the destination vector
+        scatter results to the destination vector
   }
   \caption{Matrix-free tangent operator: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at when executed.}
   \label{alg:mf_tensor2}
@@ -590,18 +584,17 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   \ForEach{ element $K \in \Omega^h$ }{
-        extract local vector values on this element $\gz x_K$ \;
+        gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
-        \enskip$\gz g_s := \overline{\grad^s} \gz x_K$ \tcp*{2nd order symmetric}
         \enskip$\gz g := \overline{\grad} \gz x_K$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \left[\gz \tau/J\right]$ \tcp*{2nd order}
-          queue $\boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : \boldsymbol{\mathcal{G}} \gz g$\;
+          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \boldsymbol{\mathcal{C}}\gz : \gz g_s$ \tcp*{2nd order symmetric}
-          queue $\boldsymbol{\mathcal{C}}\gz g_s$ for contraction $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$ \;
+          queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
         evaluate queued contractions using sum factorization \;
-        distribute results to the destination vector
+        scatter results to the destination vector
   }
   \caption{Matrix-free tangent operator: cache material part of the fourth-order spatial tangent stiffness tensor $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
   \label{alg:mf_tensor4}
@@ -628,11 +621,29 @@ This is achieved using templated number types within the \textit{Tensor} class o
 In particular, \texttt{deal.II} provides the \textit{VectorizedArray} templated generic class that defines a unified interface to a vectorized data type
 and overloads basic arithmetic operations based on compiler intrinsics.
 The core of the sum factorization algorithms is provided by the
-\textit{FEEvaluation} class, that already supports all the necessary contraction (such as $\overline{\grad^s} \gz N_i : \boldsymbol{\mathcal{C}}\gz g_s$) to implement the three algorithms proposed above.
+\textit{FEEvaluation} class, that supports all the necessary contractions such as $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ to implement the three algorithms proposed above.
 Thanks to the object-oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
 Distributed memory MPI parallelization of the matrix-free operators is done using the standard domain decomposition technique, where each MPI process is responsible for applying the operator only on the so-called locally owned elements.
 For more information about the implementation details and data structures for sum factorization approaches in \texttt{deal.II} (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and distributed memory parallelization as well SIMD vectorization) and performance tests, see \cite{kronbichler12}.
 
+
+\begin{table}
+\centering
+\begin{tabular}{|l|ccc|}
+\hline
+ & Vector access & physics terms & metric terms grad/Grad \\
+ & double / node & double / q-point & double / q-point \\
+ \hline
+Algorithm 1 & $2d$ read, $d$ write & 1 & up to $d^2 + d^2 + 1$\\
+Algorithm 2 & $d$ read, $d$ write & 2 + $\frac{d(d+1)}{2}$ & up to $d^2+1$\\
+Algorithm 3 & $d$ read, $d$ write & $\frac{d(d+1)}{2}+\left(\frac{d(d+1)}{2}\right)^2$ & up to $d^2+1$\\
+\hline
+\end{tabular}
+\caption{Details of memory access for matrix-free evaluation with Algorithms~\ref{alg:mf_scalar}--\ref{alg:mf_tensor4}.}
+\label{tab:memory}
+\end{table}
+
+Table~\ref{tab:memory} summarizes the three algorithms in terms of their implied memory access for one operator evaluation. The vector access in Algorithm~\ref{alg:mf_scalar} is higher than in the other variants because both the source vector $\gz x$ and the linearization point from the current FE solution $\overline{\gz u^h}$ need to be accessed, each with the usual indirect addressing pertaining to continuous finite element fields \cite{kronbichler12}. The cached quantities listed in the algorithms, labeled ``physics terms'' in the table, are increasing in size for the algorithms, and are separate for each point. Finally, the evaluation of the gradients in the referential and spatial coordinates also involve a data access via the so-called metric terms, the Jacobian from the unit element to the referential or spatial configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves both the Jacobian in the referential and the spatial frame, whereas the other two algorithms only involve the spatial (Eulerian) terms. Finally, the implementation framework also holds the determinant of the Jacobian for each point. Following \cite{kronbichler12}, some compression may be applied to the metric terms: On affine geometries, the Jacobian is the same at all quadrature points of a cell, and needs only be stored once. Therefore, the table lists those quantities as ``up to'' $d^2+1$ terms, which depends on the mesh and is a run-time decision in the code.
 
 \section{Description of the utilized numerical framework
 \label{sec:framework}
@@ -802,14 +813,14 @@ The aggregation threshold for the AMG preconditioner is taken as $10^{-4}$.
 The geometric multigrid algorithm uses a V-cycle with two pre- and post-smoothing steps using Chebyshev polynomials \cite{Varga2009} of fifth degree, provided
 by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
 The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
-is set to target the range $[0.6\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.\todo{Does this work well (verified in code)? I would use $0.1\lambda_{\rm{max}}$, i.e., smoothing range 12.}
+is set to target the range $[0.06\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
 On the coarsest level, we use the Chebyshev preconditioner as a solver \cite{Varga2009} to reduce the residual by three orders of magnitude.
 Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.
 
-Computations were performed on a single node of two clusters:
-A node on the ``Emmy'' cluster at RRZE, FAU has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB shared cache per chip and 64 GB of RAM. Intel's compiler version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
-The ``IWR'' results were obtained on a single machine with eight Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
-Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. one fully occupied node.
+Computations were performed on two systems: A dual-socket Intel Xeon Gold 6230 (``Cascade Lake'') with 20 cores per socket and 96 GB of DDR4-2933 memory (nominal bandwidth per socket: 141 GB/s). Turbo mode is enabled with a power limit of 135 watt per socket, which results in the processor running at 2.8 GHz for scalar code and 2.0 GHz for AVX-512-heavy code in all experiments. The GNU compiler version 9.1.0 with flags ``-O3 -march=skylake-avx512' and OpenMPI version 4.0.1 were used, with the code run in pure MPI mode.
+%A node on the ``Emmy'' cluster at RRZE, FAU has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB shared cache per chip and 64 GB of RAM. Intel's compiler version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
+The ``IWR'' results were obtained on a single machine with eight Intel Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
+Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. one socket for Cascade Lake and two sockets for ``IWR''.
 
 \subsection{Matrix-vector multiplication}
 
@@ -817,57 +828,71 @@ Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e
   \centering
   \begin{subfigure}[b]{0.49\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{Emmy_RRZE_timing2d.eps}
-      \caption{matrix-vector product (2D)}
-      \label{fig:benchmark_miehe_Emmy_vmult2}
+      \includegraphics[width=\textwidth]{CSL_Munich_throughput2d.eps}
+      \caption{throughput matrix-vector product (2D)}
+      \label{fig:benchmark_miehe_CSL_vmult2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_timing3d.eps}
-    \caption{matrix-vector product (3D)}
-    \label{fig:benchmark_miehe_Emmy_vmult3}
+    \includegraphics[width=\textwidth]{CSL_Munich_throughput3d.eps}
+    \caption{throughput matrix-vector product (3D)}
+    \label{fig:benchmark_miehe_CSL_vmult3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.49\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{Emmy_RRZE_memory2d.eps}
-      \caption{memory consumption (2D)}
-      \label{fig:benchmark_miehe_Emmy_memory2}
+      \includegraphics[width=\textwidth]{CSL_Munich_timing2d.eps}
+      \caption{time matrix-vector product (2D)}
+      \label{fig:benchmark_miehe_CSL_vmult2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_memory3d.eps}
-    \caption{memory consumption (3D)}
-    \label{fig:benchmark_miehe_Emmy_memory3}
+    \includegraphics[width=\textwidth]{CSL_Munich_timing3d.eps}
+    \caption{time matrix-vector product (3D)}
+    \label{fig:benchmark_miehe_CSL_vmult3}
   \end{subfigure}
-  \caption{Emmy cluster, 20 cores, RRZE, matrix-vector multiplication.}%
-  \label{fig:benchmark_miehe_Emmy}
+  ~
+  \begin{subfigure}[b]{0.49\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{CSL_Munich_memory2d.eps}
+      \caption{memory consumption (2D)}
+      \label{fig:benchmark_miehe_CSL_memory2}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{CSL_Munich_memory3d.eps}
+    \caption{memory consumption (3D)}
+    \label{fig:benchmark_miehe_CSL_memory3}
+  \end{subfigure}
+  \caption{Cascade Lake, 1 socket with 20 cores, matrix-vector multiplication.}%
+  \label{fig:benchmark_miehe_CSL}
 \end{figure}
+
 
 \begin{figure}[!ht]
   \centering
   \begin{subfigure}[b]{0.49\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_timing2d.eps}
+      \includegraphics[width=\textwidth]{IWR_newest_patched_timing2d.eps}
       \caption{matrix-vector product (2D)}
       \label{fig:benchmark_miehe_IWR_vmult2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_timing3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_timing3d.eps}
     \caption{matrix-vector product (3D)}
     \label{fig:benchmark_miehe_IWR_vmult3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.49\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_memory2d.eps}
+      \includegraphics[width=\textwidth]{IWR_newest_patched_memory2d.eps}
       \caption{memory consumption (2D)}
       \label{fig:benchmark_miehe_IWR_memory2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_memory3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_memory3d.eps}
     \caption{memory consumption (3D)}
     \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
@@ -875,9 +900,7 @@ Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e
   \label{fig:benchmark_miehe_IWR}
 \end{figure}
 
-\todo{Is the IWR result also run with 20 MPI ranks? How are MPI ranks pinned to the 80 physical cores?}
-
-Figures \ref{fig:benchmark_miehe_Emmy} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem as performed on the two clusters.
+Figures \ref{fig:benchmark_miehe_CSL} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem as performed on the two clusters.
 We are interested in the wall-clock time (average over 10 runs for each linear solver step) per DoF as a first metric.
 As expected, the matrix-vector multiplication becomes very expensive for higher order discretization for sparse matrix-based approaches,
 as the matrix becomes more and more dense.
@@ -915,13 +938,13 @@ Turbo mode of the CPU was disabled.
   \centering
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline_2d.pdf}
+    \includegraphics[width=\textwidth]{LIKWID_CSL_Munich_roofline_2d.pdf}
     \caption{2D}
     \label{fig:roofline_2d}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_roofline_3d.pdf}
+    \includegraphics[width=\textwidth]{LIKWID_CSL_Munich_roofline_3d.pdf}
     \caption{3D}
     \label{fig:roofline_3d}
   \end{subfigure}
@@ -954,28 +977,28 @@ independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_
 
 \begin{figure}[!ht]
   \centering
+  %\begin{subfigure}[b]{0.49\textwidth}
+  %    \centering
+  %    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_2d.pdf}
+  %    \caption{Roofline (2D)}
+  %    \label{fig:roofline_2d_tensor4}
+  %\end{subfigure}
+  %\begin{subfigure}[b]{0.49\textwidth}
+  %  \centering
+  %  \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_3d.pdf}
+  %  \caption{Roofline (3D)}
+  %  \label{fig:roofline_3d_tensor4}
+  %\end{subfigure}
+  %~
   \begin{subfigure}[b]{0.49\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_2d.pdf}
-      \caption{Roofline (2D)}
-      \label{fig:roofline_2d_tensor4}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_roofline_3d.pdf}
-    \caption{Roofline (3D)}
-    \label{fig:roofline_3d_tensor4}
-  \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.49\textwidth}
-      \centering
-      \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_stackedbar_2d.pdf}
+      \includegraphics[width=0.94\textwidth]{LIKWID_CSL_Munich_breakdown_stackedbar_2d.pdf}
       \caption{Computing times (2D)}
       \label{fig:breakdown_stackedbar_2d_tensor4}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{LIKWID_Emmy_RRZE_breakdown_stackedbar_3d.pdf}
+    \includegraphics[width=0.94\textwidth]{LIKWID_CSL_Munich_breakdown_stackedbar_3d.pdf}
     \caption{Computing times (3D)}
     \label{fig:breakdown_stackedbar_3d_tensor4}
   \end{subfigure}
