@@ -101,13 +101,13 @@ def parse_timing_file(f):
     return tuple((p, dofs, tr_memory, mf_memory, timing, cg_iterations, tot_cg_iterations, cores))
 
 
-def parse_likwid_file(filename, last_line = ''):
-    '''Parse terminal output of LIKWID
+def parse_likwid_file(filename, last_line = '', debug_output = False):
+    '''Parse LIKWID part in terminal output of a benchmark
 
     Arguments:
     filename -- the path to the file
     last_line -- the last line of non-LIKWID output. Starting from the line after this
-        the parser will be active
+        the parser will be active.
 
     Return:
     parsed data stored as:
@@ -118,11 +118,12 @@ def parse_likwid_file(filename, last_line = ''):
     '''
     result = {}
     fin = open(filename, 'r')
-    debug_output = False
 
     row_separator = '---------'
 
-    found_start = (last_line == "")
+    no_last_line = last_line == ""
+
+    found_start = False
     region = ''
     separator_counter = 0
     table_name = ''
@@ -134,6 +135,12 @@ def parse_likwid_file(filename, last_line = ''):
         # skip empty lines
         if line == "":
             continue
+
+        # if we are not provided with last_line, start when we
+        # see first Region: in line:
+        if (no_last_line and not found_start):
+            if 'Region:' in line:
+                found_start = True
 
         if found_start:
             #
@@ -152,21 +159,28 @@ def parse_likwid_file(filename, last_line = ''):
                 table_name = ''
                 continue
 
-            if 'Group:' in line:
+            elif 'Group:' in line:
                 # FIXME: read in groups as well?
                 continue
 
-            # If we are in LIKWID part, we should have some region always around
-            assert region != ''
-
-            # At this point we have only 3 options: we are on one of the separators,
+            # At this point we SHOULD have only 3 options: we are on one of the separators,
             # inside the header or inside the core of the table.
-            if row_separator in line:
+            elif row_separator in line:
                 separator_counter = separator_counter + 1
                 # reset the counter if we are at the end of the current table
                 if separator_counter == 3:
                     separator_counter = 0
                 continue
+
+            # If we are not inside the table, there must be some
+            # dummy output in the terminal, skip it
+            if separator_counter == 0 and len(line) > 0:
+                if debug_output:
+                    print '-- Skip line: {0}'.format(line)
+                continue
+
+            # Otherwise if we are in LIKWID part, we should have some region always around
+            assert region != ''
 
             # get the columns, disregard empty first and last
             columns = [s.strip() for s in line.split('|')][1:-1]
@@ -197,7 +211,9 @@ def parse_likwid_file(filename, last_line = ''):
                     print '      {0}'.format(key)
         else:
             # If we have not found LIKWID part yet
-            if last_line in line:
+            if not no_last_line and last_line in line:
+                if debug_output:
+                    print '-- Start parsing from line: {0}'.format(line)
                 found_start = True
 
     return result

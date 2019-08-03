@@ -22,7 +22,8 @@ qsub emmy_benchmark_intel_64n.sh
 ```
 
 ## LIKWID runs
-configure code with `-DWITH_LIKWID=TRUE -DLIKWID_DIR=/apps/likwid/4.2.1/`:
+configure code with `-DWITH_LIKWID=TRUE -DLIKWID_DIR=/apps/likwid/4.2.1/`.
+This is used both for Roofline plot and indirect breakdown measurements.
 
 ### standard (SIMD + MPI)
 ```
@@ -48,13 +49,6 @@ python pre_process.py --likwid --dir=Emmy_RRZE_novec --prefix=/home/woody/iwtm/i
 qsub likwid_emmy_benchmark_intel.sh
 ```
 
-### breakdown
-additionally configure with `-DWITH_BREAKDOWN=TRUE`
-```
-python pre_process.py --likwid --breakdown --prefix=/home/woody/iwtm/iwtm108/deal.ii-mf-elasticity/_build_breakdown/
-qsub likwid_emmy_benchmark_intel.sh
-```
-
 # Post-processing / plotting
 
 ## general benchmark
@@ -71,10 +65,10 @@ python post_process_weak.py
 
 ### Roofline
 ```
-python post_process_likwid.py --dim=2
-python post_process_likwid.py --dim=3
-python post_process_likwid.py --dim=2 --breakdown
-python post_process_likwid.py --dim=3 --breakdown
+python post_process_likwid_csl.py --dim=2
+python post_process_likwid_csl.py --dim=3
+python post_process_likwid_csl_breakdown.py --dim=2
+python post_process_likwid_csl_breakdown.py --dim=3
 ```
 
 ### Speedup (SIMD/MPI)
