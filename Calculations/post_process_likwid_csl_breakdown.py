@@ -39,8 +39,22 @@ stack_labels = ['Zero vector', 'MPI', 'Quadrature loop', 'Read/Write', 'Sum fact
 stack_colors = ['b','g','c','m','r']
 n_stack = len(stack_labels)
 
-# hard-code polynomial degree to be used in stack plot
-ind = [2,4,6] if args.dim == 2 else [2, 4]
+# take tensor4
+def check_section(fname):
+    return '_tensor4' in fname and 'tensor4_ns' not in fname
+
+# get polynomial degrees we have to be used in stack plot
+ind = []
+for f in files:
+    fname = os.path.basename(f)
+    strings = fname.split('_')
+    dim = int(re.findall(pattern,strings[2])[0])
+    p   = int(re.findall(pattern,strings[3])[0])
+    if dim == args.dim and check_section(fname):
+        ind.append(p)
+
+ind.sort()
+print 'Take degrees {0}'.format(ind)
 
 # prepare data here
 bar_data = [[ np.nan for i in range(len(ind))] for i in range(n_stack)]
@@ -57,7 +71,7 @@ for f in files:
         continue
 
     post_process = False
-    if '_tensor4' in fname and 'tensor4_ns' not in fname:
+    if check_section(fname):
         for i in ind:
             if i == p:
                 post_process = True
