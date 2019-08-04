@@ -534,7 +534,7 @@ They are introduced in order of lowest memory footprint to largest:
           evaluate $\gz b = \gz F \cdot \gz F^T$ \tcp*{2nd order symmetric}
           evaluate $\gz \tau = \mu \gz b - c_1 \gz I$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \gz \tau/J$ \tcp*{2nd order}
-          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
+          evaluate $\gz g_s = (\gz g + \gz g^T)/2$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \left[2 c_1 \gz g_s + 2 \lambda\, \textrm{tr}( \gz g_s) \gz I \right]/J$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
@@ -565,7 +565,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
         \enskip$\gz g := \overline{\grad} \gz x_K$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\boldsymbol{\mathcal{G}}\gz g := \gz g \cdot \left[\gz \tau/J \right]$ \tcp*{2nd order}
-          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
+          evaluate $\gz g_s = (\gz g + \gz g^T)/2$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}} \gz g_s := c_1 \gz g_s + c_2 \, \textrm{tr}(\gz g_s) \gz I$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
@@ -597,7 +597,7 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
         \enskip$\gz g := \overline{\grad} \gz x_K$ \tcp*{2nd order}
         \ForEach{quadrature point $q$ on $K$}{
           evaluate $\boldsymbol{\mathcal{G}} \gz g := \gz g \cdot \left[\gz \tau/J\right]$ \tcp*{2nd order}
-          evaluate $\gz g_s = \text{symmetrize} (\gz g)$ \tcp*{2nd order symmetric}
+          evaluate $\gz g_s = (\gz g + \gz g^T)/2$ \tcp*{2nd order symmetric}
           evaluate $\boldsymbol{\mathcal{C}}\gz g_s := \boldsymbol{\mathcal{C}}\gz : \gz g_s$ \tcp*{2nd order symmetric}
           queue $\boldsymbol{\mathcal{C}} \gz g_s + \boldsymbol{\mathcal{G}} \gz g$ for contraction $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ \;
         }
