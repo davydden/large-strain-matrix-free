@@ -521,6 +521,8 @@ They are introduced in order of lowest memory footprint to largest:
   \Input{Source FE vector $\gz x$, current FE solution $\overline{\gz u^h}$,
   cached $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
+  zero destination vector $\gz y = 0$ \;
+  update ghost values for source vector $\gz x$ \;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\overline{\gz u^h}_K$, $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -539,6 +541,7 @@ They are introduced in order of lowest memory footprint to largest:
       evaluate queued contractions using sum factorization \;
       scatter results to the destination vector
   }
+  compress operation on $\gz y$ \;
   \caption{Matrix-free tangent operator: cache scalar quantities only}
   \label{alg:mf_scalar}
 \end{algorithm}
@@ -554,6 +557,8 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
   $c_2 := 2\lambda/J$ and $\gz \tau/J$ for each cell and quadrature point,
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
+  zero destination vector $\gz y = 0$ \;
+  update ghost values for source vector $\gz x$ \;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -567,6 +572,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
         evaluate queued contractions using sum factorization \;
         scatter results to the destination vector
   }
+  compress operation on $\gz y$ \;
   \caption{Matrix-free tangent operator: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at when executed.}
   \label{alg:mf_tensor2}
 \end{algorithm}
@@ -583,6 +589,8 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
   cached $\gz \tau/J$ and $\boldsymbol{\mathcal{C}}$ for each cell and quadrature point,
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
+  zero destination vector $\gz y = 0$ \;
+  update ghost values for source vector $\gz x$ \;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -596,6 +604,7 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
         evaluate queued contractions using sum factorization \;
         scatter results to the destination vector
   }
+  compress operation on $\gz y$ \;
   \caption{Matrix-free tangent operator: cache material part of the fourth-order spatial tangent stiffness tensor $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
   \label{alg:mf_tensor4}
 \end{algorithm}
