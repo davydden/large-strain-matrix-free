@@ -60,7 +60,7 @@ sections = [
 clock_speed = 2.0  # GHz
 # memory bandwidth
 # likwid-bench -t load_avx -w S0:1GB:20:1:2
-B=96.2 # 50 GB/s single socket
+B=120 # 120 GB/s single socket
 
 print 'Peak performance calculations:'
 P = clock_speed
@@ -206,7 +206,7 @@ likwid_data.sort(key=lambda tup: (tup[3], tup[1]))
 #####################
 
 params = {'legend.fontsize': 10,
-          'font.size': 20}
+          'font.size': 14}
 plt.rcParams.update(params)
 
 plt.xscale('log', basex=2)
@@ -233,6 +233,7 @@ plt.plot(x,peak, roofline_style, label='_nolegend_')
 # various ceilings (w/o FMA, w/o FMA and vectorization):
 for p_ in [P/2, P/2/8]:
     plt.plot(x,Roofline(x,p_,B), roofline_style, label='_nolegend_')
+plt.plot([0.0725, 14.222],[6.53, 1280], roofline_style, label='_nolegend_')
 
 plt.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua', alpha=0.1)
 
@@ -278,8 +279,9 @@ plt.axes().yaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}
 plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '1/{0}'.format(int(round(1./x))) if x < 1.0 else '{0}'.format(int(round(x))) ))
 
 ang = 45
-y_pos = 7.5 if args.breakdown else 16.5
+y_pos = 7.5 if args.breakdown else 37
 plt.text(xmin, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang, fontsize=14)
+plt.text(xmin, 12, 'B=90 GB/s'.format(B), rotation=ang, fontsize=14)
 
 x_pos = 9 if not args.breakdown else 16
 plt.text(x_pos,1400,'Peak DP', fontsize=14)

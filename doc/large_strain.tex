@@ -1,11 +1,12 @@
 %\RequirePackage[l2tabu, orthodox]{nag}
 
 \newif\ifijnme %Declaration of ijnme
-% \ijnmetrue %Sets ijnme to true
-\ijnmefalse %Sets ijnme to false
+\ijnmetrue %Sets ijnme to true
+% \ijnmefalse %Sets ijnme to false
+
 
 \ifijnme
-\documentclass[times,doublespace]{nmeauth}
+\documentclass[AMA,STIX1COL]{WileyNJD-v2}
 \else
 \documentclass[preprint,12pt,times]{elsarticle}
 \biboptions{sort&compress,comma,square}
@@ -44,12 +45,15 @@
    tabsize=2,	                   % sets default tabsize to 2 spaces
    title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
 }
-\usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
 
+\usepackage[linesnumbered,lined,commentsnumbered,ruled]{algorithm2e}
+\ifijnme
+\usepackage{subcaption}
+\else
 \usepackage[format=plain,indention=.5cm]{caption}
 \usepackage[labelformat=simple]{subcaption}
 \renewcommand\thesubfigure{(\alph{subfigure})}
-
+\fi
 
 \newcommand*{\gz}[1]{\boldsymbol{#1}}
 \newcommand*{\Grad}{\mathrm{Grad}}
@@ -59,10 +63,17 @@
 \newcommand*{\mcl}[1]{\mathcal{#1}}
 \DeclareMathOperator{\trace}{tr}
 
+\ifijnme
+\articletype{Research Article}%
+
+\received{1 January 2019}
+\revised{}
+\accepted{}
+\fi
+
 \begin{document}
 
 \ifijnme
-\runningheads{D. Davydov et al.}{A matrix-free approach for finite-strain hyperelastic problems}
 \else
 \journal{CMAME}
 \begin{frontmatter}
@@ -73,27 +84,26 @@
   }
 
 \ifijnme
-  \author{
-    Denis Davydov\affil{1} \corrauth ,
-    Jean-Paul Pelteret\affil{1},
-    Daniel Arndt\affil{2},
-    Paul Steinmann\affil{1,3}
-  }
+\author[1]{Denis Davydov*}
+\author[1]{Jean-Paul Pelteret}
+\author[2]{Daniel Arndt}
+\author[3]{Martin Kronbichler}
+\author[1,4]{Paul Steinmann}
 
-  \address{
-    \affilnum{1}Chair of Applied Mechanics,
-    Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg,
-    Egerlandstr.\ 5, 91058 Erlangen, Germany \break
-    \affilnum{2}Interdisciplinary Center for Scientific Computing (IWR),
-    Heidelberg University,
-    Im Neuenheimer Feld 205, 69120 Heidelberg, Germany \break
-    \affilnum{3}Glasgow Computational Engineering Center (GCEC),
-        University of Glasgow, G12 8QQ Glasgow, United Kingdom \break
-    }
+\address[1]{\orgdiv{Chair of Applied Mechanics}, \orgname{Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg}, \orgaddress{\country{Germany}}}
 
-  \corraddr{E-mail: denis.davydov@fau.de}
+\address[2]{\orgdiv{Interdisciplinary Center for Scientific Computing (IWR)}, \orgname{Heidelberg University}, \orgaddress{\country{Germany}}}
+
+\address[3]{\orgdiv{Institute for Computational Mechanics}, \orgname{Technical University of Munich}, \orgaddress{\country{Germany}}}
+
+\address[4]{\orgdiv{Glasgow Computational Engineering Center (GCEC)}, \orgname{University of Glasgow}, \orgaddress{\country{United Kingdom}}}
+
+\corres{*D. Davydov, Egerlandstr.\ 5, 91058 Erlangen, Germany. \email{denis.davydov@fau.de}}
+
+\presentaddress{Chair of Applied Mechanics, Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg, Egerlandstr.\ 5, 91058 Erlangen, Germany.}
 
 \else
+
   \author[a]{Denis Davydov\corref{cor}}
   \ead{denis.davydov@fau.de}
 
@@ -122,16 +132,16 @@
       University of Glasgow, G12 8QQ Glasgow, United Kingdom
   }
 \fi
-
-
-  \begin{abstract}
-    This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Matrix-free algorithms have emerged as an attractive alternative to iterative solvers with sparse matrices in the fluid dynamics and wave propagation context because they significantly reduce the memory traffic, the limiting factor in classical finite element solvers.
+  \begin{abstract}[Summary]
+    {This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Matrix-free algorithms have emerged as an attractive alternative to iterative solvers with sparse matrices in the fluid dynamics and wave propagation context because they significantly reduce the memory traffic, the limiting factor in classical finite element solvers.
     Specifically, we study different matrix-free realizations of the finite element tangent operator, and determine whether generalized methods of incorporating complex constitutive behavior might be feasible.
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner on a single node for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
-    We conclude that matrix-free methods for finite-strain solid mechanics are very promising, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.
+    We conclude that matrix-free methods for finite-strain solid mechanics are very promising, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.}
   \end{abstract}
+
+
 
 \ifijnme
 
@@ -143,9 +153,18 @@
       hyperelasticity
   }
 
+\jnlcitation{\cname{%
+\author{D. Davydov},
+\author{J.-P. Pelteret},
+\author{D. Arndt},
+\author{M. Kronbichler} and
+\author{P. Steinmann}} (\cyear{2019}),
+\ctitle{A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid}, \cjournal{International Journal for Numerical Methods in Engineering}, \cvol{2019;00:1--23}.}
+
   \maketitle
 
 \else
+
     \begin{keyword}
         adaptive finite element method \sep
         geometric multigrid \sep
@@ -162,28 +181,29 @@
 The performance of finite element solvers on modern computer architectures is typically memory bound for sufficiently large problems.
 The main cause for this is that loading pre-computed matrix elements from RAM memory into the CPU cores is significantly slower than actually performing the arithmetic operations.
 In order to improve the performance of iterative solvers, so-called matrix-free methods,
-where matrix-vector products are formed on-the-fly \cite{kronbichler12,May2015, Krank2017, Brown2010, Gmeiner2016},
+where matrix-vector products are formed on-the-fly \cite{Brown2010,kronbichler12,May2015, Krank2017,  Gmeiner2016},
 are widely adopted in the fluid mechanics community.
 Such methods can also be efficiently implemented on GPUs \cite{Abdelfattah2016, ljungkvist2017multigrid}.
+Among matrix-free methods, stencil-based variants are most popular for linear elements and tetrahedral shapes in particular~\cite{Gmeiner2016,Bauer2018}, whereas implementations based on integration with sum-factorization techniques are attractive for higher polynomial degrees $p\geq 2$ and tensor product shape functions~\cite{Brown2010,kronbichler12,May2015,Cantwell2011}.
 
 Within the solid mechanics community, however, matrix-free methods are currently not widely adopted.
 One reason is that the tangent operators\footnote{Here and
 below 'operator' denotes a finite-dimensional linear operator defined on the vector space $\mathbb R^N$, where $N$ is the number of unknown degrees of freedom in the FE discretization.
 Although any linear mapping on a finite-dimensional space is representable by a matrix, we adopt the `operator' term to avoid confusion between its matrix-free and matrix-based numerical implementation.
 } derived from linearization of the nonlinear balance equations are
-more elaborate as compared to the common operators in linear and non-linear fluid mechanics. For matrix-free schemes using fast integration via sum factorization, the most common matrix-free variant for polynomial degrees $p\geq 2$, the main challenge is to find a representation of the linearization point, either in referential or spatial configurations, at the quadrature points that is cheap enough to be evaluated on the fly.
+more elaborate as compared to the common operators in linear and non-linear fluid mechanics. For matrix-free schemes using fast integration via sum factorization, the main challenge is to find a representation of the linearization point, either in referential or spatial configurations, at the quadrature points that is cheap enough to be evaluated on the fly.
 Another reason could be the frequent use of lower-order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking), or mixed or enhanced formulations (that avoid locking) are often adopted in the solid mechanics community,
 whereas higher order elements are rarely employed.
 This can potentially reduce the advantage of matrix-free methods using sum-factorization techniques, that are generally more competitive for higher order elements \cite{kronbichler12,kronbichler2017fast,muthing2017high,Fischer2019}.
-However, we note that, even with linear FEM, large scale computations with as many as $10^{12}$ unknowns are possible with a matrix-free approach but infeasible with sparse matrices as there is simply not enough memory to store the sparse tangent matrix even on large supercomputers \cite{Gmeiner2016}. Therefore, we believe that for large scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient multigrid solvers.
+However, we note that, even with linear FEM, large scale computations with as many as $10^{12}$ unknowns are possible with a matrix-free approach but infeasible with sparse matrices as there is simply not enough memory to store the sparse tangent matrix even on large supercomputers \cite{Gmeiner2016}. Therefore, we believe that for large-scale computations in solid mechanics it is crucial to consider matrix-free approaches and develop efficient solvers.
 
 In this work, we investigate different matrix-free representations of the
 finite-strain hyperelastic tangent operator with respect to the computational cost
 and the performance on a single node of a high performance computing cluster.
 Particular emphasis is on the tradeoff between computations at quadrature points versus
 pre-computation with a higher memory access.
-The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI parallelization together with a generalized matrix-free framework that incorporates SIMD vectorization and an interface to high-performance, MPI distributed matrix-based libraries, is used for this study.
+The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI parallelization together with a generalized matrix-free framework that incorporates SIMD vectorization and an interface to high-performance MPI-distributed matrix-based libraries is used for this study.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
 
@@ -227,10 +247,10 @@ Clearly $J = \sqrt{\det \gz C}$ and $\partial (\bullet)/\partial \gz E = 2\, \pa
 For conservative systems without body forces, the total potential energy functional $\mcl E$ is introduced as
 \begin{align}
 \mcl E =
-\int_{\mcl B_0} \mcl \psi(\gz F) \, \d V \,
+\int_{\mcl B_0} \psi(\gz F) \, \d V \,
 - \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \gz u \, \d S \, ,
 \end{align}
-where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in the referential configuration, $\mcl \psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
+where $\overline{\gz T}$ is the prescribed loading at the Neumann part of the boundary $\partial \mcl B_0^N$ in the referential configuration, $\psi$ denotes the strain-energy per unit reference volume and $\gz u$ should satisfy the prescribed Dirichlet boundary conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B_0 \setminus \partial \mcl B_0^N \neq \emptyset $.
 
 The principle of stationary potential energy at equilibrium requires that the directional derivative with respect to the displacement
 \begin{align}
@@ -248,7 +268,7 @@ F(\gz u, \delta \gz u) =
 \int_{\partial \mcl B_0^N} \overline{\gz T} \cdot \delta \gz u \, \d S
 = 0 \, ,
 \end{align}
-where $\gz P := \partial \mcl \psi / \partial \gz F$ is the Piola stress tensor.
+where $\gz P := \partial \psi / \partial \gz F$ is the Piola stress tensor.
 The double contraction in the first term can be re-written in terms of the symmetric Kirchhoff stress tensor $\gz \tau := \gz P \cdot \gz F^T$ as
 \begin{align}
 \gz P : \Grad \, \delta \gz u =
@@ -267,7 +287,7 @@ and therefore
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$
 is involved due to the symmetry of $\gz \tau$. Here, `$\grad$' denotes the gradient with respect to the spatial configuration, as opposed to the gradient in the referential setting `$\Grad$'.
-Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \mcl \psi / \partial \gz E \equiv 2 \partial \mcl \psi / \partial \gz C$,
+Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \psi / \partial \gz E \equiv 2 \partial \psi / \partial \gz C$,
 that is, $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
 \subsection{Linearization}
@@ -434,17 +454,17 @@ For the sake of demonstration, let us assume that $\gz A$ represents a mass oper
 \end{align*}
 Further assuming that the number of quadrature points $n$ in one-dimension matches the degree of the ansatz space plus one, the evaluation of all of the shape functions ($n^d$)
 in all quadrature points ($n^d$) has complexity $\mathcal{O}(n^{2d})$ in $d$ space dimensions.
-For the total matrix-vector product we get $\mathcal{O}(n^{2d})$, \todo{Should we include the number of elements in the total mat-vec?}
-and this is the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
+For the total matrix-vector product we get a cost of $\mathcal{O}(n^{2d})$ per element,
+the same as for a regular matrix-vector product where the entries are already precomputed. Assuming tensor product ansatz spaces and a tensor product quadrature rule, evaluation of this operations can be performed more efficiently using a technique called ``sum factorization''.
 
-\begin{figure}[!ht]
+\begin{figure}
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.3\textwidth}
       \centering
       \includegraphics[width=\textwidth]{nodes.png}
       \caption{Nodes of cubic Lagrange element}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.3\textwidth}
     \centering
     \includegraphics[width=\textwidth]{quad_points.png}
     \caption{Gaussian quadrature points}
@@ -522,7 +542,7 @@ They are introduced in order of lowest memory footprint to largest:
   cached $c_1 := \mu - 2 \lambda \log(J)$ for each cell and quadrature point}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   zero destination vector $\gz y = 0$ \;
-  update ghost values for source vector $\gz x$ \;
+  update ghost values for source vector $\gz x$ with MPI \;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\overline{\gz u^h}_K$, $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -541,7 +561,7 @@ They are introduced in order of lowest memory footprint to largest:
       evaluate queued contractions using sum factorization \;
       scatter results to the destination vector
   }
-  compress operation on $\gz y$ \;
+  compress remote integral contributions into $\gz y$ via MPI \;
   \caption{Matrix-free tangent operator: cache scalar quantities only}
   \label{alg:mf_scalar}
 \end{algorithm}
@@ -558,7 +578,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   zero destination vector $\gz y = 0$ \;
-  update ghost values for source vector $\gz x$ \;
+  update ghost values for source vector $\gz x$ with MPI\;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -572,7 +592,7 @@ Algorithm \ref{alg:mf_scalar} caches a single scalar which involves the logarith
         evaluate queued contractions using sum factorization \;
         scatter results to the destination vector
   }
-  compress operation on $\gz y$ \;
+  compress remote integral contributions into $\gz y$ via MPI \;
   \caption{Matrix-free tangent operator: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at when executed.}
   \label{alg:mf_tensor2}
 \end{algorithm}
@@ -590,7 +610,7 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
   evaluated based on $\overline{\gz u^h}$}
   \Output{action of the FE tangent operator \eqref{eq:algebraic_tangent} on $\gz x$}
   zero destination vector $\gz y = 0$ \;
-  update ghost values for source vector $\gz x$ \;
+  update ghost values for source vector $\gz x$ with MPI \;
   \ForEach{ element $K \in \Omega^h$ }{
         gather local vector values on this element $\gz x_K$ \;
         evaluate the following tensors at each quadrature point using sum factorization :\\
@@ -604,7 +624,7 @@ To that end, we cache two scalars that depend on the Jacobian $J$.
         evaluate queued contractions using sum factorization \;
         scatter results to the destination vector
   }
-  compress operation on $\gz y$ \;
+  compress remote integral contributions into $\gz y$ via MPI \;
   \caption{Matrix-free tangent operator: cache material part of the fourth-order spatial tangent stiffness tensor $\boldsymbol{\mathcal{C}}$ and Kirchhoff stress $\gz \tau$.}
   \label{alg:mf_tensor4}
 \end{algorithm}
@@ -638,6 +658,8 @@ For more information about the implementation details and data structures for su
 
 \begin{table}
 \centering
+\caption{Details of memory access for matrix-free evaluation with Algorithms~\ref{alg:mf_scalar}--\ref{alg:mf_tensor4}.}
+\label{tab:memory}
 \begin{tabular}{|l|ccc|}
 \hline
  & Vector access & physics terms & metric terms grad/Grad \\
@@ -648,23 +670,41 @@ Algorithm 2 & $d$ read, $d$ write & 2 + $\frac{d(d+1)}{2}$ & up to $d^2+1$\\
 Algorithm 3 & $d$ read, $d$ write & $\frac{d(d+1)}{2}+\left(\frac{d(d+1)}{2}\right)^2$ & up to $d^2+1$\\
 \hline
 \end{tabular}
-\caption{Details of memory access for matrix-free evaluation with Algorithms~\ref{alg:mf_scalar}--\ref{alg:mf_tensor4}.}
-\label{tab:memory}
 \end{table}
 
-Table~\ref{tab:memory} summarizes the three algorithms in terms of their implied memory access for one operator evaluation. The vector access in Algorithm~\ref{alg:mf_scalar} is higher than in the other variants because both the source vector $\gz x$ and the linearization point from the current FE solution $\overline{\gz u^h}$ need to be accessed, each with the usual indirect addressing pertaining to continuous finite element fields \cite{kronbichler12}. The cached quantities listed in the algorithms, labeled ``physics terms'' in the table, are increasing in size for the algorithms, and are separate for each point. Finally, the evaluation of the gradients in the referential and spatial coordinates also involve a data access via the so-called metric terms, the Jacobian from the unit element to the referential or spatial configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves both the Jacobian in the referential and the spatial frame, whereas the other two algorithms only involve the spatial (Eulerian) terms. Finally, the implementation framework also holds the determinant of the Jacobian for each point. Following \cite{kronbichler12}, some compression may be applied to the metric terms: On affine geometries, the Jacobian is the same at all quadrature points of a cell, and needs only be stored once. Therefore, the table lists those quantities as ``up to'' $d^2+1$ terms, which depends on the mesh and is a run-time decision in the code.
+Table~\ref{tab:memory} summarizes the three algorithms in terms of their implied
+memory access for one operator evaluation. The vector access in
+Algorithm~\ref{alg:mf_scalar} is higher than in the other variants because both
+the source vector $\gz x$ and the linearization point from the current FE
+solution $\overline{\gz u^h}$ need to be accessed, each with the usual indirect
+addressing pertaining to continuous finite element fields \cite{kronbichler12}.
+The cached quantities listed in the algorithms, labeled ``physics terms'' in the
+table, are increasing in size with more caching, and are separate data for each
+quadrature point. Finally, the evaluation of the gradients in the referential
+and spatial coordinates also involves a data access via the so-called metric
+terms, the inverse of the Jacobian from the unit element to the referential or
+spatial configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves
+both the Jacobian in the referential and the spatial frame, whereas the other
+two algorithms only involve the spatial (Eulerian) terms. Finally, the
+implementation framework also holds the determinant of the Jacobian for each
+point. Following \cite{kronbichler12}, some compression may be applied to the
+metric terms: On affine geometries, the Jacobian is the same at all quadrature
+points of a cell, and needs only be stored once. Therefore, the table lists
+those quantities as ``up to'' $d^2+1$ terms, with a memory access that depends
+on the mesh via a run-time decision in the code.
 
-\section{Description of the utilized numerical framework
+
+\section{Description of the utilized numerical framework}
 \label{sec:framework}
-}
 
-The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling}, were implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
-This library offers a number of paradigms by which to parallelize a finite-element code, and as a member of the xSDK (Extreme-scale Scientific Software Development Kit) ecosystem \citep{Bartlett2017b} aims to support exascale computing.
+
+The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in Section \ref{sec: Constitutive modelling}, was implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
+This library offers a number of paradigms by which to parallelize a finite-element code, and as a member of the xSDK (Extreme-scale Scientific Software Development Kit) ecosystem \citep{Bartlett2017b} aiming to support exascale computing.
 In this work we employ \texttt{deal.II}'s interface to the \texttt{p4est} \cite{p4est} library to perform a standard domain decomposition, whereafter each MPI process ``owns'' only a subset of elements and the mesh is distributed across all MPI processes.
 %
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.8\textwidth}
+  \begin{subfigure}[b]{0.4\textwidth}
     \centering
     \includegraphics[width=\textwidth]{fine_level_2d.png}
   \end{subfigure}
@@ -677,7 +717,7 @@ Figure \ref{fig:miehe_fine_level} illustrates a distributed MPI decomposition on
 
 In practice, this implies that parallelization of the assembly operation (for the matrix-based approach) and the linear solver, both of which are the focal points of investigation in this manuscript, has been achieved using MPI;
 various pre- and post-processing steps also leveraged parallelization.
-For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently used, leaving the choice for method of assembly and linear system preconditioning remaining.
+For the linear solver, \texttt{deal.II}'s implementation of the preconditioned conjugate gradient (CG) solver for symmetric positive-definite systems is consistently usedg.
 
 The discrete tangent operator described by \eqref{eq:algebraic_tangent} can be implemented in one of two ways, namely through a classical matrix-based approach or, alternatively, a matrix-free approach.
 For the matrix-based approach adopted in this study, the Trilinos \cite{Heroux2005} library was leveraged;
@@ -692,22 +732,22 @@ For further information about geometric multigrid methods we refer the reader to
 In this work, we adopt the matrix-free level operators within the GMG.
 In general, given a heterogeneous non-linear material, the definition of transfer operators\footnote{Finite dimensional linear operators from a vector space associated with the fine-scale mesh to the coarse-scale mesh, and in the opposite direction.} (for restriction and prolongation) and level operators is not trivial. One approach is to start from an arbitrary heterogeneous material at the fine scale and employ homogenization theory \cite{Suquet1987, Hill1972,Hashin1983,Castaneda1997} to design suitable transfer operators \cite{Miehe2007}.
 Such operators are, however, computationally very demanding.
-In this work we propose a different approach:
+In this work we avoid these complications by assuming
 % In this approach, the fine-scale displacement is decomposed into long-wave and short-wave contributions by an additive split, where the former is associated to the homogeneous response of a patch of elements and the latter represents fluctuations due to the heterogeneous structure of the patch.
 % However, for a patch of elements consisting of the same material, the transfer operators reduce to the standard geometric transfer.
 % Based on this observation we adopt the following approach:
-It is assumed that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
+that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
 In this case, the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators.
 We define the level operators as follows: Recall that the fine scale tangent operator \eqref{eq:algebraic_tangent} is obtained by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to all multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}.
 Essentially, level operators correspond to the linearization around the smoothed representation of displacement field.
 Note that this differs from the classical approach where the (tangent) operator $\gz A^{l+1}$ on level $l+1$ is directly related to the (tangent) operator $\gz A^{l}$ on level $l$ via $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, where $\gz I^l_{l+1}$ and $\gz I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
 
-The other parts of the GMG preconditioner such as level smoothers, matrix-free interlevel transfer operators and the coarse level iterative solver are provided by the \texttt{deal.II} library; implementational details are discussed in \cite{Clevenger2018}.
+The other parts of the GMG preconditioner such as level smoothers, matrix-free interlevel transfer operators, and the coarse level iterative solver are provided by the \texttt{deal.II} library; implementational details are discussed in \cite{Clevenger2018}.
 %
 The efficiency of the GMG preconditioner with the considered level operators will be assessed by numerical examples in the next section.
 We will, however, refrain from studying the machine performance aspects of the multigrid preconditioner as a whole as the focus of this paper is the matrix-free implementation of tangent operators of finite-strain elasticity both at the fine mesh level as well as the coarser multigrid levels.
 %
-Finally, we note that at the time of writing, a $p-$ version of the GMG was not available within the \texttt{deal.II} library and therefore not considered here.
+Finally, we note that a $p-$ version of multigrid \cite{Ronquist1987} would also be conceivable but is not considered here.
 %
 % For examples of other approaches that combine homogenization and multigrid methods, see \cite{Bayreuther2003,Fish1995} for applications using small strain elastic materials and \cite{Kaczmarczyk2010} with applications in fracture.
 
@@ -716,12 +756,12 @@ Finally, we note that at the time of writing, a $p-$ version of the GMG was not 
 
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.35\textwidth}
       \centering
       \includegraphics[width=\textwidth]{coarse_mesh.png}
       \caption{2D coarse mesh}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.35\textwidth}
     \centering
     \includegraphics[width=\textwidth]{coarse_mesh_3d.png}
     \caption{3D coarse mesh}
@@ -730,7 +770,7 @@ Finally, we note that at the time of writing, a $p-$ version of the GMG was not 
   \label{fig:miehe}
 \end{figure}
 
-In this section, we apply the proposed matrix-free operator algorithms for finite-strain hyperelastic materials as well as the geometric multigrid preconditioner to a benchmark problem from \cite{Miehe2007}. The coarse meshes for the 2D and 3D problems are illustrated in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
+In this section, we evaluate the proposed matrix-free operator algorithms for finite-strain hyperelastic materials as well as the geometric multigrid preconditioner on a benchmark problem from \cite{Miehe2007}. The coarse meshes for the 2D and 3D problems are illustrated in Figure \ref{fig:miehe}. The 2D material consists of a square (depicted in blue), a hole and two spherical inclusions (depicted in red). The size of the square domain is $10^{-3} \rm{mm}$.
 The matrix material is taken to have Poisson's ratio $0.3$ and shear modulus $\mu=0.4225 \times 10^6\, \rm{N/mm^2}$. The inclusion is taken to be $100$ times stiffer.
 The 3D material is obtained by extrusion of the 2D geometry into the third dimension.
 Note that although a relatively coarse mesh is used at the coarsest multigrid level, the geometry of the inclusions is captured accurately by manifold descriptions of the boundaries and interfaces.
@@ -742,12 +782,12 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 %
 \begin{figure}[!ht]
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.35\textwidth}
       \centering
       \includegraphics[width=\textwidth]{deformed.png}
       \caption{2D deformed mesh}
   \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.35\textwidth}
     \centering
     \includegraphics[width=\textwidth]{deformed_3d.png}
     \caption{3D deformed mesh}
@@ -771,6 +811,8 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 % Figure \ref{fig:miehe_gmg} illustrates the hierarchy of multigrid meshes for the 2D problem after two global refinements for the mesh introduced in figure \ref{fig:miehe_fine_level}.
 %
 \begin{table}[!htb]
+  \caption{Parameters for the benchmark: $p$ is the polynomial degree,
+  $q$ is the number of quadrature points in 1D, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.}
   \begin{subtable}{.5\linewidth}
   \centering
   \begin{tabular}{ccccc}
@@ -805,16 +847,13 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \caption{3D}
   \label{tab:input_parameters_3d}
   \end{subtable}
-  \caption{Parameters for the benchmark: $p$ is the polynomial degree,
-  $q$ is the number of quadrature points in 1D, $N_{gref}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{DoF}$ is the number of DoFs.
-  }
 \end{table}
 
 Aligned with the approach taken in similar previous investigations, compare e.g. \cite{kronbichler2017fast},
-we limit ourselves to comparisons made on a node level in this study. Examinations performed in this manner are most representative for the differences between the matrix-free and matrix-based approaches because problems of sufficient size are dominated by the local node-level performance with multigrid solvers. Multigrid solvers are well-known to be scalable given sufficiently small coarse-grid problems even to the largest supercomputers \cite{gholami2016,ibeid2018} as the communication is mostly between nearest neighbors.
+we limit ourselves to comparisons made on a node level in this study. Examinations performed in this manner are most representative for the differences between the matrix-free and matrix-based approaches because problems of sufficient size are dominated by the local node-level performance with multigrid solvers. Multigrid solvers with small enough coarse-grid problems are well-known to be scalable even to the largest supercomputers \cite{gholami2016,ibeid2018} as the communication is mostly between nearest neighbors.
 The benchmark calculations are performed for 2D and 3D problems with various combinations of polynomial degrees and number of global refinements, as is stated in Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
-We chose a problem size around $10^6$ DoFs for each test case as this was an upper limit due to the memory requirements of the matrix-based approach with a high polynomial order finite element.
-Even so, the problem size is large enough so that the sparse matrix (in excess of $1$ Gb when using the lowest polynomial order finite element discretization) will not fit into the L3 cache (on the order of tens of Mb in size), and therefore we can observe that the matrix-based approach is memory bound.
+We chose a problem size around $10^6$ DoFs for each test case as this was an upper limit due to the memory requirements of the matrix-based approach with a high polynomial degree.
+Even so, the problem size is large enough so that the sparse matrix (in excess of $1$ Gb when using the lowest polynomial order finite element discretization) will not fit into the L3 cache (on the order of tens of Mb in size), and therefore we can observe that the matrix-based approach is memory bound. Furthermore, also the data structures of the matrix-free approaches are too large to fit completely into caches.
 
 We conduct two performance studies using the described discretization, the first being for matrix-vector multiplication only, and the second for the preconditioned iterative linear solver.
 The results of the matrix-free approach with a geometric multigrid preconditioner are compared to the matrix-based approach in conjunction with the algebraic multigrid (AMG) preconditioner using the package ML \cite{Gee2006a} of the Trilinos \cite{Heroux2005} library version 12.12.1.
@@ -824,124 +863,127 @@ by the \texttt{deal.II} library via the \textit{PreconditionChebyshev} class.
 The largest eigenvalue $\lambda_{\rm{max}}$ of the level operators is estimated from $30$ iterations of the CG solver and the smoother
 is set to target the range $[0.06\lambda_{\rm{max}}, 1.2\lambda_{\rm{max}}]$.
 On the coarsest level, we use the Chebyshev preconditioner as a solver \cite{Varga2009} to reduce the residual by three orders of magnitude.
-Since this smoother only uses diagonal elements of the operator it is readily compatible with the matrix-free approach while most default smoothers rely on an explicit matrix form.
+Since this smoother only uses diagonal elements of the operator, it is readily compatible with the matrix-free approach to leverage fast matrix-vector products, as opposed to most default smoothers which rely on an explicit matrix form.
 
-Computations were performed on two systems: A dual-socket Intel Xeon Gold 6230 (``Cascade Lake'') with 20 cores per socket and 96 GB of DDR4-2933 memory (nominal bandwidth per socket: 141 GB/s). Turbo mode is enabled with a power limit of 135 watt per socket, which results in the processor running at 2.8 GHz for scalar code and 2.0 GHz for AVX-512-heavy code in all experiments. The GNU compiler version 9.1.0 with flags ``-O3 -march=skylake-avx512' and OpenMPI version 4.0.1 were used, with the code run in pure MPI mode.
+Computations were performed on two systems: A dual-socket Intel Xeon Gold 6230 (``Cascade Lake''), released in 2019, with 20 cores per socket and 96 GB of DDR4-2933 memory (nominal bandwidth per socket: 141 GB/s). Turbo mode is enabled with a power limit of 135 watt per socket, which results in the processor running at 2.8 GHz for scalar code and 2.0 GHz for AVX-512-heavy code in all experiments. The GNU compiler version 9.1.0 with flags ``-O3 -march=skylake-avx512' and OpenMPI version 4.0.1 were used, with the code run in pure MPI mode.
 %A node on the ``Emmy'' cluster at RRZE, FAU has two Xeon 2660v2 ``Ivy Bridge'' chips (10 cores per chip + SMT) running at 2.2 GHz with 25 MB shared cache per chip and 64 GB of RAM. Intel's compiler version 18.03 with flags ``-O3 -march=native'' and Intel MPI version 18.03 are used.
-The ``IWR'' results were obtained on a single machine with eight Intel Xeon E7-8870 ``Sandy Bridge'' chips (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
+The ``IWR'' results were obtained on a single machine with eight Intel Xeon E7-8870 ``Westmere'' chips, released in 2011, (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
 Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. one socket for Cascade Lake and two sockets for ``IWR''.
 
 \subsection{Matrix-vector multiplication}
 
-\begin{figure}[!ht]
+
+Figures \ref{fig:benchmark_miehe_CSL} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem on the two hardware systems.
+We are interested in the wall-clock time (average over 10 runs for each linear solver step) per DoF as a first metric.
+As expected, the matrix-vector multiplication becomes very expensive for higher order discretization for sparse matrix-based approaches,
+as the matrix becomes more and more dense. In order to increase visibility, the figures also report the throughput of the matrix vector product, computed by the ratio of the number of degrees of freedom over the time for a matrix-vector product, in panels (a) and (d).
+The performance results for finite-strain elasticity operators considered in this study are qualitatively similar to those reported for the Laplace operator in \cite{kronbichler12}.
+Note that we consider only deformed meshes together with separate metric terms according to Table~\ref{tab:memory}. These deformed terms are the result of manifold descriptions of the boundaries and interfaces  to capture the geometry as well as
+the linearization-related mapping required for evaluation of gradients with respect to the deformed configuration.
+
+\begin{figure}
   \centering
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
       \centering
       \includegraphics[width=\textwidth]{CSL_Munich_throughput2d.eps}
       \caption{throughput matrix-vector product (2D)}
-      \label{fig:benchmark_miehe_CSL_vmult2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{CSL_Munich_throughput3d.eps}
-    \caption{throughput matrix-vector product (3D)}
-    \label{fig:benchmark_miehe_CSL_vmult3}
-  \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
       \centering
       \includegraphics[width=\textwidth]{CSL_Munich_timing2d.eps}
       \caption{time matrix-vector product (2D)}
       \label{fig:benchmark_miehe_CSL_vmult2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{CSL_Munich_memory2d.eps}
+      \caption{memory access (2D)}
+      \label{fig:benchmark_miehe_CSL_memory2}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{CSL_Munich_throughput3d.eps}
+    \caption{throughput matrix-vector product (3D)}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
     \centering
     \includegraphics[width=\textwidth]{CSL_Munich_timing3d.eps}
     \caption{time matrix-vector product (3D)}
     \label{fig:benchmark_miehe_CSL_vmult3}
   \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.49\textwidth}
-      \centering
-      \includegraphics[width=\textwidth]{CSL_Munich_memory2d.eps}
-      \caption{memory consumption (2D)}
-      \label{fig:benchmark_miehe_CSL_memory2}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
     \centering
     \includegraphics[width=\textwidth]{CSL_Munich_memory3d.eps}
-    \caption{memory consumption (3D)}
+    \caption{memory access (3D)}
     \label{fig:benchmark_miehe_CSL_memory3}
   \end{subfigure}
-  \caption{Cascade Lake, 1 socket with 20 cores, matrix-vector multiplication.}%
+  \caption{Cascade Lake, one socket with 20 cores, matrix-vector multiplication.}%
   \label{fig:benchmark_miehe_CSL}
 \end{figure}
 
-
-\begin{figure}[!ht]
+\begin{figure}
   \centering
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{IWR_newest_patched_throughput2d.eps}
+      \caption{throughput matrix-vector product (2D)}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
       \centering
       \includegraphics[width=\textwidth]{IWR_newest_patched_timing2d.eps}
-      \caption{matrix-vector product (2D)}
+      \caption{time matrix-vector product (2D)}
       \label{fig:benchmark_miehe_IWR_vmult2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{IWR_newest_patched_timing3d.eps}
-    \caption{matrix-vector product (3D)}
-    \label{fig:benchmark_miehe_IWR_vmult3}
-  \end{subfigure}
-  ~
-  \begin{subfigure}[b]{0.49\textwidth}
+  \begin{subfigure}[b]{0.32\textwidth}
       \centering
       \includegraphics[width=\textwidth]{IWR_newest_patched_memory2d.eps}
-      \caption{memory consumption (2D)}
+      \caption{memory access (2D)}
       \label{fig:benchmark_miehe_IWR_memory2}
   \end{subfigure}
-  \begin{subfigure}[b]{0.49\textwidth}
+  ~
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_newest_patched_throughput3d.eps}
+    \caption{throughput matrix-vector product (3D)}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{IWR_newest_patched_timing3d.eps}
+    \caption{time matrix-vector product (3D)}
+    \label{fig:benchmark_miehe_IWR_vmult3}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_newest_patched_memory3d.eps}
-    \caption{memory consumption (3D)}
+    \caption{memory access (3D)}
     \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
-  \caption{IWR cluster, matrix-vector multiplication}%
+  \caption{IWR cluster, 20 cores, matrix-vector multiplication}%
   \label{fig:benchmark_miehe_IWR}
 \end{figure}
 
-Figures \ref{fig:benchmark_miehe_CSL} and \ref{fig:benchmark_miehe_IWR} show the results of the matrix-vector multiplication for the considered finite-strain hyperelastic benchmark problem as performed on the two clusters.
-We are interested in the wall-clock time (average over 10 runs for each linear solver step) per DoF as a first metric.
-As expected, the matrix-vector multiplication becomes very expensive for higher order discretization for sparse matrix-based approaches,
-as the matrix becomes more and more dense.
-The performance results for finite-strain elasticity operators considered in this study are qualitatively similar to those reported for the Laplace operator in \cite{kronbichler12}.
-Note that we consider only non-Cartesian meshes together with additional mappings (namely, manifold descriptions of the boundaries and interfaces \cite{dealII90} to capture the geometry as well as
-the linearization-related mapping required for evaluation of gradients with respect to the deformed configuration).
-Both factors increase the memory consumption and make element operations more expensive.
-Nonetheless,
-the matrix-free implementation is faster than the matrix-based counterpart already for bi-cubic Lagrangian basis in 2D and tri-quadratic in 3D.
-Figures \ref{fig:benchmark_miehe_Emmy_vmult2}, \ref{fig:benchmark_miehe_Emmy_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies,
+
+The matrix-free implementation is faster than the matrix-based counterpart already for a bi-quadractic Lagrangian basis in 2D and a tri-quadratic in 3D on both systems on both systems The ``MF tensor2'' and ``MF scalar'' strategies outperform the sparse matrix already for tri-linear elements of polynomial degree $p=1$. For example for the ``tensor2'' matrix-free implementation with $p=4$, we record a 5$\times$ higher throughput than the matrix-based evaluation of $p=1$. The advantage of the matrix-free implementation can be explained by the memory access per unknown shown in the panels (c) and (f) of the figures, as the time per unknown in panels (b) and (e) closely follows the memory access.
+Figures \ref{fig:benchmark_miehe_CSL_vmult2}, \ref{fig:benchmark_miehe_CSL_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies,
 described in Algorithms \ref{alg:mf_scalar}, \ref{alg:mf_tensor2} and \ref{alg:mf_tensor4}.
 Two conclusions can be drawn from these results:
-The scalar caching implementation is the most time consuming of the three, as at each step we additionally evaluate the gradient of the displacement field in the referential configuration that is required to evaluate the Kirchhoff stress $\gz \tau$.
-There is little difference in terms of the wall-clock time per DoF between the approach where the material part of the fourth-order spatial tangent stiffness tensor is cached (``tensor4'') and the one where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on the second-order symmetric tensor (``tensor2'').
-This indicates that the time savings we get from the latter approach are insignificant within the complete matrix-free operator implementation.
-Consequently, we can apply the matrix-free approach to any finite-strain material model by caching the material part of the fourth-order spatial tangent stiffness tensor in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
+Firstly, the algorithm where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on the second-order symmetric tensor (``tensor2'') is the fastest approach in both 2D and 3D and on both systems. When compared to the scalar caching implementation, the ``tensor2'' variant loads slightly less data, because only the spatial configuration is needed in terms of metric terms, as compared to both the spatial and the referential configuration in the scalar caching cache in order to evaluate the Kirchhoff stress $\gz \tau$. Besides the memory access, the scalar caching strategy also involves considerably more computations at quadrature points. On the newer Cascade Lake system with a Flop/Byte ratio of 9.1 for the theoretical peak values, the scalar caching strategy is closer to the ``tensor2'' variant. On the IWR machine, the Flop/Byte ratio is 2.9, which means that much fewer computations can be sustained for the same memory transfer.
+
+Secondly, the approach where the material part of the fourth-order spatial tangent stiffness tensor is cached (``tensor4'') is slower than the ``tensor2'' approach, despite fewer arithmetic operations, on both systems. This shows that the memory access is the deciding metric for the ``tensor4'' strategy.
+Nonetheless, the ``tensor4'' strategy with $p\geq 2$ is considerably faster than matrix-based strategies: For $p=4$ in 3D, the matrix-free variant is three times as fast as a sparse matrix-vector product on \emph{linear elements} on Cascade Lake. This means we can apply this matrix-free variant to any finite-strain material model by caching the material part of the fourth-order spatial tangent stiffness tensor in addition to the Kirchhoff stress and expect this to be faster than the matrix-based implementation.
 It is therefore feasible to define highly performant generic operators that are independent of any applied constitutive laws,
 as long as the resulting tangent operator is expressed via \eqref{eq:algebraic_tangent}.
 
-As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
-Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} demonstrate that even with caching one fourth-order symmetric tensor and one second-order tensor at each quadrature point (``tensor4''), the matrix-free approach takes much less memory than its matrix-based counterpart.
-In those graphs, we report the overall memory needed to cache additional quantities required for the tangent operator here considered,
-as well as the memory required by the \texttt{deal.II} \textit{MatrixFree} object, which caches the inverse of the Jacobian of the transformation
-from unit to real cell \cite{kronbichler12}.
-Note that for Algorithm \ref{alg:mf_scalar} we need to evaluate gradients with respect to both deformed and undeformed
-configurations, and therefore two inverses will be cached via two different \textit{MatrixFree} objects.
 
-Finally, we analyze the node-level performance of the two approaches using the roofline model.
-Memory bandwidth (MBytes/s) and the number of floating point operations per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
-The measurements are done on a single socket of RRZE cluster by pinning all 10 MPI processes to this socket, whose
-memory bandwidth\footnote{As measured with the \textit{load\_avx} benchmark of \textit{likwid-bench} \cite{likwid}.} and peak performance are $B=47.2 \,\rm{GB/s}$ and $P=176\, \rm{GFlop/s}$, respectively.
-Turbo mode of the CPU was disabled.
+As outlined in the introduction, it is not only the performance of the matrix-free vector multiplication, but also the memory requirement to store a sparse matrix which is the driving force behind matrix-free methods.
+Figures \ref{fig:benchmark_miehe_CSL_memory2}, \ref{fig:benchmark_miehe_CSL_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3} demonstrate that even with caching one fourth-order symmetric tensor and one second-order tensor at each quadrature point (``tensor4''), the matrix-free approach takes much less memory than its matrix-based counterpart.
+In those graphs, we report the overall memory needed to cache additional quantities required for the tangent operator according to Table~\ref{tab:memory}, as well as all metadata required by
+the \texttt{deal.II} \textit{MatrixFree} object.
+
+Finally, we analyze the node-level performance of the two approaches using the roofline performance model \cite{Williams2009}.
+The achieved memory throughput (MBytes/s) and the number of floating point operations executed per second (MFLOP/s) are measured using the \texttt{MEM\_DP} group of the LIKWID \cite{likwid} tool, version 4.2.1.
+The measurements are done on a single socket of the Cascade Lake system by pinning all 20 MPI processes to this socket, whose arithmetic peak performance at 2.0 GHz is $1280\, \text{GFlop/s}$ and measured memory bandwidth for pure read tasks is $120\, \text{GB/s}$ as well as $90\, \text{GB/s}$ for mixed data access of two loads per one store.
 
 \begin{figure}[!ht]
   \centering
@@ -957,32 +999,20 @@ Turbo mode of the CPU was disabled.
     \caption{3D}
     \label{fig:roofline_3d}
   \end{subfigure}
-  \caption{Roofline model for a selection of polynomial degrees. `Peak DP' denotes the peak double precision performance ($P$),
+  \caption{Roofline model for a selection of polynomial degrees on Cascade Lake. `Peak DP' denotes the peak double precision performance ($P$),
   `w/o FMA' represents a ceiling without Fused Multiply-Add ($P/2$), finally `w/o SIMD' is a ceiling where both FMA
-    and SIMD vectorization are discarded ($P/8$).}%
+    and SIMD vectorization are discarded ($P/16$).}%
   \label{fig:roofline}
 \end{figure}
 
-Figure \ref{fig:roofline} shows results of the roofline performance model.
-As expected, the matrix-based approach is memory bound and (on average) achieves the performance of $\pgfmathprintnumber{8.2093245}\,\rm{GFlop/s}$ (4.6\% of the peak performance) in 2D.
+The results of the roofline analysis in Figure~\ref{fig:roofline} show that the matrix-based approach is fully memory-bandwidth bound with a very low arithmetic intensity of 0.16 and a performance of $\pgfmathprintnumber{17.36}\,\rm{GFlop/s}$ (1.4\% of the arithmetic peak) averaged over the 2D results.
 The matrix-free implementations of the fine-strain elastic tangent operator (on average) lead to a much better performance of
-$\pgfmathprintnumber{18.8047083222}\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
-The achieved performance is about 10.6\% of the peak arithmetic performance. This is much lower than the
-70\% reported for the Laplace operator on Cartesian meshes in \cite{kronbichler12}, but similar to what was obtained in \cite[Figure 14]{kronbichler2017fast} when not optimizing for Cartesian meshes.
-Unfortunately, performance measurements for non-Cartesian meshes were not reported in \cite{kronbichler12}.
+$\pgfmathprintnumber{86.9}\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
+The achieved performance is about 6.8\% of the peak arithmetic performance. This result similar to the deformed mesh results of \cite[Figure 18]{kronbichler2017fast}.
 
-When comparing the data for the ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) to that from the ``tensor2'' (Algorithm \ref{alg:mf_tensor2}) caching strategy,
-we observe a marginal increase in computational intensity and almost unchanged performance.
-This coincides with our expectation that the latter algorithm requires transferring fewer bytes to perform operations on a single quadrature point
-(compare line 9 in Algorithm \ref{alg:mf_tensor4} that loads a symmetric rank-4 tensor to the line 9 in Algorithm \ref{alg:mf_tensor2} that evaluates the
-same contraction by loading two scalars $c_1$ and $c_2$).
-On the other hand, the ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates a higher computational intensity.
-This is not surprising as at each quadrature point we need to re-evaluate the Kirchoff stress $\gz \tau$.
-Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations, an additional
-second-order tensor per quadrature point (inverse of the Jacobian transformation) will be cached as compared to the Algorithm \ref{alg:mf_tensor2}.
-As a result both algorithms will have comparable memory requirements (also confirmed by Figures \ref{fig:benchmark_miehe_Emmy_memory2}, \ref{fig:benchmark_miehe_Emmy_memory3}, \ref{fig:benchmark_miehe_IWR_memory2} and \ref{fig:benchmark_miehe_IWR_memory3}),
-however the ``scalar'' algorithm performs a large number of repetitive operations that are
-independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_scalar}), which makes it the worst option among the three.
+The roofline model also explains the difference in performance between the ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) and the ``tensor2'' caching strategy (Algorithm \ref{alg:mf_tensor2}): Both algorithms essentially run at the memory limit of around $100\, \text{GB/s}$, but the former involves a considerably higher memory transfer according to Table~\ref{tab:memory}.
+The ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates the highest computational intensity, but remains close to the memory bandwidth limit with more than $80\, \text{GB/s}$ except for the $p=2$ case. The higher arithmetic load is not surprising as at each quadrature point we need to re-evaluate the Kirchoff stress $\gz \tau$.
+Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations as listed in Table~\ref{tab:memory}, no advantage of the scalar caching can be deduced despite the higher arithmetic performance.
 
 \begin{figure}[!ht]
   \centering
@@ -1015,22 +1045,14 @@ independent on the right hand side vector (steps 8--11 in Algorithm \ref{alg:mf_
   \label{fig:breakdown}
 \end{figure}
 
-In order to have a better understanding of the behavior of the most promising ``tensor4'' implementation,
-we collect its performance data and computing times for various stages inside the element loop (see Algorithm \ref{alg:mf_tensor4}):
-(i) `read / write' denotes reading and writing from/to a global vector (lines 2 and 13);
+In order to better understand the behavior of the matrix-free implementations,
+we exemplarily collect a breakdown of the operator evaluation into various stages inside the element loop of Algorithm \ref{alg:mf_tensor4}:
+(i) `read / write' denotes reading and writing from/to a global vector (lines 2 and 13) with indirect addressing of gather/scatter type;
 (ii) `sum factorization' denotes application of sum factorization techniques (lines 4, 5 and 12);
 (iii) `quadrature loop' denotes operations performed at each quadrature (lines \mbox{6 -- 11}).
-Given that the measurements are now down within the cell loop, we collected results on smaller meshes by adopting only one
-global refinement in 2D and no global mesh refinement in 3D.
-It is clear from Figure \ref{fig:breakdown_stackedbar_2d_tensor4} and  \ref{fig:breakdown_stackedbar_3d_tensor4} that the
-`read / write' steps take a negligible amount of time on each element.
-For higher order bases, the majority of time is spent within the quadrature loop.
-When analyzing the roofline data (Figure \ref{fig:roofline_2d_tensor4} and \ref{fig:roofline_3d_tensor4}),
-we observe that this part of the algorithm demonstrates rather low performance, which in our opinion is the source of the
-suboptimal performance of the whole matrix-free matrix-vector product (see Figure \ref{fig:roofline}).
-In this case the, quadrature loop consists of, essentially, a
-single contraction between two second order tensors (step 7 in Algorithm \ref{alg:mf_tensor4}) and a
-double contraction between a symmetric second order tensor and a fourth order tensor (step 9 in Algorithm \ref{alg:mf_tensor4}).
+Given that the measurements are within the cell loop and there is an extensive overlap between the memory transfer (due to hardware prefetching) and arithmetic operations, the data of Figure~\ref{fig:breakdown} is derived from measuring the cost of `sum factorization' by comparing the timings of part (i) and (ii) together against part (i) only.
+From Figure \ref{fig:breakdown_stackedbar_2d_tensor4} and  \ref{fig:breakdown_stackedbar_3d_tensor4}, it becomes clear that sum factorization is cheap enough to be almost completely hidden behind the memory transfer.
+The majority of time is spent within the quadrature loop for all variants, with an increasing proportion for increasing degrees. Note also that higher degrees derive a higher throughput in terms of DoF/s in Figures~\ref{fig:benchmark_miehe_CSL} and~\ref{fig:benchmark_miehe_IWR}, as the memory access of quadrature point data scales as $(p+1)^d/p^d$ compared to the number of unknowns.
 
 \begin{table}
   \centering
@@ -1072,109 +1094,109 @@ double contraction between a symmetric second order tensor and a fourth order te
 \end{table}
 
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to MPI. For these rather small count of MPI processes, the results confirm that the performance gained is independent. Furthermore, the improvement due to explicit intrinsics for the data used in the quadrature loop, is comparable to the ones in \cite[Figure 6]{kronbichler2017fastcomputer} where the speedup factor is $1.2-1.8$ for a similar architecture.
+\todo[inline]{Do we want to update Tables \ref{tab:numbers_2d} and \ref{tab:numbers_3d}?}
 
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
-The first one is the higher algorithmic intensity as compared to the matrix-based implementation, which is clearly memory
-bound, see Figure \ref{fig:roofline}.
-The second one is the reduction in the number of floating point operations per DoF thanks to the sum factorization technique, as discussed in
+The first one is the higher algorithmic intensity and lower memory access as compared to the matrix-based implementation, see Figure \ref{fig:roofline}. Since both variants are in the memory-limited regime, the matrix-free implementation with its lower memory access is beneficial.
+The second benefit is the reduction in the number of floating point operations per DoF for higher order elements thanks to the sum factorization technique, as discussed in
 Section \ref{sec:mf} and \cite[Section 2.4]{kronbichler12}.
-Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is the most flexible approach with relatively high computational intensity.
+Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is the most flexible approach, whereas Algorithm~\ref{alg:mf_tensor2} is faster due to a higher arithmetic intensity.
 
 \subsection{Preconditioned iterative solver}
 
 \begin{figure}[!ht]
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_cg2d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_cg2d.eps}
     \caption{CG iterations (2D)}
     \label{fig:benchmark_miehe_Emmy_cg2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_cg3d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_cg3d.eps}
     \caption{CG iterations (3D)}
     \label{fig:benchmark_miehe_Emmy_cg3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_solver2d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_solver2d.eps}
     \caption{CG solution time (2D)}
     \label{fig:benchmark_miehe_Emmy_sol2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{Emmy_RRZE_solver3d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_solver3d.eps}
     \caption{CG solution time (3D)}
     \label{fig:benchmark_miehe_Emmy_sol3}
   \end{subfigure}
-  \caption{Emmy cluster, RRZE, iterative solver.}%
+  \caption{Cascade Lake, one socket with 20 cores, iterative solver.}%
   \label{fig:benchmark_miehe_Emmy_cg}
 \end{figure}
 
 \begin{figure}[!ht]
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_cg2d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_cg2d.eps}
     \caption{CG iterations (2D)}
     \label{fig:benchmark_miehe_IWR_cg2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_cg3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_cg3d.eps}
     \caption{CG iterations (3D)}
     \label{fig:benchmark_miehe_IWR_cg3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_solver2d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_solver2d.eps}
     \caption{CG solution time (2D)}
     \label{fig:benchmark_miehe_IWR_sol2}
   \end{subfigure}
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_solver3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_solver3d.eps}
     \caption{CG solution time (3D)}
     \label{fig:benchmark_miehe_IWR_sol3}
   \end{subfigure}
-  \caption{IWR cluster.}%
+  \caption{IWR cluster, 20 cores.}%
   \label{fig:benchmark_miehe_IWR_cg}
 \end{figure}
 
 Next, we evaluate the performance of the proposed geometric multigrid preconditioner.
 Our main goal is to examine whether or not the adopted level operators lead to an efficient preconditioner from the linear algebra perspective. To that end,
-we consider the average number of CG iterations throughout the entire simulation (i.e. each Newton-Raphson iteration and each loading step).
+we consider the average number of CG iterations throughout the entire simulation, i.e., averaged over each Newton-Raphson iteration and each loading step.
 Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_IWR_cg3} show a
- noticeable increase in the average number of CG iterations for different polynomial degrees
+ noticeable increase in the average number of CG iterations for increasing polynomial degrees
  for the GMG preconditioner.
 Although not reported in this section, we identified that
 the coarse level solver setup will greatly affect the performance of the preconditioner.
-In particular, we can improve the number of iterations by choosing a more accurate coarse level solver,
-however this leads to an overall more expensive linear solver.
-However, the settings used in this study are optimized for the considered problem in terms of the wall-time spent in the linear solver.
+In particular, we can improve the number of iterations by choosing a more accurate coarse level solver.
+%However, the settings used in this study are optimized for the considered problem in terms of the wall-time spent in the linear solver.
 The black-box AMG preconditioner
 demonstrates the same trend in terms of the number of CG iterations, but
 requires many more iterations for convergence.
-Consequently, we can conclude that for the here considered finite strain elasticity problem (i) the selected smoother is suitable, and that (ii) although the adopted level operators are not built using the triple product $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, they still result in a multigrid preconditioner which requires much fewer CG iterations as compared to the algebraic multigrid.
+Consequently, we can conclude that (i) the selected smoother is suitable for the present finite strain elasticity problem, and that (ii) although the adopted level operators are not built using the triple product $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, they still result in a multigrid preconditioner which requires fewer CG iterations as compared to the algebraic multigrid baseline.
 
-Additionally, we compare solution times of the preconditioned iterative solvers.
-Our goal is to determine whether the matrix-free approach with a GMG preconditioner can be faster than the matrix-based approach with a well-established implementation of an AMG preconditioner.
+Figures~\ref{fig:benchmark_miehe_Emmy_cg} and~\ref{fig:benchmark_miehe_IWR_cg} also report the solution times of the preconditioned iterative solvers.
+Our goal is to compare the matrix-free solver with a GMG preconditioner against a matrix-based approach with a well-established implementation of an AMG preconditioner.
 We note specifically that the comparison is restricted to the choice of level operators used with the pre-existing GMG framework, and not the framework itself.
 Figures \ref{fig:benchmark_miehe_Emmy_sol2}, \ref{fig:benchmark_miehe_Emmy_sol3}, \ref{fig:benchmark_miehe_IWR_sol2} and \ref{fig:benchmark_miehe_IWR_sol3} confirm that the efficiency of the proposed GMG preconditioner translates into faster solution times for all polynomial degrees.
 Most importantly, the wall time per DoF for the matrix-free solver with GMG preconditioner stays almost constant both for 2D and 3D problems.
 In comparison, the wall time of the matrix-based iterative solver grows rapidly with increasing polynomial degree.
 Clearly this is related both to the performance of the preconditioner from the linear algebra perspective as well as the matrix-vector products, studied in the previous section.
-Based on these results, we conclude that the matrix-free approach with the adopted here geometric multigrid preconditioner can deliver a very competitive solution strategy for engineering problems
+Based on these results, we conclude that the matrix-free approach represents a very competitive solution strategy for engineering problems
 with compressible hyperelastic finite strain material models.
 
-Extension of this study from the node level to the cluster level is beyond the scope of this work.
-However, as a step in this direction we have performed a preliminary study of the weak scalability of the implementation.
+An extension of this study from the node level to the cluster level is beyond the scope of this work.
+However, we have performed a preliminary study of the weak scalability of the implementation.
 Table \ref{tab:weak_3d} demonstrates a good weak scaling up to 1280 processes\footnote{%
 This corresponds to 64 nodes, which is the maximum we could request on the RRZE Emmy HPC cluster.
 } of the wall time per matrix-vector product and per iteration in the CG solver for the 3D problem with a tri-quadratic basis.
 This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well,
 also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CPU cores and 34.4 billion degrees of freedom for an incompressible flow problem.
+\todo[inline]{Do we want to update? I can run on up to 8 nodes with CSL. This allows me to do 3 steps of weak scaling in 2D, 1 socket, 2 nodes, 8 nodes, and two steps in 3D, 1 node and 8 nodes. Not very large but enough to show our point?}
 
 \begin{table}
   \centering
@@ -1195,15 +1217,14 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 \label{sec:summary}
 
 In this contribution, we proposed and numerically investigated three different matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
-To the best of our knowledge, this is the first work that applies matrix-free sum factorization techniques to partial differential equations arising in this case.
+To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques to the partial differential equations arising in this case.
 Among the three examined algorithms,
-the implementation that caches the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress was shown to be faster than the matrix-based approach for polynomial degrees higher than one in 3D and polynomial degrees higher than two in 2D.
-Given that we did not utilize the specific form of the material part of the stiffness tensor in this case, we conclude
-that the matrix-free implementation of the tangent operator can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
+the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the spatial configuration is faster than caching only a scalar at quadrature points or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress.
+Given that we did not utilize the specific form of the material part of the stiffness tensor in the latter case, we conclude
+that the matrix-free implementation of the tangent operator is somewhat slower but more flexible because it can be applied to any constitutive model which operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
 
 The roofline model indicates that the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity.
-We identified that one of the bottlenecks is related to the quadrature loop on each element where double contractions of fourth-order and second-order symmetric tensor
-as well as single contraction of two second-order tensors is performed.
+Despite the higher arithmetic intensity, the matrix-free implementations are still memory bandwidth-limited and in particular by the data at quadrature points in terms of fourth-order and second-order symmetric tensors.
 
 We also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner
 with standard geometric transfer operations between each level.
@@ -1219,24 +1240,17 @@ the geometric multigrid preconditioner is a very competitive solution strategy, 
 Our future work will be focused on adopting the proposed matrix-free multigrid solution approach to $\operatorname{FE}^2$ homogenization
 as well studying its behavior on the cluster level.
 
-\ifijnme
-\acks
-\else
 \section*{Acknowledgements}
-\fi
 
 D.~Davydov acknowledges the financial support of the German Research Foundation (DFG), grant DA 1664/2-1.
-
-D.~Davydov, D.~Arndt and J-P.~Pelteret are grateful to Martin Kronbichler (TU Munich), Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for fruitful discussions on matrix-free operator evaluation approaches.
-
-D.~Arndt was supported by the German Research Foundation (DFG) under the project ``High-order discontinuous
+D.~Davydov, D.~Arndt and J-P.~Pelteret are grateful to Jed Brown (CU Boulder) and Veselin Dobrev (Lawrence Livermore National Laboratory) for fruitful discussions on matrix-free operator evaluation approaches.
+D.~Arndt and M.~Kronbichler were supported by the German Research Foundation (DFG) under the project ``High-order discontinuous
 Galerkin for the exa-scale'' (\mbox{ExaDG}) within the priority program ``Software
 for Exascale Computing'' (SPPEXA).
-
 P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible, as well as funding by the EPSRC Strategic Support Package ``Engineering of Active Materials by Multiscale/Multiphysics Computational Mechanics''.
 
 \ifijnme
-\bibliographystyle{wileyj}
+%\bibliographystyle{wileyj}
 \else
 %\section*{Bibliography}
 \bibliographystyle{elsarticle-num}
