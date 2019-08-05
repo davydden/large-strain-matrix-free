@@ -1237,20 +1237,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const Tensor<2, dim, NumberType> &grad_Nx_v =
                 phi_reference.get_gradient(q);
 
-              // double_contract<2,3,0,1>(cached_tensor4_ns(cell, q), grad_Nx_v)
-              // does not work with VectorizedArray
-              Tensor<2, dim, NumberType> res{};
-              for (unsigned int i = 0; i < dim; ++i)
-                for (unsigned int j = 0; j < dim; ++j)
-                  {
-                    auto & res_ij = res[i][j];
-                    for (unsigned int k = 0; k < dim; ++k)
-                      for (unsigned int l = 0; l < dim; ++l)
-                        res_ij += cached_tensor4_ns(cell, q)[i][j][k][l] * grad_Nx_v[k][l];
-                  }
-
               phi_reference.submit_gradient(
-                res,
+                double_contract<2,0,3,1>(cached_tensor4_ns(cell, q), grad_Nx_v),
                 q);
             }
         }
