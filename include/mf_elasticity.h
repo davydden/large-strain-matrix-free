@@ -415,7 +415,7 @@ namespace Cook_Membrane
         prm.add_parameter("MF caching",
                           mf_caching,
                           "Type of caching for matrix-free operator",
-                          Patterns::Selection("scalar|tensor2|tensor4|tensor4_ns"));
+                          Patterns::Selection("scalar|scalar_referential|tensor2|tensor4|tensor4_ns"));
 
         prm.add_parameter(
           "MF Chebyshev number CG iterations",
@@ -2695,7 +2695,7 @@ namespace Cook_Membrane
     // Use constraints functions and parameters as given from the input file
     // We also setup GMG constraints
 
-    ZeroFunction<dim> zero(n_components);
+    Functions::ZeroFunction<dim> zero(n_components);
     for (const auto &el : parameters.dirichlet)
       {
         const auto &mask = parameters.dirichlet_mask.find(el.first);
