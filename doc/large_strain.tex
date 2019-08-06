@@ -353,6 +353,7 @@ For the current study, we use the compressible Neo-Hookean model
 \psi \left( \mathbf{C} \right)
   = \frac{\mu}{2} \left[ \trace{\mathbf{C}} - \trace{\mathbf{I}} - 2 \ln\left( J \right) \right]
   + \lambda \ln^{2}\left( J \right)
+\label{eq:neo_hookean_energy}
 \end{gather}
 where $\mu$ and $\lambda$ denote the shear modulus and Lam\'{e} parameter respectively.
 Derived using statistical thermodynamics applied to cross-linked polymers, the Neo-Hookean model \cite{Treloar1975a,Treloar1976a} is commonly used to model rubber-like materials in the finite-strain regime.
@@ -428,6 +429,28 @@ Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration, whereas the integration is done in the referential configuration.
 
+For completeness we mention that the fully referential linearization of the here considered constitutive equation \eqref{eq:neo_hookean_energy} results in the following equivalent bilinear form
+\begin{align}
+  A_{ij} \equiv a(\gz N_i, \gz N_j) =&
+  \int_{\mcl B_0}
+  \grad \gz N_i : D_{F}P : \grad \gz N_j
+  \d V
+  \label{eq:algebraic_tangent_dPdF}
+  \\
+  D_{F}P :=&
+  2 \lambda
+  \gz F^{-T} \otimes \gz F^{-T}
+  +
+  \left[\mu - 2 \lambda \ln\left( J \right) \right]
+  \gz F^{-T} \underline{\otimes} \gz F^{-1}
+  +
+  \mu \gz I \overline{\otimes} \gz I
+\end{align}
+where the upper and lower dyadic products of pairs of second-order tensors are respectively given by
+\begin{align*}
+    \gz A \overline{\otimes} \gz B &= A_{ik} B_{jl} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l \\
+    \gz A \underline{\otimes} \gz B &= A_{il} B_{jk} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l  \, .
+\end{align*}
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
