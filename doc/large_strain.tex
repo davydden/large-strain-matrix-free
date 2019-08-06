@@ -436,30 +436,6 @@ Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
 Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration, whereas the integration is done in the referential configuration.
 
-{\color{red}
-For completeness we mention that the fully referential linearization of the here considered constitutive equation \eqref{eq:neo_hookean_energy} results in the following equivalent bilinear form
-}
-\begin{align}
-  A_{ij} \equiv a(\gz N_i, \gz N_j) =&
-  \int_{\mcl B_0}
-  \grad \gz N_i : D_{F}P : \grad \gz N_j
-  \d V
-  \label{eq:algebraic_tangent_dPdF}
-  \\
-  D_{F}P :=&
-  2 \lambda
-  \gz F^{-T} \otimes \gz F^{-T}
-  +
-  \left[\mu - 2 \lambda \ln\left( J \right) \right]
-  \gz F^{-T} \underline{\otimes} \gz F^{-1}
-  +
-  \mu \gz I \overline{\otimes} \gz I
-\end{align}
-where the upper and lower dyadic products of pairs of second-order tensors are respectively given by
-\begin{align*}
-    \gz A \overline{\otimes} \gz B &= A_{ik} B_{jl} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l \\
-    \gz A \underline{\otimes} \gz B &= A_{il} B_{jk} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l  \, .
-\end{align*}
 
 \section{Matrix-free operator evaluation}
 \label{sec:mf}
@@ -1280,6 +1256,50 @@ D.~Arndt and M.~Kronbichler were supported by the German Research Foundation (DF
 Galerkin for the exa-scale'' (\mbox{ExaDG}) within the priority program ``Software
 for Exascale Computing'' (SPPEXA).
 P.~Steinmann acknowledges the support of the Cluster of Excellence Engineering of Advanced Materials (EAM) which made this collaboration possible, as well as funding by the EPSRC Strategic Support Package ``Engineering of Active Materials by Multiscale/Multiphysics Computational Mechanics''.
+
+\appendix
+
+{\color{red}
+It is a common practice to write bilinear form in fully referential configuration. For the here considered constitutive equation \eqref{eq:neo_hookean_energy} this results in the following bilinear form
+}
+\begin{align}
+  A_{ij} \equiv a(\gz N_i, \gz N_j) =&
+  \int_{\mcl B_0}
+  \grad \gz N_i : {\rm D}_{\gz F}{\gz P} : \grad \gz N_j
+  \d V
+  \label{eq:algebraic_tangent_dPdF}
+  \\
+  {\rm D}_{\gz F}{\gz P} :=&
+  2 \lambda
+  \gz F^{-T} \otimes \gz F^{-T}
+  +
+  \left[\mu - 2 \lambda \ln\left( J \right) \right]
+  \gz F^{-T} \underline{\otimes} \gz F^{-1}
+  +
+  \mu \gz I \overline{\otimes} \gz I
+\end{align}
+where the upper and lower dyadic products of pairs of second-order tensors are respectively given by
+\begin{align*}
+    \gz A \overline{\otimes} \gz B &= A_{ik} B_{jl} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l \\
+    \gz A \underline{\otimes} \gz B &= A_{il} B_{jk} \gz e_i \otimes \gz e_j \otimes \gz e_k \otimes \gz e_l  \, .
+\end{align*}
+
+{\color{red}
+This formulation can also be straight forwardly adopted within the matrix-free framework of \texttt{deal.II} library.
+To that end a variation of the Algorithm \ref{alg:mf_tensor4} can be used where the gradients are evaluated with respect to the undeformed configuration and only a fourth-order referential tangent tensor ${\rm D}_{\gz F}{\gz P}$ is cached per quadrature point.
+}
+
+{\color{red}
+In the interest of brevity, we did not report any results for this approach,
+however we do support it in our code.
+Below give a brief summary of the measured performance.
+Clearly in this case we need to cache more data as compared to the Algorithm \ref{alg:mf_tensor4}, this results in both higher memory requirement per DoF as well as lower arithmetic intensity of the vmult operator.
+On both architectures we recorded a slightly larger wall time per DoF as compared to the Algorithm \ref{alg:mf_tensor4}, however still much faster than the matrix-based approach.
+From the LIKWID measurements we observed that this algorithm also results in lower performance on Cascade Lake.
+The advantage of this algorithm is that it does not require evaluation of gradients in deformed configuration, therefore the matrix-free setup time is slightly lower as compared to the other three algorithms that rely on \texttt{MappingQEulerian} class of the \texttt{deal.II} library.
+Overall we consider this approach to be a valid alternative to the Algorithm \ref{alg:mf_tensor4}
+that can be be applied to any constitutive model which operates with the fourth-order referential tangent stiffness tensor on the quadrature point level.
+}
 
 \ifijnme
 %\bibliographystyle{wileyj}
