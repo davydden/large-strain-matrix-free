@@ -50,6 +50,7 @@ poly_quad_ref_dim_likwid = [
 # Solvers (type, preconditioner and caching)
 solvers = [
     ('MF_CG', 'gmg', 'scalar'),
+    ('MF_CG', 'gmg', 'scalar_referential'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
     ('MF_CG', 'gmg', 'tensor4_ns'),
@@ -58,6 +59,7 @@ solvers = [
 
 solvers_likwid = [
     ('MF_CG', 'gmg', 'scalar'),
+    ('MF_CG', 'gmg', 'scalar_referential'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
     ('MF_CG', 'gmg', 'tensor4_ns'),
@@ -67,6 +69,7 @@ solvers_likwid = [
 if args.single:
   solvers_likwid = [
     ('MF_CG', 'gmg', 'scalar'),
+    ('MF_CG', 'gmg', 'scalar_referential'),
     ('MF_CG', 'gmg', 'tensor2'),
     ('MF_CG', 'gmg', 'tensor4'),
     ('MF_CG', 'gmg', 'tensor4_ns'),

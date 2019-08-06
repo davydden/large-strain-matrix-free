@@ -2,8 +2,8 @@
 --     . running in OPTIMIZED mode
 --     . running with 20 MPI processes
 --     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
---     . version 1.0 (revision 2a47262 on branch martin)
---     . deal.II 9.2.0-pre (revision 2698957 on branch force_inlining)
+--     . version 1.0 (revision dd17ea2 on branch martin)
+--     . deal.II 9.2.0-pre (revision 0c2279f on branch master)
 -----------------------------------------------------------------------------
 
 dim   = 3
@@ -25,20 +25,20 @@ Total CG solve = 1
 |                                              |            |            |
 | Section                          | no. calls |  wall time | % of total |
 +----------------------------------+-----------+------------+------------+
-| Assemble linear system           |         1 |      15.1s |        46% |
-| Setup MF: AdditionalData         |         1 |  0.000562s |         0% |
-| Setup MF: GMG setup              |         1 |  0.000233s |         0% |
+| Assemble linear system           |         1 |      15.2s |        47% |
+| Setup MF: AdditionalData         |         1 |  0.000567s |         0% |
+| Setup MF: GMG setup              |         1 |  0.000242s |         0% |
 | Setup MF: MGTransferMatrixFree   |         1 |      0.15s |      0.46% |
-| Setup MF: MappingQEulerian       |         1 |     0.401s |       1.2% |
-| Setup MF: cache() and diagonal() |         1 |      2.85s |       8.8% |
-| Setup MF: ghost range            |         1 |     0.012s |         0% |
-| Setup MF: interpolate_to_mg      |         1 |     0.369s |       1.1% |
-| Setup system                     |         1 |      11.1s |        34% |
-| vmult (MF)                       |        10 |     0.103s |      0.32% |
-| vmult (MF) Cell loop             |        10 |    0.0895s |      0.28% |
-| vmult (MF) MPI                   |        10 |    0.0114s |         0% |
-| vmult (MF) RW                    |        10 |    0.0387s |      0.12% |
-| vmult (MF) RWSF                  |        10 |    0.0501s |      0.15% |
-| vmult (MF) zero                  |        10 |    0.0103s |         0% |
+| Setup MF: MappingQEulerian       |         1 |     0.405s |       1.2% |
+| Setup MF: cache() and diagonal() |         1 |      2.51s |       7.7% |
+| Setup MF: ghost range            |         1 |    0.0121s |         0% |
+| Setup MF: interpolate_to_mg      |         1 |     0.366s |       1.1% |
+| Setup system                     |         1 |      11.3s |        35% |
+| vmult (MF)                       |        10 |     0.101s |      0.31% |
+| vmult (MF) Cell loop             |        10 |    0.0922s |      0.28% |
+| vmult (MF) MPI                   |        10 |    0.0115s |         0% |
+| vmult (MF) RW                    |        10 |    0.0389s |      0.12% |
+| vmult (MF) RWSF                  |        10 |    0.0499s |      0.15% |
+| vmult (MF) zero                  |        10 |    0.0104s |         0% |
 +----------------------------------+-----------+------------+------------+
 
