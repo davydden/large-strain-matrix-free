@@ -1,0 +1,354 @@
+INFO: You are running LIKWID in a cpuset with 1 CPUs. Taking given IDs as logical ID in cpuset
+Assembly method: Residual and linearisation are computed manually.
+LIKWID_MARKER_INIT
+Grid:
+  Reference volume: 9.29315e-07
+Triangulation:
+  Number of active cells: 1441792
+  Number of degrees of freedom: 11542528
+
+Timestep 1 @ 0.2s
+__________________________________________________________________________________________________
+    SOLVER STEP     |  LIN_IT    LIN_RES   COND_NUM   RES_NORM      RES_U      NU_NORM       NU_U
+__________________________________________________________________________________________________
+  0  CST  ASM  FAKE CONVERGED!
+__________________________________________________________________________________________________
+Relative errors:
+  Displacement: 1
+  Force:        1
+Absolute errors:
+  Displacement: 1
+  Force:        0.0698741
+Volume:         9.29315e-07 / 9.29315e-07
+_______________________________________________________________________________________
+LIKWID_MARKER_CLOSE
+false
+Region: vmult_MF_zero
+Group: 1
++------------------------------------------+---------+------------+
+|                   Event                  | Counter | node35:0:0 |
++------------------------------------------+---------+------------+
+|            Runtime (RDTSC) [s]           |   TSC   |   0.080475 |
+|               Region calls               |   CTR   |         10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  |  101064700 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  |  305381900 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  |  167289900 |
+|              PWR_PKG_ENERGY              |   PWR0  |     4.2047 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     0.7026 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |          0 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  |        270 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |          0 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |          0 |
+|               CAS_COUNT_RD               | MBOX0C0 |    4785703 |
+|               CAS_COUNT_WR               | MBOX0C1 |    4765439 |
+|               CAS_COUNT_RD               | MBOX1C0 |    4785369 |
+|               CAS_COUNT_WR               | MBOX1C1 |    4764553 |
+|               CAS_COUNT_RD               | MBOX2C0 |    4785571 |
+|               CAS_COUNT_WR               | MBOX2C1 |    4765192 |
+|               CAS_COUNT_RD               | MBOX3C0 |       1231 |
+|               CAS_COUNT_WR               | MBOX3C1 |       1007 |
+|               CAS_COUNT_RD               | MBOX4C0 |       1242 |
+|               CAS_COUNT_WR               | MBOX4C1 |       1016 |
+|               CAS_COUNT_RD               | MBOX5C0 |       1218 |
+|               CAS_COUNT_WR               | MBOX5C1 |        970 |
++------------------------------------------+---------+------------+
+
++-----------------------------------+--------------+
+|               Metric              |  node35:0:0  |
++-----------------------------------+--------------+
+|        Runtime (RDTSC) [s]        |       0.0805 |
+|        Runtime unhalted [s]       |       0.1454 |
+|            Clock [MHz]            |    3833.4349 |
+|                CPI                |       3.0216 |
+|             Energy [J]            |       4.2047 |
+|             Power [W]             |      52.2485 |
+|          Energy DRAM [J]          |       0.7026 |
+|           Power DRAM [W]          |       8.7307 |
+|             DP MFLOP/s            |       0.0034 |
+|           AVX DP MFLOP/s          |            0 |
+|           Packed MUOPS/s          |            0 |
+|           Scalar MUOPS/s          |       0.0034 |
+|  Memory read bandwidth [MBytes/s] |   11420.4582 |
+|  Memory read data volume [GBytes] |       0.9191 |
+| Memory write bandwidth [MBytes/s] |   11371.0261 |
+| Memory write data volume [GBytes] |       0.9151 |
+|    Memory bandwidth [MBytes/s]    |   22791.4844 |
+|    Memory data volume [GBytes]    |       1.8341 |
+|       Operational intensity       | 1.472076e-07 |
++-----------------------------------+--------------+
+
+false
+Region: vmult_MF_mpi
+Group: 1
++------------------------------------------+---------+------------+
+|                   Event                  | Counter | node35:0:0 |
++------------------------------------------+---------+------------+
+|            Runtime (RDTSC) [s]           |   TSC   |      8e-06 |
+|               Region calls               |   CTR   |         10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  |      63881 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  |     200105 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  |     111300 |
+|              PWR_PKG_ENERGY              |   PWR0  |     0.0964 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     0.0106 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |          0 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  |        270 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |          0 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |          0 |
+|               CAS_COUNT_RD               | MBOX0C0 |       1031 |
+|               CAS_COUNT_WR               | MBOX0C1 |       1365 |
+|               CAS_COUNT_RD               | MBOX1C0 |       1025 |
+|               CAS_COUNT_WR               | MBOX1C1 |       1319 |
+|               CAS_COUNT_RD               | MBOX2C0 |        889 |
+|               CAS_COUNT_WR               | MBOX2C1 |       1277 |
+|               CAS_COUNT_RD               | MBOX3C0 |        933 |
+|               CAS_COUNT_WR               | MBOX3C1 |        102 |
+|               CAS_COUNT_RD               | MBOX4C0 |        903 |
+|               CAS_COUNT_WR               | MBOX4C1 |         82 |
+|               CAS_COUNT_RD               | MBOX5C0 |        851 |
+|               CAS_COUNT_WR               | MBOX5C1 |         88 |
++------------------------------------------+---------+------------+
+
++-----------------------------------+--------------+
+|               Metric              |  node35:0:0  |
++-----------------------------------+--------------+
+|        Runtime (RDTSC) [s]        | 8.000000e-06 |
+|        Runtime unhalted [s]       |       0.0001 |
+|            Clock [MHz]            |    3775.5245 |
+|                CPI                |       3.1325 |
+|             Energy [J]            |       0.0964 |
+|             Power [W]             |        12050 |
+|          Energy DRAM [J]          |       0.0106 |
+|           Power DRAM [W]          |         1325 |
+|             DP MFLOP/s            |      33.7500 |
+|           AVX DP MFLOP/s          |            0 |
+|           Packed MUOPS/s          |            0 |
+|           Scalar MUOPS/s          |      33.7500 |
+|  Memory read bandwidth [MBytes/s] |        45056 |
+|  Memory read data volume [GBytes] |       0.0004 |
+| Memory write bandwidth [MBytes/s] |        33864 |
+| Memory write data volume [GBytes] |       0.0003 |
+|    Memory bandwidth [MBytes/s]    |        78920 |
+|    Memory data volume [GBytes]    |       0.0006 |
+|       Operational intensity       |       0.0004 |
++-----------------------------------+--------------+
+
+false
+Region: vmult_MF_cell
+Group: 1
++------------------------------------------+---------+-------------+
+|                   Event                  | Counter |  node35:0:0 |
++------------------------------------------+---------+-------------+
+|            Runtime (RDTSC) [s]           |   TSC   |    10.04745 |
+|               Region calls               |   CTR   |          10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  | 54119590000 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  | 38992690000 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  | 21047950000 |
+|              PWR_PKG_ENERGY              |   PWR0  |    491.5802 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     55.6698 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |  3460301000 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  | 15861140000 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |   259522600 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |           0 |
+|               CAS_COUNT_RD               | MBOX0C0 |    67434260 |
+|               CAS_COUNT_WR               | MBOX0C1 |     5196498 |
+|               CAS_COUNT_RD               | MBOX1C0 |    67437840 |
+|               CAS_COUNT_WR               | MBOX1C1 |     5199306 |
+|               CAS_COUNT_RD               | MBOX2C0 |    67440750 |
+|               CAS_COUNT_WR               | MBOX2C1 |     5197978 |
+|               CAS_COUNT_RD               | MBOX3C0 |      102294 |
+|               CAS_COUNT_WR               | MBOX3C1 |       82659 |
+|               CAS_COUNT_RD               | MBOX4C0 |       95753 |
+|               CAS_COUNT_WR               | MBOX4C1 |       75719 |
+|               CAS_COUNT_RD               | MBOX5C0 |      112460 |
+|               CAS_COUNT_WR               | MBOX5C1 |       93285 |
++------------------------------------------+---------+-------------+
+
++-----------------------------------+------------+
+|               Metric              | node35:0:0 |
++-----------------------------------+------------+
+|        Runtime (RDTSC) [s]        |    10.0474 |
+|        Runtime unhalted [s]       |    18.5682 |
+|            Clock [MHz]            |  3890.3432 |
+|                CPI                |     0.7205 |
+|             Energy [J]            |   491.5802 |
+|             Power [W]             |    48.9259 |
+|          Energy DRAM [J]          |    55.6698 |
+|           Power DRAM [W]          |     5.5407 |
+|             DP MFLOP/s            |  2370.7341 |
+|           AVX DP MFLOP/s          |   103.3188 |
+|           Packed MUOPS/s          |   370.2256 |
+|           Scalar MUOPS/s          |  1578.6234 |
+|  Memory read bandwidth [MBytes/s] |  1290.6653 |
+|  Memory read data volume [GBytes] |    12.9679 |
+| Memory write bandwidth [MBytes/s] |   100.9319 |
+| Memory write data volume [GBytes] |     1.0141 |
+|    Memory bandwidth [MBytes/s]    |  1391.5972 |
+|    Memory data volume [GBytes]    |    13.9820 |
+|       Operational intensity       |     1.7036 |
++-----------------------------------+------------+
+
+false
+Region: vmult_MF_cell_RW
+Group: 1
++------------------------------------------+---------+-------------+
+|                   Event                  | Counter |  node35:0:0 |
++------------------------------------------+---------+-------------+
+|            Runtime (RDTSC) [s]           |   TSC   |    3.304591 |
+|               Region calls               |   CTR   |          10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  |  9948419000 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  | 12834630000 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  |  6921477000 |
+|              PWR_PKG_ENERGY              |   PWR0  |    156.6965 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     19.1768 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |           0 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  |   471848800 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |           0 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |           0 |
+|               CAS_COUNT_RD               | MBOX0C0 |    38879940 |
+|               CAS_COUNT_WR               | MBOX0C1 |     5088222 |
+|               CAS_COUNT_RD               | MBOX1C0 |    38896450 |
+|               CAS_COUNT_WR               | MBOX1C1 |     5085572 |
+|               CAS_COUNT_RD               | MBOX2C0 |    38797480 |
+|               CAS_COUNT_WR               | MBOX2C1 |     5088165 |
+|               CAS_COUNT_RD               | MBOX3C0 |       19731 |
+|               CAS_COUNT_WR               | MBOX3C1 |       13941 |
+|               CAS_COUNT_RD               | MBOX4C0 |       17655 |
+|               CAS_COUNT_WR               | MBOX4C1 |       11847 |
+|               CAS_COUNT_RD               | MBOX5C0 |       21285 |
+|               CAS_COUNT_WR               | MBOX5C1 |       15572 |
++------------------------------------------+---------+-------------+
+
++-----------------------------------+------------+
+|               Metric              | node35:0:0 |
++-----------------------------------+------------+
+|        Runtime (RDTSC) [s]        |     3.3046 |
+|        Runtime unhalted [s]       |     6.1118 |
+|            Clock [MHz]            |  3894.0282 |
+|                CPI                |     1.2901 |
+|             Energy [J]            |   156.6965 |
+|             Power [W]             |    47.4178 |
+|          Energy DRAM [J]          |    19.1768 |
+|           Power DRAM [W]          |     5.8031 |
+|             DP MFLOP/s            |   142.7858 |
+|           AVX DP MFLOP/s          |          0 |
+|           Packed MUOPS/s          |          0 |
+|           Scalar MUOPS/s          |   142.7858 |
+|  Memory read bandwidth [MBytes/s] |  2258.8219 |
+|  Memory read data volume [GBytes] |     7.4645 |
+| Memory write bandwidth [MBytes/s] |   296.3793 |
+| Memory write data volume [GBytes] |     0.9794 |
+|    Memory bandwidth [MBytes/s]    |  2555.2012 |
+|    Memory data volume [GBytes]    |     8.4439 |
+|       Operational intensity       |     0.0559 |
++-----------------------------------+------------+
+
+false
+Region: vmult_MF_cell_RWSF
+Group: 1
++------------------------------------------+---------+-------------+
+|                   Event                  | Counter |  node35:0:0 |
++------------------------------------------+---------+-------------+
+|            Runtime (RDTSC) [s]           |   TSC   |    6.403621 |
+|               Region calls               |   CTR   |          10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  | 33740980000 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  | 24885160000 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  | 13416580000 |
+|              PWR_PKG_ENERGY              |   PWR0  |    313.0557 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     35.7751 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |  2681733000 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  |  5748808000 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |           0 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |           0 |
+|               CAS_COUNT_RD               | MBOX0C0 |    39134690 |
+|               CAS_COUNT_WR               | MBOX0C1 |     5098951 |
+|               CAS_COUNT_RD               | MBOX1C0 |    39151860 |
+|               CAS_COUNT_WR               | MBOX1C1 |     5097851 |
+|               CAS_COUNT_RD               | MBOX2C0 |    39053850 |
+|               CAS_COUNT_WR               | MBOX2C1 |     5098887 |
+|               CAS_COUNT_RD               | MBOX3C0 |       26089 |
+|               CAS_COUNT_WR               | MBOX3C1 |       21428 |
+|               CAS_COUNT_RD               | MBOX4C0 |       24524 |
+|               CAS_COUNT_WR               | MBOX4C1 |       19544 |
+|               CAS_COUNT_RD               | MBOX5C0 |       27330 |
+|               CAS_COUNT_WR               | MBOX5C1 |       22389 |
++------------------------------------------+---------+-------------+
+
++-----------------------------------+------------+
+|               Metric              | node35:0:0 |
++-----------------------------------+------------+
+|        Runtime (RDTSC) [s]        |     6.4036 |
+|        Runtime unhalted [s]       |    11.8502 |
+|            Clock [MHz]            |  3895.0508 |
+|                CPI                |     0.7375 |
+|             Energy [J]            |   313.0557 |
+|             Power [W]             |    48.8873 |
+|          Energy DRAM [J]          |    35.7751 |
+|           Power DRAM [W]          |     5.5867 |
+|             DP MFLOP/s            |  1735.3110 |
+|           AVX DP MFLOP/s          |          0 |
+|           Packed MUOPS/s          |   418.7838 |
+|           Scalar MUOPS/s          |   897.7433 |
+|  Memory read bandwidth [MBytes/s] |  1173.5195 |
+|  Memory read data volume [GBytes] |     7.5148 |
+| Memory write bandwidth [MBytes/s] |   153.5037 |
+| Memory write data volume [GBytes] |     0.9830 |
+|    Memory bandwidth [MBytes/s]    |  1327.0231 |
+|    Memory data volume [GBytes]    |     8.4978 |
+|       Operational intensity       |     1.3077 |
++-----------------------------------+------------+
+
+false
+Region: vmult_MF
+Group: 1
++------------------------------------------+---------+-------------+
+|                   Event                  | Counter |  node35:0:0 |
++------------------------------------------+---------+-------------+
+|            Runtime (RDTSC) [s]           |   TSC   |    10.23001 |
+|               Region calls               |   CTR   |          10 |
+|             INSTR_RETIRED_ANY            |  FIXC0  | 54220590000 |
+|           CPU_CLK_UNHALTED_CORE          |  FIXC1  | 39773940000 |
+|           CPU_CLK_UNHALTED_REF           |  FIXC2  | 21435950000 |
+|              PWR_PKG_ENERGY              |   PWR0  |    500.7333 |
+|              PWR_DRAM_ENERGY             |   PWR3  |     56.9115 |
+| FP_ARITH_INST_RETIRED_128B_PACKED_DOUBLE |   PMC0  |  3460301000 |
+|    FP_ARITH_INST_RETIRED_SCALAR_DOUBLE   |   PMC1  | 15861140000 |
+| FP_ARITH_INST_RETIRED_256B_PACKED_DOUBLE |   PMC2  |   259522600 |
+| FP_ARITH_INST_RETIRED_512B_PACKED_DOUBLE |   PMC3  |           0 |
+|               CAS_COUNT_RD               | MBOX0C0 |    71963120 |
+|               CAS_COUNT_WR               | MBOX0C1 |     9760590 |
+|               CAS_COUNT_RD               | MBOX1C0 |    71972220 |
+|               CAS_COUNT_WR               | MBOX1C1 |     9765271 |
+|               CAS_COUNT_RD               | MBOX2C0 |    71969340 |
+|               CAS_COUNT_WR               | MBOX2C1 |     9759946 |
+|               CAS_COUNT_RD               | MBOX3C0 |       46705 |
+|               CAS_COUNT_WR               | MBOX3C1 |       42009 |
+|               CAS_COUNT_RD               | MBOX4C0 |       42004 |
+|               CAS_COUNT_WR               | MBOX4C1 |       37476 |
+|               CAS_COUNT_RD               | MBOX5C0 |       48803 |
+|               CAS_COUNT_WR               | MBOX5C1 |       44657 |
++------------------------------------------+---------+-------------+
+
++-----------------------------------+------------+
+|               Metric              | node35:0:0 |
++-----------------------------------+------------+
+|        Runtime (RDTSC) [s]        |    10.2300 |
+|        Runtime unhalted [s]       |    18.9402 |
+|            Clock [MHz]            |  3896.4616 |
+|                CPI                |     0.7336 |
+|             Energy [J]            |   500.7333 |
+|             Power [W]             |    48.9475 |
+|          Energy DRAM [J]          |    56.9115 |
+|           Power DRAM [W]          |     5.5632 |
+|             DP MFLOP/s            |  2328.4271 |
+|           AVX DP MFLOP/s          |   101.4750 |
+|           Packed MUOPS/s          |   363.6188 |
+|           Scalar MUOPS/s          |  1550.4521 |
+|  Memory read bandwidth [MBytes/s] |  1351.5823 |
+|  Memory read data volume [GBytes] |    13.8267 |
+| Memory write bandwidth [MBytes/s] |   183.9917 |
+| Memory write data volume [GBytes] |     1.8822 |
+|    Memory bandwidth [MBytes/s]    |  1535.5740 |
+|    Memory data volume [GBytes]    |    15.7089 |
+|       Operational intensity       |     1.5163 |
++-----------------------------------+------------+
+

@@ -16,7 +16,7 @@ parser.add_argument('--dim', metavar='dim', default=2, type=int,
 args = parser.parse_args()
 
 # expected blockspeed:
-clock_speed = 2.2  # GHz
+clock_speed = 2.0  # GHz
 
 # serial | MPI | SIMD | MPI+SIMD
 suffixes = [
@@ -59,23 +59,27 @@ for idx, s in enumerate(suffixes):
         # we are only interested in tensor2 (Algorithm 3) for the currently chosen dimension
         if not (dim == args.dim and '_tensor4' in fname):
             continue
+        if ('_tensor4_ns' in fname):
+            continue
 
         print 'dim={0} p={1} q={2} file={3}'.format(dim,p,q,fname)
 
         # these files contain a single region
         result = parse_likwid_file(f,'LIKWID_MARKER_CLOSE')['vmult_MF']
 
+        print result
+
         # depending on the run, the LIKWID output may not have Sum table
         if 'Metric_Sum' not in result:
             data = result['Metric']
-            flops = data['MFLOP/s'][0]
+            flops = data['DP MFLOP/s'][0]
             runtime = data['Runtime (RDTSC) [s]'][0]
-            assert abs(float(data['Clock [MHz]'][0]) - clock_speed * 1000) < clock_speed
+            #assert abs(float(data['Clock [MHz]'][0]) - clock_speed * 1000) < clock_speed
         else:
             data = result['Metric_Sum']
-            flops = data['MFLOP/s STAT'][0]                # take Sum
+            flops = data['DP MFLOP/s STAT'][0]                # take Sum
             runtime = data['Runtime (RDTSC) [s] STAT'][2]  # take Max
-            assert abs(float(data['Clock [MHz] STAT'][2]) - clock_speed * 1000) < clock_speed
+            #assert abs(float(data['Clock [MHz] STAT'][2]) - clock_speed * 1000) < clock_speed
 
         runtime = float(runtime) / 10  # FIXME: hard-code that we run 10 times
         flops = float(flops) / 1000  # MFLOP/s -> GFLOP/s
@@ -125,7 +129,7 @@ p             & time  & GFlop/s              & time & GFlop/s & speedup & time &
 \hline
 \end{tabular}
 }
-\caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor4} in 2D for various combinations of polynomial degrees,
+    \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor2} in 2D for various combinations of polynomial degrees,
 vectorization and parallelization.}
 \label{tab:numbers_2d}
 \end{table}
