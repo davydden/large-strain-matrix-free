@@ -772,7 +772,6 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
   const unsigned int &,
   const std::pair<unsigned int, unsigned int> &cell_range) const
 {
-  // FIXME: I don't use data input, can this be bad?
   const VectorizedArray<number> one  = make_vectorized_array<number>(1.);
   const VectorizedArray<number> zero = make_vectorized_array<number>(0.);
 
@@ -1230,6 +1229,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
         // And similarly by F^{-1} for submit_gradient(). In other words,
         // I simply pulled out the Eulerian motion of the grid into F; nothing else changed.
         {
+          const NumberType one = make_vectorized_array<number>(1.);
           const NumberType *cached_position =
             &cached_second_scalar(cell, 0);
           constexpr unsigned int n_q_points = Utilities::pow(n_q_points_1d, dim);
@@ -1266,7 +1266,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                         sum2 += inv_jac[e][f] * x_grads[(d * dim + f)*n_q_points + q];
                       grad_Nx_v[d][e] = sum2;
                     }
-                  F[d][d] += NumberType(1.0);
+                  F[d][d] += one;
                 }
               const SymmetricTensor<2, dim, NumberType> b =
                 Physics::Elasticity::Kinematics::b(F);
