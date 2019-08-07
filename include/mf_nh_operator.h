@@ -1301,6 +1301,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               Tensor<2, dim, NumberType> queued =
                 jc_part + (grad_Nx_v * Tensor<2, dim, NumberType>(tau));
               phi_reference.submit_gradient(F_inv * queued, q);
+              // MK: The 60 lines above this are the interesting part: I only need to work with phi_reference.
+              // What happens in addition to the scalar caching variant is that I have to multiply grad_Nx_v also
+              // by F^{-T} to transform it to the spatial configuration.
+              // Note that I expanded some of the contractions manually in terms of the loops to be fully
+              // sure what happens but we could also express them via operator* between Tensor<2,dim> objects.
             }
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor2)
