@@ -506,6 +506,16 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
               else if (mf_caching == MFCaching::scalar_referential)
                 {
                   cached_scalar(cell, q) = scalar;
+                  // MK:
+                  // This is to avoid the phi_reference.read_dof_values() call and the full
+                  // phi_reference.evaluate(false, true) calls. With this quadrature point information,
+                  // I only need to call a cheap "collocation gradient" function, which is likely the
+                  // best compromise in terms of caching some data versus computing: read_dof_values is
+                  // expensive because it is not fully vectorized (indirect addressing gather access)
+                  // and once you start to store things element-by-element you can eliminate the
+                  // interpolation from nodes to quadrature points (that happens in the usual matrix-free
+                  // interpolations as well). So my code makes use of some internal workings of the matrix-free
+                  // framework that one would need to clean up in case one really wanted to make user-friendly programs
                   for (unsigned int d=0; d<dim; ++d)
                     cached_second_scalar(cell, q + d * phi_reference.n_q_points)
                       = phi_reference.begin_values()[q + d * phi_reference.n_q_points];
@@ -1210,6 +1220,15 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::scalar_referential)
         // the least amount of cache and the most calculations
+        // MK:
+        // What I implemented here is essentially the same as the usual scalar variant.
+        // The only thing I had to change was to replace grad x (and submit_gradient() in the spatial frame)
+        // by Grad x (get_gradient() in referential frame) and then multiplying by F^{-T}.
+        // And this is the F that gets computed in the scalar case as well,
+        // I just hardcoded it as this was the way I thought about it in the implementation,
+        // but one could of course use the phi_reference.get_gradient() function.
+        // And similarly by F^{-1} for submit_gradient(). In other words,
+        // I simply pulled out the Eulerian motion of the grid into F; nothing else changed.
         {
           const NumberType *cached_position =
             &cached_second_scalar(cell, 0);
