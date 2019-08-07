@@ -208,7 +208,7 @@ In this work, we investigate different matrix-free representations of the
 finite-strain hyperelastic tangent operator with respect to the computational cost
 and the performance on a single node of a high performance computing cluster.
 Particular emphasis is on the tradeoff between computations at quadrature points versus
-pre-computation with a higher memory access.
+pre-computation with a higher memory access in terms of the representation of the linearization point.
 The \texttt{deal.II} \cite{dealII90} finite element library, which provides MPI parallelization together with a generalized matrix-free framework that incorporates SIMD vectorization and an interface to high-performance MPI-distributed matrix-based libraries is used for this study.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
