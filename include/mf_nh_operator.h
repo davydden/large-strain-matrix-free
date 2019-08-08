@@ -281,6 +281,7 @@ private:
   enum class MFCaching
     {
      none,
+     scalar_referential,
      scalar,
      tensor2,
      tensor4,
@@ -305,7 +306,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
          cached_tensor4_ns.memory_consumption();
 
   // matrix-free data:
-  if (mf_caching == MFCaching::tensor4_ns)
+  if (mf_caching == MFCaching::tensor4_ns ||
+      mf_caching == MFCaching::scalar_referential)
     {
       res += data_reference->memory_consumption();
     }
@@ -404,6 +406,12 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::initialize(
       mf_caching = MFCaching::scalar;
       cached_scalar.reinit(n_cells, phi.n_q_points);
     }
+  else if (caching == "scalar_referential")
+    {
+      mf_caching = MFCaching::scalar_referential;
+      cached_scalar.reinit(n_cells, phi.n_q_points);
+      cached_second_scalar.reinit(n_cells, phi.n_q_points*dim);
+    }
   else if (caching == "tensor2")
     {
       mf_caching = MFCaching::tensor2;
@@ -448,7 +456,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
 
       phi_reference.reinit(cell);
       phi_reference.read_dof_values_plain(*displacement);
-      phi_reference.evaluate(false, true, false);
+      phi_reference.evaluate(true, true, false);
 
       if (cell_mat->formulation == 0)
         {
@@ -494,6 +502,23 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
               if (mf_caching == MFCaching::scalar)
                 {
                   cached_scalar(cell, q) = scalar;
+                }
+              else if (mf_caching == MFCaching::scalar_referential)
+                {
+                  cached_scalar(cell, q) = scalar;
+                  // MK:
+                  // This is to avoid the phi_reference.read_dof_values() call and the full
+                  // phi_reference.evaluate(false, true) calls. With this quadrature point information,
+                  // I only need to call a cheap "collocation gradient" function, which is likely the
+                  // best compromise in terms of caching some data versus computing: read_dof_values is
+                  // expensive because it is not fully vectorized (indirect addressing gather access)
+                  // and once you start to store things element-by-element you can eliminate the
+                  // interpolation from nodes to quadrature points (that happens in the usual matrix-free
+                  // interpolations as well). So my code makes use of some internal workings of the matrix-free
+                  // framework that one would need to clean up in case one really wanted to make user-friendly programs
+                  for (unsigned int d=0; d<dim; ++d)
+                    cached_second_scalar(cell, q + d * phi_reference.n_q_points)
+                      = phi_reference.begin_values()[q + d * phi_reference.n_q_points];
                 }
               else if (mf_caching == MFCaching::tensor2)
                 {
@@ -669,8 +694,6 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
   const LinearAlgebra::distributed::Vector<number> &src,
   const std::pair<unsigned int, unsigned int> &     cell_range) const
 {
-  // FIXME: I don't use data input, can this be bad?
-
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> phi_current(
     *data_current);
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> phi_reference(
@@ -687,7 +710,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
 #endif
       if (mask & MFMask::RW)
         {
-          if (mf_caching == MFCaching::tensor4_ns)
+          if (mf_caching == MFCaching::tensor4_ns ||
+              mf_caching == MFCaching::scalar_referential)
             // fully referential
             {
               phi_reference.reinit(cell);
@@ -721,7 +745,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
 
       if (mask & MFMask::RW)
         {
-          if (mf_caching == MFCaching::tensor4_ns)
+          if (mf_caching == MFCaching::tensor4_ns ||
+              mf_caching == MFCaching::scalar_referential)
             {
               phi_reference.distribute_local_to_global(dst);
             }
@@ -747,7 +772,6 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
   const unsigned int &,
   const std::pair<unsigned int, unsigned int> &cell_range) const
 {
-  // FIXME: I don't use data input, can this be bad?
   const VectorizedArray<number> one  = make_vectorized_array<number>(1.);
   const VectorizedArray<number> zero = make_vectorized_array<number>(0.);
 
@@ -757,7 +781,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
     *data_reference);
 
   // keep fully referntial here and bail out if needed
-  if (mf_caching == MFCaching::tensor4_ns)
+  if (mf_caching == MFCaching::tensor4_ns ||
+      mf_caching == MFCaching::scalar_referential)
     {
       for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
         {
@@ -783,8 +808,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
                 phi_reference.begin_dof_values()[ind_i] = one;
 
                 do_operation_on_cell(phi_current,
-                                    phi_reference,
-                                    cell);
+                                     phi_reference,
+                                     cell);
 
                 local_diagonal_vector[ind_i] =
                   phi_reference.begin_dof_values()[ind_i];
@@ -923,7 +948,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
   if (mask & MFMask::SF)
     {
-      if (mf_caching == MFCaching::tensor4_ns)
+      if (mf_caching == MFCaching::tensor4_ns ||
+          mf_caching == MFCaching::scalar_referential)
         {
           phi_reference.evaluate(false, true, false);
         }
@@ -1146,7 +1172,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                   tau[d][d] -= cached_scalar(cell, q);
               }
 
-              SymmetricTensor<2, dim, VectorizedArray<number>>
+              SymmetricTensor<2, dim, NumberType>
               jc_part = (number(2.0) * cached_scalar(cell, q)) * symm_grad_Nx_v;
               {
                 const NumberType tmp = number(2.0) * lambda * trace(symm_grad_Nx_v);
@@ -1189,6 +1215,97 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 grad_Nx_v * tau_ns;
               const NumberType inv_det_F = number(1.0) / det_F;
               phi_current.submit_gradient((jc_part + geo) * inv_det_F, q);
+            }
+        }
+      else if (cell_mat->formulation == 1 && mf_caching == MFCaching::scalar_referential)
+        // the least amount of cache and the most calculations
+        // MK:
+        // What I implemented here is essentially the same as the usual scalar variant.
+        // The only thing I had to change was to replace grad x (and submit_gradient() in the spatial frame)
+        // by Grad x (get_gradient() in referential frame) and then multiplying by F^{-T}.
+        // And this is the F that gets computed in the scalar case as well,
+        // I just hardcoded it as this was the way I thought about it in the implementation,
+        // but one could of course use the phi_reference.get_gradient() function.
+        // And similarly by F^{-1} for submit_gradient(). In other words,
+        // I simply pulled out the Eulerian motion of the grid into F; nothing else changed.
+        {
+          const NumberType one = make_vectorized_array<number>(1.);
+          const NumberType *cached_position =
+            &cached_second_scalar(cell, 0);
+          constexpr unsigned int n_q_points = Utilities::pow(n_q_points_1d, dim);
+          NumberType *ref_grads = phi_current.begin_gradients();
+          NumberType *x_grads = phi_reference.begin_gradients();
+          dealii::internal::FEEvaluationImplCollocation<dim,n_q_points_1d-1,dim,NumberType>
+            ::evaluate(data_reference->get_shape_info(),
+                       cached_position,
+                       nullptr, ref_grads, nullptr, nullptr,
+                       false, true, false);
+          for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
+            {
+              // Jacobian of element in referential space
+              const Tensor<2, dim, NumberType> inv_jac =
+                phi_reference.inverse_jacobian(q);
+              Tensor<2, dim, NumberType> F;
+              Tensor<2, dim, NumberType> grad_Nx_v;
+              for (unsigned int d=0; d<dim; ++d)
+                {
+                  for (unsigned int e=0; e<dim; ++e)
+                    {
+                      NumberType sum =
+                        inv_jac[e][0] * ref_grads[(d * dim + 0)*n_q_points + q];
+                      for (unsigned int f=1; f<dim; ++f)
+                        sum += inv_jac[e][f] * ref_grads[(d * dim + f)*n_q_points + q];
+                      F[d][e] = sum;
+
+                      // since we already have the inverse Jacobian, simply apply the
+                      // inverse Jacobian here rather than call get_gradient
+                      // (the operations are the same otherwise)
+                      NumberType sum2 =
+                        inv_jac[e][0] * x_grads[(d * dim + 0)*n_q_points + q];
+                      for (unsigned int f=1; f<dim; ++f)
+                        sum2 += inv_jac[e][f] * x_grads[(d * dim + f)*n_q_points + q];
+                      grad_Nx_v[d][e] = sum2;
+                    }
+                  F[d][d] += one;
+                }
+              const SymmetricTensor<2, dim, NumberType> b =
+                Physics::Elasticity::Kinematics::b(F);
+
+              SymmetricTensor<2, dim, NumberType> tau = mu * b;
+              for (unsigned int d = 0; d < dim; ++d)
+                tau[d][d] -= cached_scalar(cell, q);
+
+              const Tensor<2, dim, NumberType> F_inv = invert(F);
+              for (unsigned int d=0; d<dim; ++d)
+                {
+                  NumberType tmp[dim];
+                  for (unsigned int e=0; e<dim; ++e)
+                    tmp[e] = grad_Nx_v[d][e];
+                  for (unsigned int e=0; e<dim; ++e)
+                    {
+                      NumberType sum = F_inv[0][e] * tmp[0];
+                      for (unsigned int f=1; f<dim; ++f)
+                        sum += F_inv[f][e] * tmp[f];
+                      grad_Nx_v[d][e] = sum;
+                    }
+                  }
+
+              SymmetricTensor<2, dim, NumberType>
+                jc_part = (number(2.0) * cached_scalar(cell, q)) * symmetrize(grad_Nx_v);
+              {
+                const NumberType tmp = number(2.0) * lambda * trace(grad_Nx_v);
+                for (unsigned int i = 0; i < dim; ++i)
+                  jc_part[i][i] += tmp;
+              }
+
+              Tensor<2, dim, NumberType> queued =
+                jc_part + (grad_Nx_v * Tensor<2, dim, NumberType>(tau));
+              phi_reference.submit_gradient(F_inv * queued, q);
+              // MK: The 60 lines above this are the interesting part: I only need to work with phi_reference.
+              // What happens in addition to the scalar caching variant is that I have to multiply grad_Nx_v also
+              // by F^{-T} to transform it to the spatial configuration.
+              // Note that I expanded some of the contractions manually in terms of the loops to be fully
+              // sure what happens but we could also express them via operator* between Tensor<2,dim> objects.
             }
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor2)
@@ -1250,7 +1367,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
     {
       // need to submit something to avoid debug asserts
       const unsigned int q = 0;
-      if (mf_caching == MFCaching::tensor4_ns)
+      if (mf_caching == MFCaching::tensor4_ns ||
+          mf_caching == MFCaching::scalar_referential)
         {
           phi_reference.submit_gradient(Tensor<2, dim, NumberType>(), q);
         }
@@ -1271,7 +1389,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
   if (mask & MFMask::SF)
     {
-      if (mf_caching == MFCaching::tensor4_ns)
+      if (mf_caching == MFCaching::tensor4_ns ||
+          mf_caching == MFCaching::scalar_referential)
         {
           phi_reference.integrate(false, true);
         }
