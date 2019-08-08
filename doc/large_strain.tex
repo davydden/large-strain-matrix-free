@@ -133,9 +133,9 @@
   }
 \fi
   \begin{abstract}[Summary]
-    {{\color{red}This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Iterative solvers with matrix-free operator evaluation have emerged as 
-an attractive alternative to sparse matrices in the fluid dynamics and wave 
-propagation communities because they significantly reduce the memory traffic, 
+    {{\color{red}This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Iterative solvers with matrix-free operator evaluation have emerged as
+an attractive alternative to sparse matrices in the fluid dynamics and wave
+propagation communities because they significantly reduce the memory traffic,
 the limiting factor in classical finite element solvers.
     Specifically, we study different matrix-free realizations of the finite element tangent operator, and determine whether generalized methods of incorporating complex constitutive behavior might be feasible.}
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
@@ -966,7 +966,7 @@ the linearization-related mapping required for evaluation of gradients with resp
 \end{figure}
 
 
-The matrix-free implementation is faster than the matrix-based counterpart already for a bi-quadractic Lagrangian basis in 2D and a tri-quadratic basis in 3D on both systems.
+The matrix-free implementation is faster than the matrix-based counterpart already for a bi-quadratic Lagrangian basis in 2D and a tri-quadratic basis in 3D on both systems.
 {\color{red}
 The ``MF tensor2'' and ``MF scalar'' strategies outperform the sparse matrix already for tri-linear elements of polynomial degree $p=1$. For example for the ``tensor2'' matrix-free implementation with $p=4$, we record a 5$\times$ higher throughput than the matrix-based evaluation of $p=1$. The advantage of the matrix-free implementation can be explained by the memory access per unknown shown in the panels (c) and (f) of the figures, as the time per unknown in panels (b) and (e) closely follows the memory access.
 }
@@ -1025,7 +1025,7 @@ The achieved performance is about 6.8\% of the peak arithmetic performance. This
 
 {\color{red}
 The roofline model also explains the difference in performance between the ``tensor4'' caching strategy (Algorithm \ref{alg:mf_tensor4}) and the ``tensor2'' caching strategy (Algorithm \ref{alg:mf_tensor2}): Both algorithms essentially run at the memory limit of around $100\, \text{GB/s}$, but the former involves a considerably higher memory transfer according to Table~\ref{tab:memory}.
-The ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates the highest computational intensity, but remains close to the memory bandwidth limit with more than $80\, \text{GB/s}$ except for the $p=2$ case. The higher arithmetic load is not surprising as at each quadrature point we need to re-evaluate the Kirchoff stress $\gz \tau$.
+The ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates the highest computational intensity, but remains close to the memory bandwidth limit with more than $80\, \text{GB/s}$ except for the $p=2$ case. The higher arithmetic load is not surprising as at each quadrature point we need to re-evaluate the Kirchhoff stress $\gz \tau$.
 Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations as listed in Table~\ref{tab:memory}, no advantage of the scalar caching can be deduced despite the higher arithmetic performance.
 }
 
@@ -1118,7 +1118,7 @@ The majority of time is spent within the quadrature loop for all variants, with 
 
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to the MPI parallelization.
 {\color{red}
-When run in serial, explicit SIMD vectorization via instrinsics provides a speedup of up to $3\times$ over the auto-vectorization case. This is less than the theoretical factor of 8, but in line with previous experiments presented in Figure 6 of \cite{kronbichler2017fastcomputer} with a speedup of around $1.5-2.5\times$ with 8-wide vectorization. The reason for sub-optimal speedup is mostly related to the memory access in the gather/scatter operations as well as the limited memory bandwidth. When going to the parallel case with 20 cores, the less-than-optimal speedup can be attributed to two different effects. For the auto-vectorized case, the different (turbo) clock frequencies permit a speedup of a factor 12.6 at most, close to our results.\footnote{Note that we intentionally run with Turbo mode on to permit the processor to come close to the power limit for all settings and present more realistic performance limits.} For the SIMD+MPI case, the main reason is the memory bandwidth: As can be seen from Figures~\ref{fig:roofline_2d} and~\ref{fig:roofline_3d}, both algorithms are eventually memory-bandwidth limited. Since Algorithm~\ref{alg:mf_tensor4} has a lower arithmetic intensity, the speedup over the serial, auto-vectorized case is less than that of Algorithm~\ref{alg:mf_tensor2}.
+When run in serial, explicit SIMD vectorization via intrinsics provides a speedup of up to $3\times$ over the auto-vectorization case. This is less than the theoretical factor of 8, but in line with previous experiments presented in Figure 6 of \cite{kronbichler2017fastcomputer} with a speedup of around $1.5-2.5\times$ with 8-wide vectorization. The reason for sub-optimal speedup is mostly related to the memory access in the gather/scatter operations as well as the limited memory bandwidth. When going to the parallel case with 20 cores, the less-than-optimal speedup can be attributed to two different effects. For the auto-vectorized case, the different (turbo) clock frequencies permit a speedup of a factor 12.6 at most, close to our results.\footnote{Note that we intentionally run with Turbo mode on to permit the processor to come close to the power limit for all settings and present more realistic performance limits.} For the SIMD+MPI case, the main reason is the memory bandwidth: As can be seen from Figures~\ref{fig:roofline_2d} and~\ref{fig:roofline_3d}, both algorithms are eventually memory-bandwidth limited. Since Algorithm~\ref{alg:mf_tensor4} has a lower arithmetic intensity, the speedup over the serial, auto-vectorized case is less than that of Algorithm~\ref{alg:mf_tensor2}.
 }
 
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
