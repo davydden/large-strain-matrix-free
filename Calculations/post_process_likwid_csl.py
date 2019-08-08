@@ -110,6 +110,11 @@ for f in files:
         regions = [
             'vmult_MF' if 'MF_CG' in f else 'vmult_Trilinos'
         ]
+
+    # skip tensor4_ns for plotting
+    if '_tensor4_ns' in fname:
+        continue
+
     label = ''
     color = ''  # use colors consistent with post_process.py
     if 'MF_CG' in fname:
@@ -205,7 +210,7 @@ likwid_data.sort(key=lambda tup: (tup[3], tup[1]))
 #       PLOT        #
 #####################
 
-params = {'legend.fontsize': 10,
+params = {'legend.fontsize': 12,
           'font.size': 14}
 plt.rcParams.update(params)
 
