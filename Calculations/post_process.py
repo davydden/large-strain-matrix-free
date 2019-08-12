@@ -260,7 +260,7 @@ mem3d_t4_ns = [tup[3]/tup[1] for tup in mf3d_data_tensor4_ns]
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
 
-params = {'legend.fontsize': 20,
+params = {'legend.fontsize': 18,
           'font.size': 20}
 plt.rcParams.update(params)
 
@@ -363,6 +363,9 @@ remove_creation_date(fig_prefix + 'memory3d.eps')
 plt.clf()
 plt.yscale('log', basey=10)
 plt.ylim(top=1e-2,bottom=1e-9)
+#ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+params = {'legend.fontsize': 14, 'font.size': 20}
+plt.rcParams.update(params)
 
 plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
@@ -386,6 +389,9 @@ ax = plt.figure().gca()
 plt.yscale('log', basey=10)
 plt.ylim(top=1e-2,bottom=1e-9)
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+params = {'legend.fontsize': 14,
+          'font.size': 16}
+plt.rcParams.update(params)
 
 plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
@@ -405,6 +411,9 @@ remove_creation_date(fig_prefix + 'solver3d.eps')
 
 # clear
 plt.clf()
+params = {'legend.fontsize': 14,
+          'font.size': 16}
+plt.rcParams.update(params)
 
 plt.plot(deg2d,cg2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,cg2d_t4, 'cv--', label='MF')  # tensor4')
@@ -417,6 +426,9 @@ remove_creation_date(fig_prefix + 'cg2d.eps')
 
 # clear
 plt.clf()
+params = {'legend.fontsize': 14,
+          'font.size': 16}
+plt.rcParams.update(params)
 
 ax = plt.figure().gca()
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))

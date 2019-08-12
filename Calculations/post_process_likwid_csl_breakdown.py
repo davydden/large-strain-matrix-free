@@ -196,9 +196,10 @@ for i in range(n_stack):
 
   bars[i] = b[0]
 
-plt.legend(bars, stack_labels, loc='upper left')
+plt.legend(bars, stack_labels, loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.))
 
 plt.ylabel('fraction of wall time')
+plt.gca().set_ylim([0, 1.2])
 plt.xticks(ind_plt, ind_str)
 plt.xlabel('polynomial degree')
 
