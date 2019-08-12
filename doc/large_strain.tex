@@ -13,8 +13,7 @@
 \usepackage{amsmath}
 \fi
 
-
-\usepackage{todonotes}
+\usepackage{pgfplots}
 \usepackage{bm}
 \usepackage{xcolor}
 \usepackage{listings}
@@ -836,7 +835,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
 \begin{table}[!htb]
   \caption{Parameters for the benchmark: $p$ is the polynomial degree,
   $q$ is the number of quadrature points in 1D, $N_{\text{gref}}$ is the number of global mesh refinements, $N_{el}$ is the number of elements and $N_{\text{DoF}}$ is the number of DoFs.}
-  \begin{subtable}{.5\linewidth}
+  \begin{subtable}{.49\linewidth}
   \caption{2D}
   \label{tab:input_parameters_2d}
   \centering
@@ -855,7 +854,7 @@ Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step 
   \hline
   \end{tabular}
   \end{subtable}
-  \begin{subtable}{.5\linewidth}
+  \begin{subtable}{.49\linewidth}
   \caption{3D}
   \label{tab:input_parameters_3d}
   \centering
@@ -1166,13 +1165,14 @@ Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is
     \centering
     \includegraphics[width=\textwidth]{CSL_Munich_cg2d.eps}
     \caption{CG iterations (2D)}
-    \label{fig:benchmark_miehe_Emmy_cg2}
+    \label{fig:benchmark_miehe_CSL_cg2}
   \end{subfigure}
+  ~
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{CSL_Munich_cg3d.eps}
     \caption{CG iterations (3D)}
-    \label{fig:benchmark_miehe_Emmy_cg3}
+    \label{fig:benchmark_miehe_CSL_cg3}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.49\textwidth}
@@ -1198,6 +1198,7 @@ Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is
     \caption{CG iterations (2D)}
     \label{fig:benchmark_miehe_IWR_cg2}
   \end{subfigure}
+  ~
   \begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{IWR_newest_patched_cg3d.eps}
@@ -1224,7 +1225,7 @@ Among the three suggested implementations, the Algorithm \ref{alg:mf_tensor4} is
 Next, we evaluate the performance of the proposed geometric multigrid preconditioner.
 Our main goal is to examine whether or not the adopted level operators lead to an efficient preconditioner from the linear algebra perspective. To that end,
 we consider the average number of CG iterations throughout the entire simulation, i.e., averaged over each Newton-Raphson iteration and each loading step.
-Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_IWR_cg3} show a
+Figures \ref{fig:benchmark_miehe_CSL_cg2}, \ref{fig:benchmark_miehe_CSL_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_IWR_cg3} show a
  noticeable increase in the average number of CG iterations for increasing polynomial degrees
  for the GMG preconditioner.
 The black-box AMG preconditioner
