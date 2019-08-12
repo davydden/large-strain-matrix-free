@@ -1227,9 +1227,6 @@ we consider the average number of CG iterations throughout the entire simulation
 Figures \ref{fig:benchmark_miehe_Emmy_cg2}, \ref{fig:benchmark_miehe_Emmy_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_IWR_cg3} show a
  noticeable increase in the average number of CG iterations for increasing polynomial degrees
  for the GMG preconditioner.
-Although not reported in this section, we identified that
-the coarse level solver setup will greatly affect the performance of the preconditioner.
-In particular, we can improve the number of iterations by choosing a more accurate coarse level solver.
 The black-box AMG preconditioner
 demonstrates the same trend in terms of the number of CG iterations, but
 requires many more iterations for convergence.
