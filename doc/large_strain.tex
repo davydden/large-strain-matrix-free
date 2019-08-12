@@ -86,34 +86,49 @@
 \ifijnme
 \author[1]{Denis Davydov*}
 \author[1]{Jean-Paul Pelteret}
-\author[2]{Daniel Arndt}
-\author[3]{Martin Kronbichler}
-\author[1,4]{Paul Steinmann}
+\author[2,3]{Daniel Arndt}
+\author[4]{Martin Kronbichler}
+\author[1,5]{Paul Steinmann}
 
 \address[1]{\orgdiv{Chair of Applied Mechanics}, \orgname{Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg}, \orgaddress{\country{Germany}}}
 
 \address[2]{\orgdiv{Interdisciplinary Center for Scientific Computing (IWR)}, \orgname{Heidelberg University}, \orgaddress{\country{Germany}}}
 
-\address[3]{\orgdiv{Institute for Computational Mechanics}, \orgname{Technical University of Munich}, \orgaddress{\country{Germany}}}
+\address[3]{\orgdiv{Computational Engineering and Energy Sciences Group},
+         \orgname{Oak Ridge National Laboratory}, \orgaddress{Oak Ridge, TN, USA}}
 
-\address[4]{\orgdiv{Glasgow Computational Engineering Center (GCEC)}, \orgname{University of Glasgow}, \orgaddress{\country{United Kingdom}}}
+\address[4]{\orgdiv{Institute for Computational Mechanics}, \orgname{Technical University of Munich}, \orgaddress{\country{Germany}}}
+
+\address[5]{\orgdiv{Glasgow Computational Engineering Center (GCEC)}, \orgname{University of Glasgow}, \orgaddress{\country{United Kingdom}}}
 
 \corres{*D. Davydov, Egerlandstr.\ 5, 91058 Erlangen, Germany. \email{denis.davydov@fau.de}}
 
 \presentaddress{Chair of Applied Mechanics, Friedrich-Alexander-Universit\"{a}t Erlangen-N\"{u}rnberg, Egerlandstr.\ 5, 91058 Erlangen, Germany.}
 
 \else
-
-  \author[a]{Denis Davydov\corref{cor}}
+ \author[a]{Denis Davydov\corref{cor}}
   \ead{denis.davydov@fau.de}
 
   \author[a]{Jean-Paul Pelteret}
   \ead{jean-paul.pelteret@fau.de}
 
-  \author[b]{Daniel Arndt}
-  \ead{daniel.arndt@iwr.uni-heidelberg.de}
+  \author[b,c]{Daniel Arndt
+   \footnotetext{%
+   This manuscript has been authored by UT-Battelle, LLC under Contract No.
+   DE-AC05-00OR22725 with the U.S. Department of Energy. The United States Government
+   retains and the publisher, by accepting the article for publication, acknowledges
+   that the United States Government retains a non-exclusive, paid-up, irrevocable,
+   worldwide license to publish or reproduce the published form of this manuscript,
+   or allow others to do so, for United States Government purposes. The Department
+   of Energy will provide public access to these results of federally sponsored
+   research in accordance with the DOE Public Access Plan
+   (http://energy.gov/downloads/doe-public-access-plan).}}
+  \ead{arndtd@ornl.gov}
 
-  \author[a,c]{Paul Steinmann}
+  \author[d]{Martin Kronbichler}
+  \ead{kronbichler@lnm.mw.tum.de}
+
+  \author[a,e]{Paul Steinmann}
   \ead{paul.steinmann@fau.de}
 
   \cortext[cor]{Corresponding author.}
@@ -128,7 +143,13 @@
       69120 Heidelberg,
       Germany}
 
-  \address[c]{Glasgow Computational Engineering Center (GCEC),
+  \address[c]{Computational Engineering and Energy Sciences Group,
+         Oak Ridge National Laboratory;
+         Oak Ridge, TN, USA}
+
+   \address[d]{Institute for Computational Mechanics, Technical University of Munich; Garching, Germany}
+
+  \address[e]{Glasgow Computational Engineering Center (GCEC),
       University of Glasgow, G12 8QQ Glasgow, United Kingdom
   }
 \fi
@@ -141,7 +162,16 @@ the limiting factor in classical finite element solvers.
     In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators
     and employ them to define a geometric multigrid preconditioner.
     The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner on a single node for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
-    We {\color{red}find} that matrix-free methods for finite-strain solid mechanics are very promising, {\color{red}outperforming linear matrix-based schemes by two to five times}, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.}
+    We {\color{red}find} that matrix-free methods for finite-strain solid mechanics are very promising, {\color{red}outperforming linear matrix-based schemes by two to five times}, and that is it possible to develop numerically efficient implementations that are independent of the hyperelastic constitutive law.}\footnotetext{%
+   This manuscript has been authored by UT-Battelle, LLC under Contract No.
+   DE-AC05-00OR22725 with the U.S. Department of Energy. The United States Government
+   retains and the publisher, by accepting the article for publication, acknowledges
+   that the United States Government retains a non-exclusive, paid-up, irrevocable,
+   worldwide license to publish or reproduce the published form of this manuscript,
+   or allow others to do so, for United States Government purposes. The Department
+   of Energy will provide public access to these results of federally sponsored
+   research in accordance with the DOE Public Access Plan
+   (http://energy.gov/downloads/doe-public-access-plan).}
   \end{abstract}
 
 
