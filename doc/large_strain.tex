@@ -691,7 +691,7 @@ This is achieved using templated number types within the \textit{Tensor} class o
 In particular, \texttt{deal.II} provides the generic templated class \textit{VectorizedArray} that defines a unified interface to a vectorized data type
 and overloads basic arithmetic operations based on compiler intrinsics.
 The core of the sum factorization algorithms is provided by the
-\textit{FEEvaluation} class, that supports all the necessary contractions such as $\overline{\grad} \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ to implement the three algorithms proposed above.
+\textit{FEEvaluation} class, that supports all the necessary contractions such as $\overline{\grad} \, \gz N_i : (\boldsymbol{\mathcal{C}}\gz g_s  + \boldsymbol{\mathcal{G}} \gz g)$ to implement the three algorithms proposed above.
 Thanks to the object-oriented design of the \texttt{deal.II} library, the core of those matrix-free algorithms can be implemented in only a handful of lines.
 Distributed memory MPI parallelization of the matrix-free operators is done using the standard domain decomposition technique, where each MPI process is responsible for applying the operator only on the locally owned elements.
 For more information about the implementation details and data structures for sum factorization approaches in \texttt{deal.II} (including hanging constraints, storage of the inverse Jacobian of the transformation from unit to real cell, MPI and distributed memory parallelization as well as SIMD vectorization) and performance tests, see \cite{kronbichler12}.
@@ -778,7 +778,7 @@ In this work we avoid these complications by assuming
 that the mesh at the coarsest level can accurately describe the heterogeneous finite-strain elastic material.
 In this case, the restriction and prolongation operations for patches of elements are always performed for the same material and thus admits usage of standard geometric transfer operators.
 We define the level operators as follows: Recall that the fine scale tangent operator \eqref{eq:algebraic_tangent} is obtained by linearization around the current displacement field $\gz u^h$. We then restrict this displacement field to all multigrid levels $\{l\}$ and evaluate tangent operators using the matrix-free algorithms from Section \ref{sec:mf}.
-Essentially, level operators correspond to the linearization around the smoothed representation of displacement field.
+Essentially, level operators correspond to the linearization around the smoothed representation of the displacement field.
 Note that this differs from the classical approach where the (tangent) operator $\gz A^{l+1}$ on level $l+1$ is directly related to the (tangent) operator $\gz A^{l}$ on level $l$ via $\gz A^{l+1}=\gz I^{l+1}_{l} \gz A^l \gz I^l_{l+1}$, where $\gz I^l_{l+1}$ and $\gz I^{l+1}_l$ are global prolongation (coarse-to-fine) and restriction (fine-to-coarse) operators, respectively.
 
 The other parts of the GMG preconditioner such as level smoothers, matrix-free interlevel transfer operators, and the coarse level iterative solver are provided by the \texttt{deal.II} library; implementational details are discussed in \cite{Clevenger2018}.
@@ -917,7 +917,7 @@ the linearization-related mapping required for evaluation of gradients with resp
   \centering
   \begin{subfigure}[b]{0.32\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{CSL_Munich_throughput2d.eps}
+      \includegraphics[width=\textwidth]{CSL_Munich_throughput2d-nolables.eps}
       \caption{throughput matrix-vector product (2D)}
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
@@ -928,14 +928,14 @@ the linearization-related mapping required for evaluation of gradients with resp
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{CSL_Munich_memory2d.eps}
+      \includegraphics[width=\textwidth]{CSL_Munich_memory2d-nolables.eps}
       \caption{memory access (2D)}
       \label{fig:benchmark_miehe_CSL_memory2}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{CSL_Munich_throughput3d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_throughput3d-nolables.eps}
     \caption{throughput matrix-vector product (3D)}
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
@@ -946,7 +946,7 @@ the linearization-related mapping required for evaluation of gradients with resp
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{CSL_Munich_memory3d.eps}
+    \includegraphics[width=\textwidth]{CSL_Munich_memory3d-nolables.eps}
     \caption{memory access (3D)}
     \label{fig:benchmark_miehe_CSL_memory3}
   \end{subfigure}
@@ -958,7 +958,7 @@ the linearization-related mapping required for evaluation of gradients with resp
   \centering
   \begin{subfigure}[b]{0.32\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_newest_patched_throughput2d.eps}
+      \includegraphics[width=\textwidth]{IWR_newest_patched_throughput2d-nolables.eps}
       \caption{throughput matrix-vector product (2D)}
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
@@ -969,14 +969,14 @@ the linearization-related mapping required for evaluation of gradients with resp
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
       \centering
-      \includegraphics[width=\textwidth]{IWR_newest_patched_memory2d.eps}
+      \includegraphics[width=\textwidth]{IWR_newest_patched_memory2d-nolables.eps}
       \caption{memory access (2D)}
       \label{fig:benchmark_miehe_IWR_memory2}
   \end{subfigure}
   ~
   \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_newest_patched_throughput3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_throughput3d-nolables.eps}
     \caption{throughput matrix-vector product (3D)}
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
@@ -987,7 +987,7 @@ the linearization-related mapping required for evaluation of gradients with resp
   \end{subfigure}
   \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{IWR_newest_patched_memory3d.eps}
+    \includegraphics[width=\textwidth]{IWR_newest_patched_memory3d-nolables.eps}
     \caption{memory access (3D)}
     \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
@@ -1348,7 +1348,7 @@ where the upper and lower dyadic products of pairs of second-order tensors are r
 \end{align*}
 
 {\color{red}
-This formulation can also be straight forwardly adopted within the matrix-free framework of \texttt{deal.II} library.
+This formulation can also be straight forwardly adopted within the matrix-free framework of the \texttt{deal.II} library.
 To that end a variation of the Algorithm \ref{alg:mf_tensor4} can be used where the gradients are evaluated with respect to the undeformed configuration and only a fourth-order referential tangent tensor ${\rm D}_{\gz F}{\gz P}$ is cached per quadrature point.
 }
 
