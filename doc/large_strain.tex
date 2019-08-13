@@ -153,7 +153,8 @@
   }
 \fi
   \begin{abstract}[Summary]
-    {{\color{red}This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity. Iterative solvers with matrix-free operator evaluation have emerged as
+    {{\color{red}This work investigates matrix-free algorithms for problems in quasi-static finite-strain hyperelasticity.
+    Iterative solvers with matrix-free operator evaluation have emerged as
 an attractive alternative to sparse matrices in the fluid dynamics and wave
 propagation communities because they significantly reduce the memory traffic,
 the limiting factor in classical finite element solvers.
@@ -325,7 +326,10 @@ and therefore
 \label{eq:weak_form}
 \end{align}
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$
-is involved due to the symmetry of $\gz \tau$. Here, `$\grad$' denotes the gradient with respect to the spatial configuration, as opposed to the gradient in the referential setting `$\Grad$'.
+is involved due to the symmetry of $\gz \tau$.
+{\color{red}
+Here, `$\grad$' denotes the gradient with respect to the spatial configuration, as opposed to the gradient in the referential setting `$\Grad$'.
+}
 Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \psi / \partial \gz E \equiv 2 \partial \psi / \partial \gz C$,
 that is, $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
 
@@ -721,7 +725,7 @@ solution $\overline{\gz u^h}$ need to be accessed, each with the usual indirect
 addressing pertaining to continuous finite element fields \cite{kronbichler12}.
 The cached quantities listed in the algorithms, labeled ``physics terms'' in the
 table, are increasing in size with more caching, and are stored for each
-quadrature point. Finally, the evaluation of the gradients in the referential
+quadrature point. The evaluation of the gradients in the referential
 and spatial configuration also involves a data access via the so-called metric
 terms, the inverse of the Jacobian from the unit element to the referential or
 spatial configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves
@@ -997,13 +1001,13 @@ the linearization-related mapping required for evaluation of gradients with resp
 
 The matrix-free implementation is faster than the matrix-based counterpart already for a bi-quadratic Lagrangian basis in 2D and a tri-quadratic basis in 3D on both systems.
 {\color{red}
-The ``MF tensor2'' and ``MF scalar'' strategies outperform the sparse matrix already for tri-linear elements of polynomial degree $p=1$. For example for the ``tensor2'' matrix-free implementation with $p=4$, we record a 5$\times$ higher throughput than the matrix-based evaluation of $p=1$. The advantage of the matrix-free implementation can be explained by the memory access per unknown shown in the panels (c) and (f) of the figures, as the time per unknown in panels (b) and (e) closely follows the memory access.
+The ``MF tensor2'' and ``MF scalar'' strategies outperform the sparse matrix already for tri-linear elements of polynomial degree $p=1$ in 3D on Cascade Lake architecture. For example for the ``tensor2'' matrix-free implementation with $p=4$, we record a 5$\times$ higher throughput than the matrix-based evaluation of $p=1$. The advantage of the matrix-free implementation can be explained by the memory access per unknown shown in the panels (c) and (f) of the figures, as the time per unknown in panels (b) and (e) closely follows the memory access.
 }
 Figures \ref{fig:benchmark_miehe_CSL_vmult2}, \ref{fig:benchmark_miehe_CSL_vmult3}, \ref{fig:benchmark_miehe_IWR_vmult2} and \ref{fig:benchmark_miehe_IWR_vmult3} clearly show the influence of the different caching strategies,
 described in Algorithms \ref{alg:mf_scalar}, \ref{alg:mf_tensor2} and \ref{alg:mf_tensor4}.
 Two conclusions can be drawn from these results:
 {\color{red}
-Firstly, the algorithm where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on the second-order symmetric tensor (``tensor2'') is the fastest approach in both 2D and 3D and on both systems. When compared to the scalar caching implementation, the ``tensor2'' variant loads slightly less data, because only the spatial configuration is needed in terms of metric terms, as compared to both the spatial and the referential configuration in the scalar caching case in order to evaluate the Kirchhoff stress $\gz \tau$. Besides the memory access, the scalar caching strategy also involves considerably more computations at quadrature points. On the newer Cascade Lake system with a Flop/Byte ratio of 9.1 for the theoretical peak values, the scalar caching strategy is closer to the ``tensor2'' variant. On the IWR machine, the Flop/Byte ratio is 2.9, which means that much fewer computations can be sustained for the same memory transfer.
+Firstly, the algorithm where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on the second-order symmetric tensor (``tensor2'') is the fastest approach in both 2D and 3D and on both systems. When compared to the scalar caching implementation, the ``tensor2'' variant loads slightly less data, because only the spatial configuration is needed for the metric terms, as compared to both the spatial and the referential configuration in the scalar caching case in order to evaluate the Kirchhoff stress $\gz \tau$. Besides the memory access, the scalar caching strategy also involves considerably more computations at quadrature points. On the newer Cascade Lake system with a Flop/Byte ratio of 9.1 for the theoretical peak values, the scalar caching strategy is closer to the ``tensor2'' variant. On the IWR machine, the Flop/Byte ratio is 2.9, which means that much fewer computations can be sustained for the same memory transfer.
 }
 
 {\color{red}
@@ -1047,9 +1051,9 @@ The measurements are done on a single socket of the Cascade Lake system by pinni
 
 The results of the roofline analysis in Figure~\ref{fig:roofline} show that the matrix-based approach is fully memory-bandwidth bound with a very low arithmetic intensity of 0.16 and a performance of $\pgfmathprintnumber{17.36}\,\rm{GFlop/s}$ (1.4\% of the arithmetic peak) averaged over the 2D results.
 {\color{red}
-The matrix-free implementations of the fine-strain elastic tangent operator (on average) lead to a much better performance of
+The matrix-free implementations of the finite-strain elastic tangent operator (on average) lead to a much better performance of
 $\pgfmathprintnumber{86.9}\,\rm{GFlop/s}$ in 2D, as well as about an order of magnitude higher computational intensity, but still stays in the memory-bound regime.
-The achieved performance is about 6.8\% of the peak arithmetic performance. This result similar to the deformed mesh results of \cite[Figure 18]{kronbichler2017fast}.
+The achieved performance is about 6.8\% of the peak arithmetic performance. This result is similar to the deformed mesh results of \cite[Figure 18]{kronbichler2017fast}.
 }
 
 {\color{red}
@@ -1147,7 +1151,7 @@ The majority of time is spent within the quadrature loop for all variants, with 
 
 Table \ref{tab:numbers_2d} and Table \ref{tab:numbers_3d} show the speed-up obtained due to explicit SIMD vectorization intrinsics and due to the MPI parallelization.
 {\color{red}
-When run in serial, explicit SIMD vectorization via intrinsics provides a speedup of up to $3\times$ over the auto-vectorization case. This is less than the theoretical factor of 8, but in line with previous experiments presented in Figure 6 of \cite{kronbichler2017fastcomputer} with a speedup of around $1.5-2.5\times$ with 8-wide vectorization. The reason for sub-optimal speedup is mostly related to the memory access in the gather/scatter operations as well as the limited memory bandwidth. When going to the parallel case with 20 cores, the less-than-optimal speedup can be attributed to two different effects. For the auto-vectorized case, the different (turbo) clock frequencies permit a speedup of a factor 12.6 at most, close to our results.\footnote{Note that we intentionally run with Turbo mode on to permit the processor to come close to the power limit for all settings and present more realistic performance limits.} For the SIMD+MPI case, the main reason is the memory bandwidth: As can be seen from Figures~\ref{fig:roofline_2d} and~\ref{fig:roofline_3d}, both algorithms are eventually memory-bandwidth limited. Since Algorithm~\ref{alg:mf_tensor4} has a lower arithmetic intensity, the speedup over the serial, auto-vectorized case is less than that of Algorithm~\ref{alg:mf_tensor2}.
+When run in serial, explicit SIMD vectorization via intrinsics provides a speedup of up to $3\times$ over the auto-vectorization case. This is less than the theoretical factor of 8, but in line with previous experiments presented in Figure 6 of \cite{kronbichler2017fastcomputer} with a speedup of around $1.5-2.5\times$ with 8-wide vectorization. The reason for sub-optimal speedup is mostly related to the memory access in the gather/scatter operations as well as the limited memory bandwidth. When going to the parallel case with 20 cores, the less-than-optimal speedup can be attributed to two different effects. For the auto-vectorized case, the different (turbo) clock frequencies permit a speedup of a factor 12.6 at most, close to our results\footnote{Note that we intentionally run with Turbo mode on to permit the processor to come close to the power limit for all settings and present more realistic performance limits.}. For the SIMD+MPI case, the main reason is the memory bandwidth: As can be seen from Figures~\ref{fig:roofline_2d} and~\ref{fig:roofline_3d}, both algorithms are eventually memory-bandwidth limited. Since Algorithm~\ref{alg:mf_tensor4} has a lower arithmetic intensity, the speedup over the serial, auto-vectorized case is less than that of Algorithm~\ref{alg:mf_tensor2}.
 }
 
 To summarize this section, we can attribute the speed-up of the matrix-free finite-strain tangent operators for higher-order elements to two factors.
@@ -1282,7 +1286,7 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 \label{sec:summary}
 
 In this contribution, we proposed and numerically investigated three different matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
-To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques to the partial differential equations arising in this case.
+To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques on the partial differential equations arising in this case.
 Among the three examined algorithms,
 {\color{red}the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the spatial configuration is faster than caching only a scalar at quadrature points or caching the material part} of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress.
 {\color{red}
@@ -1360,7 +1364,7 @@ The advantage of this algorithm is that it does not require evaluation of gradie
 Overall we consider this approach to be a valid alternative to the Algorithm \ref{alg:mf_tensor4}
 that can be be applied to any constitutive model which operates with the fourth-order referential tangent stiffness tensor on the quadrature point level.
 
-A scalar variant of the algorithm in referential coordinates, related to Algorithm~\ref{alg:mf_scalar}, can also be devised. In this setting, all quantities are evaluated in referential coordinates, necessitating only a single set of metric terms according to Table~\ref{tab:memory}. For the derivatives of the current solution an additional multiplication by $\gz F^{-T}$ for both the solution as well as the test function is necessary, with $\gz F^{-T}$ evaluated on the fly after line 10 in Algorithm~\ref{alg:mf_scalar}. Despite the additional calculations, this leads to a faster calculation than Algorithm~\ref{alg:mf_scalar} on Cascade Lake, running with 162 GFlop/s and 68 GB/s for $p=6$ in 2D or 225 GFlop/s and 59 GB/s for $p=4$ in 3D. However, execution is still slower than Algorithm~\ref{alg:mf_tensor2}, despite the lower memory access. This is because the bottleneck is now mostly within the core, although below the arithmetic throughput limit. This is mainly caused by the cost of indirect addressing in the vector access as well as division for inverting $\gz F$ on the fly.
+A scalar variant of the algorithm in referential coordinates, related to Algorithm~\ref{alg:mf_scalar}, can also be devised. In this setting, all quantities are evaluated in referential coordinates, necessitating only a single set of metric terms according to Table~\ref{tab:memory}. For the derivatives of the current solution an additional multiplication by $\gz F^{-T}$ for both the solution as well as the test function is necessary, with $\gz F^{-T}$ evaluated on the fly after line 10 in Algorithm~\ref{alg:mf_scalar}. Despite the additional evaluations, this leads to a faster calculation than Algorithm~\ref{alg:mf_scalar} on Cascade Lake, running with 162 GFlop/s and 68 GB/s for $p=6$ in 2D or 225 GFlop/s and 59 GB/s for $p=4$ in 3D. However, execution is still slower than Algorithm~\ref{alg:mf_tensor2}, despite the lower memory access. This is because the bottleneck is now mostly within the core, although below the arithmetic throughput limit. This is mainly caused by the cost of indirect addressing in the vector access as well as division for inverting $\gz F$ on the fly.
 }
 
 \ifijnme
