@@ -260,7 +260,7 @@ mem3d_t4_ns = [tup[3]/tup[1] for tup in mf3d_data_tensor4_ns]
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
 
-params = {'legend.fontsize': 18,
+params = {'legend.fontsize': 20,
           'font.size': 20}
 plt.rcParams.update(params)
 
@@ -272,8 +272,8 @@ plt.plot(deg2d,time2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'timing2d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'timing2d.eps')
 
 # clear
@@ -289,8 +289,8 @@ plt.plot(deg3d,time3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'timing3d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'timing3d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'timing3d.eps')
 
 # clear
@@ -304,8 +304,8 @@ plt.plot(deg2d,through2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult DoF / s')
 leg = plt.legend(loc='lower right', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'throughput2d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'throughput2d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'throughput2d.eps')
 
 # clear
@@ -321,8 +321,8 @@ plt.plot(deg3d,through3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult DoF / s')
 leg = plt.legend(loc='lower right', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'throughput3d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'throughput3d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'throughput3d.eps')
 
 # clear
@@ -337,8 +337,8 @@ plt.plot(deg2d,mem2d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'memory2d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'memory2d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'memory2d.eps')
 
 # clear
@@ -355,16 +355,17 @@ plt.plot(deg3d,mem3d_t4, 'cv--', label='MF tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('memory (Mb) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'memory3d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'memory3d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'memory3d.eps')
 
 # clear
 plt.clf()
+ax = plt.figure().gca()
 plt.yscale('log', basey=10)
 plt.ylim(top=1e-2,bottom=1e-9)
-#ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-params = {'legend.fontsize': 14, 'font.size': 20}
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+params = {'legend.fontsize': 14, 'font.size': 16}
 plt.rcParams.update(params)
 
 plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos Solver')
@@ -379,8 +380,8 @@ plt.xlabel('polynomial degree')
 plt.ylabel('wall time (s) / DoF')
 plt.plot(deg2d,assembly2d_tr, 'bp--', label='Trilinos Assembly')
 leg = plt.legend(loc='lower right', ncol=1, labelspacing=0.1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'solver2d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'solver2d.eps')
 
 # clear
@@ -405,9 +406,9 @@ plt.plot(deg3d,assembly3d_tr, 'bp--', label='Trilinos Assembly')
 plt.xlabel('polynomial degree')
 plt.ylabel('wall time (s) / DoF')
 leg = plt.legend(loc='lower right', ncol=1, labelspacing=0.1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'solver3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'solver3d.eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'solver3d.eps', format='eps', bbox_inches = 'tight')
+remove_creation_date(fig_prefix + 'solver2d.eps')
 
 # clear
 plt.clf()
@@ -420,8 +421,8 @@ plt.plot(deg2d,cg2d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'cg2d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'cg2d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'cg2d.eps')
 
 # clear
@@ -437,6 +438,6 @@ plt.plot(deg3d,cg3d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'cg3d.eps', format='eps')
+#plt.tight_layout()
+plt.savefig(fig_prefix + 'cg3d.eps', format='eps', bbox_inches = 'tight')
 remove_creation_date(fig_prefix + 'cg3d.eps')
