@@ -1,0 +1,74 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 320 MPI processes
+--     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+--     . version 1.0 (revision dd17ea2 on branch martin)
+--     . deal.II 9.2.0-pre (revision 3fc88ea on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 4
+q     = 5
+cells = 1441792
+dofs  = 46153728
+
+Trilinos memory = 0 Mb
+MF cache memory = 2740 Mb
+
+Average CG iter = 48
+Total CG iter = 1615
+Total CG solve = 33
+
+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |       114s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |        36 |      5.65s |         5% |
+| Coarse solve level 0             |      1615 |       1.4s |       1.2% |
+| Coarse solve level 1             |      1615 |    0.0382s |         0% |
+| Coarse solve level 2             |      1615 |    0.0467s |         0% |
+| Coarse solve level 3             |      1615 |    0.0459s |         0% |
+| Coarse solve level 4             |      1615 |    0.0537s |         0% |
+| Coarse solve level 5             |      1615 |     0.106s |         0% |
+| Coarse solve level 6             |      1615 |     0.387s |      0.34% |
+| Coarse solve level 7             |      1615 |      1.55s |       1.4% |
+| Linear solver                    |        33 |        84s |        74% |
+| Post-smoothing level 1           |      1615 |     0.178s |      0.16% |
+| Post-smoothing level 2           |      1615 |     0.137s |      0.12% |
+| Post-smoothing level 3           |      1615 |     0.185s |      0.16% |
+| Post-smoothing level 4           |      1615 |     0.317s |      0.28% |
+| Post-smoothing level 5           |      1615 |     0.881s |      0.78% |
+| Post-smoothing level 6           |      1615 |      3.72s |       3.3% |
+| Post-smoothing level 7           |      1615 |      20.3s |        18% |
+| Pre-smoothing level 1            |      1615 |     0.173s |      0.15% |
+| Pre-smoothing level 2            |      1615 |     0.194s |      0.17% |
+| Pre-smoothing level 3            |      1615 |     0.252s |      0.22% |
+| Pre-smoothing level 4            |      1615 |     0.415s |      0.37% |
+| Pre-smoothing level 5            |      1615 |      1.06s |      0.93% |
+| Pre-smoothing level 6            |      1615 |      4.12s |       3.6% |
+| Pre-smoothing level 7            |      1615 |      21.3s |        19% |
+| Prolongation level 1             |      1615 |    0.0385s |         0% |
+| Prolongation level 2             |      1615 |    0.0374s |         0% |
+| Prolongation level 3             |      1615 |    0.0379s |         0% |
+| Prolongation level 4             |      1615 |    0.0489s |         0% |
+| Prolongation level 5             |      1615 |       0.1s |         0% |
+| Prolongation level 6             |      1615 |     0.293s |      0.26% |
+| Prolongation level 7             |      1615 |      1.52s |       1.3% |
+| Setup MF: AdditionalData         |        33 |    0.0322s |         0% |
+| Setup MF: GMG setup              |        33 |    0.0184s |         0% |
+| Setup MF: MGTransferMatrixFree   |        33 |      1.95s |       1.7% |
+| Setup MF: MappingQEulerian       |        33 |      5.59s |       4.9% |
+| Setup MF: cache() and diagonal() |        33 |      3.99s |       3.5% |
+| Setup MF: ghost range            |        33 |    0.0684s |         0% |
+| Setup MF: interpolate_to_mg      |        33 |      1.09s |      0.96% |
+| Setup system                     |         1 |      1.03s |      0.91% |
+| vmult (MF)                       |       330 |      1.25s |       1.1% |
+| vmult (MF) Cell loop             |       330 |      1.15s |         1% |
+| vmult (MF) MPI                   |       330 |    0.0226s |         0% |
+| vmult (MF) RW                    |       330 |     0.403s |      0.35% |
+| vmult (MF) RWSF                  |       330 |     0.501s |      0.44% |
+| vmult (MF) zero                  |       330 |    0.0427s |         0% |
++----------------------------------+-----------+------------+------------+
+
