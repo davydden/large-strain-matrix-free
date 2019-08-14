@@ -18,7 +18,7 @@ def remove_creation_date(file_name):
 parser = argparse.ArgumentParser(
     description='Post-Process timing/memory info and plot figures.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--prefix', metavar='prefix', default='LIKWID_Emmy_RRZE',
+parser.add_argument('--prefix', metavar='prefix', default='LIKWID_CSL_Munich',
                     help='A folder to look for benchmark results')
 parser.add_argument('--dim', metavar='dim', default=2, type=int,
                     help='Dimension (2 or 3)')

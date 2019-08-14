@@ -8,9 +8,11 @@ from utilities import *
 parser = argparse.ArgumentParser(
     description='Post-Process timing/memory info and create a table.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--prefix', metavar='prefix', default='LIKWID_Emmy_RRZE',
+parser.add_argument('--prefix', metavar='prefix', default='LIKWID_CSL_Munich',
                     help='A folder prefix to look for benchmark results')
 parser.add_argument('--dim', metavar='dim', default=2, type=int,
+                    help='Dimension (2 or 3)')
+parser.add_argument('--alg', metavar='alg', default='tensor4',
                     help='Dimension (2 or 3)')
 
 args = parser.parse_args()
@@ -51,15 +53,14 @@ for idx, s in enumerate(suffixes):
     for f in files:
         # guess parameters from the file name:
         fname = os.path.basename(f)
+        dname = os.path.dirname(f)
         strings = fname.split('_')
         dim = int(re.findall(get_regex_pattern(),strings[2])[0])
         p   = int(re.findall(get_regex_pattern(),strings[3])[0])
         q   = int(re.findall(get_regex_pattern(),strings[3])[1])
 
         # we are only interested in tensor2 (Algorithm 3) for the currently chosen dimension
-        if not (dim == args.dim and '_tensor4' in fname):
-            continue
-        if ('_tensor4_ns' in fname):
+        if not (dim == args.dim and dname.endswith(args.alg)):
             continue
 
         print 'dim={0} p={1} q={2} file={3}'.format(dim,p,q,fname)
@@ -99,22 +100,22 @@ for idx, s in enumerate(suffixes):
             table_data[row][col+2] = table_data[row][1] / runtime
 
 # Finally write out a latex multicolumn table
-file_name = os.path.join(os.getcwd(), '../doc/parallelization_{0}d.tex'.format(args.dim))
+file_name = os.path.join(os.getcwd(), '../doc/parallelization_{0}d_{1}.tex'.format(args.dim,args.alg))
 print 'Saving table in ' + file_name
 
 with open(file_name, 'w') as f:
-    # start with the header
-    f.write("""\
-\\begin{table}
-\centering
-\\resizebox{\\textwidth}{!}{
-\\begin{tabular}{|c|cc|ccc|ccc|ccc|}
-\hline
-              & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\\\
-\hline
-p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\\\
-\hline
-""")
+#     # start with the header
+#     f.write("""\
+# \\begin{table}
+# \centering
+# \\resizebox{\\textwidth}{!}{
+# \\begin{tabular}{|c|cc|ccc|ccc|ccc|}
+# \hline
+#               & \multicolumn{2}{c|}{serial} & \multicolumn{3}{c|}{MPI} & \multicolumn{3}{c|}{SIMD} & \multicolumn{3}{c|}{MPI+SIMD}  \\\\
+# \hline
+# p             & time  & GFlop/s              & time & GFlop/s & speedup & time & GFlop/s & speedup & time & GFlop/s & speedup \\\\
+# \hline
+# """)
 
     # now print the gathered data:
     for row in table_data:
@@ -124,13 +125,13 @@ p             & time  & GFlop/s              & time & GFlop/s & speedup & time &
         line = line + '\\\\\n'
         f.write(line)
 
-    # now footer:
-    f.write("""\
-\hline
-\end{tabular}
-}
-    \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor2} in 2D for various combinations of polynomial degrees,
-vectorization and parallelization.}
-\label{tab:numbers_2d}
-\end{table}
-""")
+#     # now footer:
+#     f.write("""\
+# \hline
+# \end{tabular}
+# }
+#     \caption{Wall-clock time in seconds and performance in GFlops of Algorithm \\ref{alg:mf_tensor2} in 2D for various combinations of polynomial degrees,
+# vectorization and parallelization.}
+# \label{tab:numbers_2d}
+# \end{table}
+# """)

@@ -1212,15 +1212,11 @@ as the memory access of quadrature point data scales as $(p+1)^d/p^d$ compared t
   \hline
 & \multicolumn{11}{c|}{Algorithm~\ref{alg:mf_tensor2}}\\
 \hline
-2& \pgfmathprintnumber{0.67518} & \pgfmathprintnumber{2.1798691} & \pgfmathprintnumber{0.04811} & \pgfmathprintnumber{31.270185} & \pgfmathprintnumber{14.0340885471} & \pgfmathprintnumber{0.21837} & \pgfmathprintnumber{6.6211982} & \pgfmathprintnumber{3.09190822915} & \pgfmathprintnumber{0.02194} & \pgfmathprintnumber{67.8161088} & \pgfmathprintnumber{30.773928897} \\
-4& \pgfmathprintnumber{0.35754} & \pgfmathprintnumber{3.6114434} & \pgfmathprintnumber{0.02991} & \pgfmathprintnumber{43.3813195} & \pgfmathprintnumber{11.9538615848} & \pgfmathprintnumber{0.11568} & \pgfmathprintnumber{11.0068739} & \pgfmathprintnumber{3.09076763485} & \pgfmathprintnumber{0.01438} & \pgfmathprintnumber{89.247277} & \pgfmathprintnumber{24.8636995828} \\
-6& \pgfmathprintnumber{0.17724} & \pgfmathprintnumber{4.4013124} & \pgfmathprintnumber{0.01489} & \pgfmathprintnumber{52.73939} & \pgfmathprintnumber{11.9032907992} & \pgfmathprintnumber{0.05934} & \pgfmathprintnumber{12.9981312} & \pgfmathprintnumber{2.9868554095} & \pgfmathprintnumber{0.00732} & \pgfmathprintnumber{106.9726898} & \pgfmathprintnumber{24.2131147541} \\
+\input{parallelization_2d_tensor2.tex}
 \hline
 & \multicolumn{11}{c|}{Algorithm~\ref{alg:mf_tensor4}}\\
 \hline
-2& \pgfmathprintnumber{0.62536} & \pgfmathprintnumber{2.623296} & \pgfmathprintnumber{0.04582} & \pgfmathprintnumber{36.1519843} & \pgfmathprintnumber{13.6481885639} & \pgfmathprintnumber{0.22937} & \pgfmathprintnumber{6.925918} & \pgfmathprintnumber{2.72642455421} & \pgfmathprintnumber{0.02532} & \pgfmathprintnumber{63.6564648} & \pgfmathprintnumber{24.6982622433} \\
-4& \pgfmathprintnumber{0.36549} & \pgfmathprintnumber{3.8534134} & \pgfmathprintnumber{0.03113} & \pgfmathprintnumber{45.7061894} & \pgfmathprintnumber{11.7407645358} & \pgfmathprintnumber{0.14346} & \pgfmathprintnumber{9.5663639} & \pgfmathprintnumber{2.54767879548} & \pgfmathprintnumber{0.01862} & \pgfmathprintnumber{74.2778413} & \pgfmathprintnumber{19.6288936627} \\
-6& \pgfmathprintnumber{0.18374} & \pgfmathprintnumber{4.5579733} & \pgfmathprintnumber{0.01572} & \pgfmathprintnumber{54.0989777} & \pgfmathprintnumber{11.6882951654} & \pgfmathprintnumber{0.07388} & \pgfmathprintnumber{11.097412} & \pgfmathprintnumber{2.4870059556} & \pgfmathprintnumber{0.00946} & \pgfmathprintnumber{88.2340296} & \pgfmathprintnumber{19.422832981} \\
+\input{parallelization_2d_tensor4.tex}
   \hline
   \end{tabular}
   }
@@ -1240,13 +1236,11 @@ as the memory access of quadrature point data scales as $(p+1)^d/p^d$ compared t
   \hline
 & \multicolumn{11}{c|}{Algorithm~\ref{alg:mf_tensor2}}\\
 \hline
-2& \pgfmathprintnumber{0.33065} & \pgfmathprintnumber{4.341083} & \pgfmathprintnumber{0.02814} & \pgfmathprintnumber{51.7484607} & \pgfmathprintnumber{11.750177683} & \pgfmathprintnumber{0.12258} & \pgfmathprintnumber{11.7249488} & \pgfmathprintnumber{2.6974220917} & \pgfmathprintnumber{0.01317} & \pgfmathprintnumber{112.4745656} & \pgfmathprintnumber{25.106302202} \\
-4& \pgfmathprintnumber{0.18685} & \pgfmathprintnumber{5.461242} & \pgfmathprintnumber{0.01589} & \pgfmathprintnumber{64.7662171} & \pgfmathprintnumber{11.7589679043} & \pgfmathprintnumber{0.0695} & \pgfmathprintnumber{14.7126397} & \pgfmathprintnumber{2.68848920863} & \pgfmathprintnumber{0.00803} & \pgfmathprintnumber{129.6590805} & \pgfmathprintnumber{23.2689912827} \\
+\input{parallelization_3d_tensor2.tex}
   \hline
 & \multicolumn{11}{c|}{Algorithm~\ref{alg:mf_tensor4}}\\
   \hline
-2& \pgfmathprintnumber{0.38409} & \pgfmathprintnumber{4.4971589} & \pgfmathprintnumber{0.03472} & \pgfmathprintnumber{51.9008095} & \pgfmathprintnumber{11.0625} & \pgfmathprintnumber{0.22335} & \pgfmathprintnumber{7.7420018} & \pgfmathprintnumber{1.719677636} & \pgfmathprintnumber{0.0243} & \pgfmathprintnumber{72.555647} & \pgfmathprintnumber{15.8061728395} \\
-4& \pgfmathprintnumber{0.22053} & \pgfmathprintnumber{5.393482} & \pgfmathprintnumber{0.01898} & \pgfmathprintnumber{63.1076193} & \pgfmathprintnumber{11.6190727081} & \pgfmathprintnumber{0.12765} & \pgfmathprintnumber{9.3340763} & \pgfmathprintnumber{1.72761457109} & \pgfmathprintnumber{0.01464} & \pgfmathprintnumber{82.3893605} & \pgfmathprintnumber{15.0635245902} \\
+\input{parallelization_3d_tensor4.tex}
 \hline
   \end{tabular}
   }
