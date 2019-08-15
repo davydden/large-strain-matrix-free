@@ -51,6 +51,8 @@ qsub likwid_emmy_benchmark_intel.sh
 
 # Post-processing / plotting
 
+Current plots are done using: Python 2.7 + Matplotlib 2.2.4 + numpy-1.16.4 + macOS 10.14.6
+
 ## general benchmark
 ```
 python post_process.py CSL_Munich
@@ -58,7 +60,7 @@ python post_process.py IWR_newest_patched
 ```
 
 ## weak scaling
-FIXME: done by hand?
+FIXME: adjust to CSL
 ```
 python post_process_weak.py
 ```
