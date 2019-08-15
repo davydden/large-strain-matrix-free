@@ -1371,9 +1371,7 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
   \hline
-  20 & 2,887,680 & 5 & \pgfmathprintnumber{0.0033900} & \pgfmathprintnumber{0.045574} \\
-  80 & 11,542,528 & 6 & \pgfmathprintnumber{0.0035350} & \pgfmathprintnumber{0.047788} \\
-  320 & 46,153,728 & 7 & \pgfmathprintnumber{0.0037879} & \pgfmathprintnumber{0.052012} \\
+  \input{weak_scaling_2d.tex}
   \hline
   \end{tabular}
   \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 2D for a quartic polynomial basis.}
@@ -1386,8 +1384,7 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
   \hline
-  40 & 4,442,880 & 3 & \pgfmathprintnumber{0.0070667} & \pgfmathprintnumber{0.064328} \\
-  320 & 35,071,488 & 4 & \pgfmathprintnumber{0.0075333} & \pgfmathprintnumber{0.071448} \\
+  \input{weak_scaling_3d.tex}
   \hline
   \end{tabular}
   \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 3D for a quadratic polynomial basis.}

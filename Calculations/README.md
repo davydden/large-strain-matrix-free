@@ -60,9 +60,9 @@ python post_process.py IWR_newest_patched
 ```
 
 ## weak scaling
-FIXME: adjust to CSL
 ```
-python post_process_weak.py
+python post_process_weak.py --dim=2
+python post_process_weak.py --dim=3
 ```
 
 ## LIKWID
