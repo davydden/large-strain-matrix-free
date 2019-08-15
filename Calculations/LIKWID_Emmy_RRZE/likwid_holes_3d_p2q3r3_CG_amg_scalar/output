@@ -1,9 +1,0 @@
-Grid:
-  Reference volume: 9.29428e-10
-Triangulation:
-  Number of active cells: 180224
-  Number of degrees of freedom: 4442880
-
-Timestep 1 @ 0.2s
-Solution @ 0 0 0.0005
-  displacement: 0 0 0
