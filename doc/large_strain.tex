@@ -233,7 +233,7 @@ Although any linear mapping on a finite-dimensional space is representable by a 
 more elaborate as compared to the common operators in linear and non-linear fluid mechanics.
 {\color{red}
 For matrix-free schemes using fast integration via sum factorization, the main challenge is to find a representation of the linearization point,
-either in referential or spatial configurations, at the quadrature points that is cheap enough to be evaluated on the fly.
+either in referential or current configurations, at the quadrature points that is cheap enough to be evaluated on the fly.
 }
 Another reason could be the frequent use of lower-order elements in solid mechanics due to lacking smoothness of the underlying solution.
 The finite element method (FEM) with linear or quadratic elements (that reduce the potential for locking),
@@ -273,7 +273,7 @@ Finally, the results are summarized in Section \ref{sec:summary}.
 \label{sec:theory}
 
 \subsection{Weak form}
-The deformation of a body $\mcl B$ from the referential configuration $\mcl B_0$ to the spatial configuration $\mcl B_t$ at time $t$
+The deformation of a body $\mcl B$ from the referential configuration $\mcl B_0$ to the {\color{red}current} configuration $\mcl B_t$ at time $t$
 is defined via the deformation map $\gz \varphi_t: \mcl B_0 \rightarrow \mcl B_t$, which places material points of $\mcl B$ into the Euclidean space $\mathbb E^3$.
 The spatial location of a material particle $\gz X$ is given by $\gz x = \gz \varphi_t (\gz X)$.
 The displacement field reads $\gz u = \gz x - \gz X$.
@@ -341,7 +341,7 @@ and therefore
 where $\grad^{s} \, \delta \gz u := \frac{1}{2}\left[ \grad \, \delta \gz u + ( \grad \, \delta \gz u)^T\right]$
 is involved due to the symmetry of $\gz \tau$.
 {\color{red}
-Here, `$\grad$' denotes the gradient with respect to the spatial configuration, as opposed to the gradient in the referential setting `$\Grad$'.
+Here, `$\grad$' denotes the gradient with respect to the current configuration, as opposed to the gradient in the referential setting `$\Grad$'.
 }
 Note that $\gz \tau$ is the push-forward transformation of the Piola-Kirchhoff stress $\gz S := \partial \psi / \partial \gz E \equiv 2 \partial \psi / \partial \gz C$,
 that is, $\gz \tau = \chi(\gz S) = \gz F \cdot \gz S \cdot \gz F^T$.
@@ -487,7 +487,7 @@ system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent}):
 \end{align}
 Here, $\gz A$ is the discrete tangent operator, $\gz F$ is the discrete gradient of the potential energy
 and $\tilde{a}(\gz N_i, \gz N_j)$ is a representation for the integrand in the bilinear form $a(\gz N_i, \gz N_j)$ for the trial solution field $\overline{\gz u^h}$.
-Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the spatial configuration,
+Note that $\overline{\grad^s} \gz N_i$ and $\overline{\grad} \gz N_i$ are gradients of shape functions in the {\color{red}current} configuration,
 whereas the integration is done in the referential configuration.
 
 
@@ -597,13 +597,13 @@ More information on matrix-free techniques can be found in \cite{kronbichler12,v
 For the performance of the matrix-free operator evaluation, it is crucial to find a good intermediate point
 between precomputing everything (caching) and evaluating all the quantities on-the-fly.
 %
-In order to obtain the gradients with respect to the spatial configuration,
+In order to obtain the gradients with respect to the {\color{red}current} configuration,
 which appear in the tangent operator \eqref{eq:algebraic_tangent} of the finite-strain elasticity problem derived with a Lagrangian formulation,
 we use the \textit{MappingQEulerian} class from the \texttt{deal.II} \cite{dealII90} library.
 In addition to the standard mapping from the reference (isoparametric) element to the element in real space, this class computes the mapping
-to the spatial configuration given a displacement field.
+to the {\color{red}current} configuration given a displacement field.
 %
-Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, the integration is eventually performed over the spatial configuration.
+Due to the specifics of matrix-free operator evaluation implemented in \texttt{deal.II}, the integration is eventually performed over the {\color{red}current} configuration.
 Therefore, we have to additionally divide by the Jacobian $J$ of the deformation map at a given quadrature point to express the integral in the referential configuration.
 
 Below, we propose three algorithms to implement the tangent operator of finite-strain elasticity (see \eqref{eq:algebraic_tangent})
@@ -767,10 +767,10 @@ addressing pertaining to continuous finite element fields \cite{kronbichler12}.
 The cached quantities listed in the algorithms, labeled ``physics terms'' in the
 table, are increasing in size with more caching, and are stored for each
 quadrature point. The evaluation of the gradients in the referential
-and spatial configuration also involves a data access via the so-called metric
+and current configuration also involves a data access via the so-called metric
 terms, the inverse of the Jacobian from the unit element to the referential or
-spatial configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves
-both the Jacobian in the referential and the spatial configuration, whereas the other
+current configurations, respectively. Algorithm~\ref{alg:mf_scalar} involves
+both the Jacobian in the referential and the current configuration, whereas the other
 two algorithms only involve the spatial (Eulerian) terms. Finally, the
 implementation framework also holds the determinant of the Jacobian for each
 point. Following \cite{kronbichler12}, some compression may be applied to the
@@ -987,7 +987,7 @@ The performance results for finite-strain elasticity operators considered in thi
 {\color{red}
 Note that we consider only deformed meshes together with separate metric terms according to Table~\ref{tab:memory}.
 These deformed terms are the result of manifold descriptions of the boundaries and interfaces  to capture the geometry as well as
-the linearization-related mapping required for evaluation of gradients with respect to the deformed configuration.
+the linearization-related mapping required for evaluation of gradients with respect to the current configuration.
 }
 
 \begin{figure}
@@ -1088,7 +1088,7 @@ Two conclusions can be drawn from these results:
 Firstly, the algorithm where we only cache the second-order Kirchhoff tensor and utilize the chosen hyperelastic constitutive equation to efficiently implement
 the action of the material part of the fourth-order spatial tangent stiffness tensor on the second-order symmetric tensor (``tensor2'')
 is the fastest approach in both 2D and 3D and on both systems.
-When compared to the scalar caching implementation, the ``tensor2'' variant loads slightly less data, because only the spatial configuration is needed for the metric terms,
+When compared to the scalar caching implementation, the ``tensor2'' variant loads slightly less data, because only the current configuration is needed for the metric terms,
 as compared to both the spatial and the referential configuration in the scalar caching case in order to evaluate the Kirchhoff stress $\gz \tau$.
 Besides the memory access, the scalar caching strategy also involves considerably more computations at quadrature points.
 On the newer Cascade Lake system with a Flop/Byte ratio of 9.1 for the theoretical peak values, the scalar caching strategy is closer to the ``tensor2'' variant.
@@ -1157,7 +1157,7 @@ Both algorithms essentially run at the memory limit of around $100\, \text{GB/s}
 The ``scalar'' caching strategy (Algorithm \ref{alg:mf_scalar}) demonstrates the highest computational intensity, but remains close to the memory bandwidth limit
 with more than $80\, \text{GB/s}$ except for the $p=2$ case.
 The higher arithmetic load is not surprising as at each quadrature point we need to re-evaluate the Kirchhoff stress $\gz \tau$.
-Given that in this case we need to evaluate gradients with respect to both deformed and undeformed configurations as listed in Table~\ref{tab:memory},
+Given that in this case we need to evaluate gradients with respect to both referential and current configurations as listed in Table~\ref{tab:memory},
 no advantage of the scalar caching can be deduced despite the higher arithmetic performance.
 }
 
@@ -1397,7 +1397,7 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 In this contribution, we proposed and numerically investigated three different matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
 To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques on the partial differential equations arising in this case.
 Among the three examined algorithms,
-{\color{red}the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the spatial configuration is faster than
+{\color{red}the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration is faster than
 caching only a scalar at quadrature points or caching the material part} of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress.
 {\color{red}
 Given that we did not utilize the specific form of the material part of the stiffness tensor in the latter case, we conclude
@@ -1464,8 +1464,8 @@ where the upper and lower dyadic products of pairs of second-order tensors are r
 
 {\color{red}
 This formulation can also be straight forwardly adopted within the matrix-free framework of the \texttt{deal.II} library.
-To that end a variation of the Algorithm \ref{alg:mf_tensor4} can be used where the gradients are evaluated with respect to the undeformed configuration
-and only a fourth-order referential tangent tensor ${\rm D}_{\gz F}{\gz P}$ is cached per quadrature point.
+To that end a variation of the Algorithm \ref{alg:mf_tensor4} can be used where the gradients are evaluated with respect to the referential configuration
+and only a fourth-order tangent tensor ${\rm D}_{\gz F}{\gz P}$ is cached per quadrature point.
 }
 
 {\color{red}
@@ -1476,7 +1476,7 @@ as well as a lower arithmetic intensity of the operator evaluation.
 On both architectures we recorded a slightly larger wall time per DoF as compared to the Algorithm \ref{alg:mf_tensor4},
 however still much faster than the matrix-based approach.
 From the LIKWID measurements we observed that this algorithm also results in lower performance on Cascade Lake.
-The advantage of this algorithm is that it does not require evaluation of gradients in the deformed configuration, which leads to a slightly lower setup time
+The advantage of this algorithm is that it does not require evaluation of gradients in the current configuration, which leads to a slightly lower setup time
 as compared to the other three algorithms that rely on \texttt{MappingQEulerian} class of the \texttt{deal.II} library.
 Overall we consider this approach to be a valid alternative to the Algorithm \ref{alg:mf_tensor4}
 that can be be applied to any constitutive model which operates with the fourth-order referential tangent stiffness tensor on the quadrature point level.
