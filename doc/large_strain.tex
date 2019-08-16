@@ -251,7 +251,7 @@ finite-strain hyperelastic tangent operator with respect to the computational co
 and the performance on a single node of a high performance computing cluster.
 Particular emphasis is on the tradeoff between computations at quadrature points versus
 pre-computation with a higher memory access in terms of the representation of the linearization point.
-The \texttt{deal.II} finite element library \cite{dealII90}, which provides MPI parallelization together with a generalized matrix-free framework
+The \texttt{deal.II} finite element library \cite{dealII91}, which provides MPI parallelization together with a generalized matrix-free framework
 that incorporates SIMD vectorization and an interface to high-performance MPI-distributed matrix-based libraries, is used for this study.
 In order to improve the convergence of iterative solvers, we also propose a method by which to construct level matrix-free tangent operators
 and employ them to define a \mbox{geometric} multigrid preconditioner.
@@ -599,7 +599,7 @@ between precomputing everything (caching) and evaluating all the quantities on-t
 %
 In order to obtain the gradients with respect to the {\color{red}current} configuration,
 which appear in the tangent operator \eqref{eq:algebraic_tangent} of the finite-strain elasticity problem derived with a Lagrangian formulation,
-we use the \textit{MappingQEulerian} class from the \texttt{deal.II} \cite{dealII90} library.
+we use the \textit{MappingQEulerian} class from the \texttt{deal.II} \cite{dealII91} library.
 In addition to the standard mapping from the reference (isoparametric) element to the element in real space, this class computes the mapping
 to the {\color{red}current} configuration given a displacement field.
 %
@@ -713,7 +713,7 @@ In this case, we cache the fourth-order symmetric tensor $\boldsymbol{\mathcal{C
 quadrature point, and perform the double contraction with the second-order symmetric tensor $\overline{\grad^s} \gz x$ on-the-fly.
 
 Note that the SIMD vectorization
-in \texttt{deal.II} \cite{dealII90}
+in \texttt{deal.II} \cite{dealII91}
 is applied at the finite element level, i.e. the matrix-free operator is applied simultaneously on several elements (called ``blocks'').
 The main reason is that, apart from the point-wise computation of the stresses and elastic tangents, the operations are typically the same on all elements{\color{red},
 as opposed to the operations within an element}\footnote{%
@@ -785,7 +785,7 @@ on the mesh via a run-time decision in the code.
 
 
 The discretized system of linear equations formulated in Section \ref{sec:fe}, in conjunction with the constitutive model described in
-Section \ref{sec: Constitutive modelling}, has been implemented using \texttt{deal.II} version 9.0 \cite{dealII90}, an open-source finite element library.
+Section \ref{sec: Constitutive modelling}, has been implemented using\footnote{{\color{red}Including additional performance improvements for \texttt{Tensor} classes \url{https://github.com/dealii/dealii/pull/8428}.}} \texttt{deal.II} version 9.1 \cite{dealII91}, an open-source finite element library.
 This library offers a number of paradigms by which to parallelize a finite-element code, and as a member of the
 xSDK (Extreme-scale Scientific Software Development Kit) ecosystem \citep{Bartlett2017b} aims to support exascale computing.
 In this work we employ \texttt{deal.II}'s interface to the \texttt{p4est} \cite{p4est} library to perform a standard domain decomposition,
