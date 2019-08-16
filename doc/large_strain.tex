@@ -1360,15 +1360,19 @@ with compressible hyperelastic finite strain material models.
 
 An extension of this study from the node level to the cluster level is beyond the scope of this work.
 However, we have performed a preliminary study of the weak scalability of the implementation.
-{\color{red}Tables~\ref{tab:weak_2d} and \ref{tab:weak_3d} demonstrate a good weak scaling up to 320 cores, i.e., 8 nodes of dual-socket Cascade Lake,
+{\color{red}Table~\ref{tab:weak} demonstrate a good weak scaling up to 320 cores, i.e., 8 nodes of dual-socket Cascade Lake,
 of the wall time per matrix-vector product and per iteration in the CG solver for the 2D problem with $p=4$ and the 3D problem with a tri-quadratic basis.}
 This confirms that the matrix-free and multigrid frameworks implemented in the \texttt{deal.II} library can provide a competitive solution for cluster-sized problems as well,
 also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CPU cores and 34.4 billion degrees of freedom for an incompressible flow problem.
 
-\begin{table}
+\begin{table}[!htb]
   \centering
-  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 2D for a quartic polynomial basis.}
-  \label{tab:weak_2d}
+  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2}.}
+  \label{tab:weak}
+  \begin{subtable}{.49\linewidth}
+  \centering
+  \caption{2D and quartic polynomial basis}
+  \resizebox{\textwidth}{!}{
   \begin{tabular}{|r|r|c|r|c|}
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
@@ -1376,12 +1380,12 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \input{weak_scaling_2d.tex}
   \hline
   \end{tabular}
-\end{table}
-
-\begin{table}
+  }
+  \end{subtable}
+  \begin{subtable}{.49\linewidth}
   \centering
-  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 3D for a quadratic polynomial basis.}
-  \label{tab:weak_3d}
+  \caption{3D and quadratic polynomial basis}
+  \resizebox{\textwidth}{!}{
   \begin{tabular}{|r|r|c|r|c|}
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
@@ -1389,6 +1393,8 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \input{weak_scaling_3d.tex}
   \hline
   \end{tabular}
+  }
+  \end{subtable}
 \end{table}
 
 \section{Summary and Conclusions}
