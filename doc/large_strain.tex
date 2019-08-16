@@ -1367,6 +1367,8 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 
 \begin{table}
   \centering
+  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 2D for a quartic polynomial basis.}
+  \label{tab:weak_2d}
   \begin{tabular}{|r|r|c|r|c|}
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
@@ -1374,12 +1376,12 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \input{weak_scaling_2d.tex}
   \hline
   \end{tabular}
-  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 2D for a quartic polynomial basis.}
-  \label{tab:weak_2d}
 \end{table}
 
 \begin{table}
   \centering
+  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 3D for a quadratic polynomial basis.}
+  \label{tab:weak_3d}
   \begin{tabular}{|r|r|c|r|c|}
   \hline
   cores  & $N_{\text{DoF}}$ & $N_{\text{gref}}$ & vmult [s] & CG [s / iteration] \\
@@ -1387,8 +1389,6 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
   \input{weak_scaling_3d.tex}
   \hline
   \end{tabular}
-  \caption{Weak scaling of Algorithm \ref{alg:mf_tensor2} in 3D for a quadratic polynomial basis.}
-  \label{tab:weak_3d}
 \end{table}
 
 \section{Summary and Conclusions}
