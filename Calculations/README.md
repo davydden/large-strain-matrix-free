@@ -51,14 +51,18 @@ qsub likwid_emmy_benchmark_intel.sh
 
 # Post-processing / plotting
 
+Current plots are done using: Python 2.7 + Matplotlib 2.2.4 + numpy-1.16.4 + macOS 10.14.6
+
 ## general benchmark
 ```
-python post_process.py
+python post_process.py CSL_Munich
+python post_process.py IWR_newest_patched
 ```
 
 ## weak scaling
 ```
-python post_process_weak.py
+python post_process_weak.py --dim=2
+python post_process_weak.py --dim=3
 ```
 
 ## LIKWID
@@ -72,8 +76,9 @@ python post_process_likwid_csl_breakdown.py --dim=3
 ```
 
 ### Speedup (SIMD/MPI)
-
 ```
-python post_process_likwid_simd.py --dim=2
-python post_process_likwid_simd.py --dim=3
+python post_process_likwid_simd.py --dim=2 --alg=tensor2
+python post_process_likwid_simd.py --dim=2 --alg=tensor4
+python post_process_likwid_simd.py --dim=3 --alg=tensor2
+python post_process_likwid_simd.py --dim=3 --alg=tensor4
 ```

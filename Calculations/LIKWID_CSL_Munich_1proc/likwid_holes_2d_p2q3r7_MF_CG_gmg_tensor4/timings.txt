@@ -1,0 +1,44 @@
+-----------------------------------------------------------------------------
+--     . running in OPTIMIZED mode
+--     . running with 1 MPI process
+--     . vectorization over 8 doubles = 512 bits (AVX512), VECTORIZATION_LEVEL=3
+--     . version 1.0 (revision dd17ea2 on branch martin)
+--     . deal.II 9.2.0-pre (revision 0c2279f on branch master)
+-----------------------------------------------------------------------------
+
+dim   = 2
+p     = 2
+q     = 3
+cells = 1441792
+dofs  = 11542528
+
+Trilinos memory = 0 Mb
+MF cache memory = 1825 Mb
+
+Average CG iter = 0
+Total CG iter = 0
+Total CG solve = 1
+
+
++----------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start     |      74.4s |            |
+|                                              |            |            |
+| Section                          | no. calls |  wall time | % of total |
++----------------------------------+-----------+------------+------------+
+| Assemble linear system           |         1 |      4.27s |       5.7% |
+| Setup MF: AdditionalData         |         1 |    0.0869s |      0.12% |
+| Setup MF: GMG setup              |         1 |  0.000166s |         0% |
+| Setup MF: MGTransferMatrixFree   |         1 |      2.93s |       3.9% |
+| Setup MF: MappingQEulerian       |         1 |      12.6s |        17% |
+| Setup MF: cache() and diagonal() |         1 |      2.55s |       3.4% |
+| Setup MF: ghost range            |         1 |     0.197s |      0.26% |
+| Setup MF: interpolate_to_mg      |         1 |     0.743s |         1% |
+| Setup system                     |         1 |      33.3s |        45% |
+| vmult (MF)                       |        10 |       2.3s |       3.1% |
+| vmult (MF) Cell loop             |        10 |      2.25s |         3% |
+| vmult (MF) MPI                   |        10 |    0.0053s |         0% |
+| vmult (MF) RW                    |        10 |      1.26s |       1.7% |
+| vmult (MF) RWSF                  |        10 |      1.56s |       2.1% |
+| vmult (MF) zero                  |        10 |    0.0855s |      0.12% |
++----------------------------------+-----------+------------+------------+
+

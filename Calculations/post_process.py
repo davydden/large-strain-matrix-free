@@ -1,24 +1,33 @@
 import re
 import os
 import argparse
-from matplotlib.pyplot import figure, show
+from matplotlib.pyplot import figure
 import matplotlib.pyplot as plt
 import matplotlib as mp
 import numpy as np
 import fileinput
+import matplotlib.ticker
 from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import FormatStrFormatter
 
-def remove_creation_date(file_name):
-    for line in fileinput.input(file_name, inplace=True):
-        if not 'CreationDate' in line:
-            print line,
-
+# https://stackoverflow.com/questions/42656139/set-scientific-notation-with-fixed-exponent-and-significant-digits-for-multiple
+class OOMFormatter(matplotlib.ticker.ScalarFormatter):
+    def __init__(self, order=0, fformat="%1.1f", offset=True, mathText=True):
+        self.oom = order
+        self.fformat = fformat
+        matplotlib.ticker.ScalarFormatter.__init__(self,useOffset=offset,useMathText=mathText)
+    def _set_orderOfMagnitude(self, nothing):
+        self.orderOfMagnitude = self.oom
+    def _set_format(self, vmin, vmax):
+        self.format = self.fformat
+        if self._useMathText:
+            self.format = '$%s$' % matplotlib.ticker._mathdefault(self.format)
 
 # define command line arguments
 parser = argparse.ArgumentParser(
     description='Post-Process timing/memory info and plot figures.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('prefix', metavar='prefix', default='Emmy_RRZE', nargs='?',
+parser.add_argument('prefix', metavar='prefix', default='CSL_Munich', nargs='?',
                     help='A folder to look for benchmark results')
 args = parser.parse_args()
 
@@ -260,161 +269,196 @@ mem3d_t4_ns = [tup[3]/tup[1] for tup in mf3d_data_tensor4_ns]
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
 
-params = {'legend.fontsize': 20,
-          'font.size': 20}
+#
+#
+#  MATPLOTLIB
+#
+#
+
+# 6.1:
+params   = {'legend.fontsize': 16,
+            'font.size': 16}
+# 6.2:
+params2 = {'legend.fontsize': 14,
+           'font.size': 16}
+
 plt.rcParams.update(params)
 
+#
+# Plot Section 6.1
+#
+ratio = 0.7
+timing_exp = -8 if "CSL" in args.prefix else -7
+
+ax = plt.figure().gca()
+ax.yaxis.set_major_formatter(OOMFormatter(timing_exp, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg2d,time2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,time2d_sc, 'bo--', label='MF scalar')
 plt.plot(deg2d,time2d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg2d,time2d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg2d,time2d_t4_ns, 'mD--', label='MF tensor4 P')
+#plt.plot(deg2d,time2d_t4_ns, 'mD--', label='MF tensor4 P')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'timing2d.eps', format='eps')
-remove_creation_date(fig_prefix + 'timing2d.eps')
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'timing2d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
 
 ax = plt.figure().gca()
+ax.yaxis.set_major_formatter(OOMFormatter(timing_exp, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg3d,time3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,time3d_sc, 'bo--', label='MF scalar')
 plt.plot(deg3d,time3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,time3d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg3d,time3d_t4_ns, 'mD--', label='MF tensor4 P')
+#plt.plot(deg3d,time3d_t4_ns, 'mD--', label='MF tensor4 P')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult wall time (s) / DoF')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'timing3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'timing3d.eps')
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'timing3d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
+thoughput_exp = 9 if "CSL" in args.prefix else 8
 plt.clf()
 
+ax = plt.figure().gca()
+ax.yaxis.set_major_formatter(OOMFormatter(thoughput_exp, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg2d,through2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,through2d_sc, 'bo--', label='MF scalar')
 plt.plot(deg2d,through2d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg2d,through2d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg2d,through2d_t4_ns, 'mD--', label='MF tensor4 P')
+#plt.plot(deg2d,through2d_t4_ns, 'mD--', label='MF tensor4 P')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult DoF / s')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'throughput2d.eps', format='eps')
-remove_creation_date(fig_prefix + 'throughput2d.eps')
+# leg = plt.legend(loc='lower right', ncol=1)
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'throughput2d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
 
 ax = plt.figure().gca()
+ax.yaxis.set_major_formatter(OOMFormatter(thoughput_exp, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 plt.plot(deg3d,through3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,through3d_sc, 'bo--', label='MF scalar')
 plt.plot(deg3d,through3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,through3d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg3d,through3d_t4_ns, 'mD--', label='MF tensor4 P')
+#plt.plot(deg3d,through3d_t4_ns, 'mD--', label='MF tensor4 P')
 plt.xlabel('polynomial degree')
 plt.ylabel('vmult DoF / s')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'throughput3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'throughput3d.eps')
-
-# clear
-plt.clf()
-plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-
-plt.plot(deg2d,mem2d_tr, 'rs--', label='Trilinos')
-plt.plot(deg2d,mem2d_sc, 'bo--', label='MF scalar')
-plt.plot(deg2d,mem2d_t2, 'g^--', label='MF tensor2')
-plt.plot(deg2d,mem2d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg2d,mem2d_t4_ns, 'mD--', label='MF tensor4 P')
-plt.xlabel('polynomial degree')
-plt.ylabel('memory (Mb) / DoF')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'memory2d.eps', format='eps')
-remove_creation_date(fig_prefix + 'memory2d.eps')
+# leg = plt.legend(loc='lower right', ncol=1)
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'throughput3d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
 ax = plt.figure().gca()
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+ax.yaxis.set_major_formatter(OOMFormatter(-3, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+
+plt.plot(deg2d,mem2d_tr, 'rs--', label='Trilinos')
+plt.plot(deg2d,mem2d_sc, 'bo--', label='MF scalar')
+plt.plot(deg2d,mem2d_t2, 'g^--', label='MF tensor2')
+plt.plot(deg2d,mem2d_t4, 'cv--', label='MF tensor4')
+#plt.plot(deg2d,mem2d_t4_ns, 'mD--', label='MF tensor4 P')
+plt.xlabel('polynomial degree')
+plt.ylabel('memory (Mb) / DoF')
+# leg = plt.legend(loc='best', ncol=1)
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'memory2d.pdf', format='pdf', bbox_inches = 'tight')
+
+# clear
+plt.clf()
+ax = plt.figure().gca()
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+ax.yaxis.set_major_formatter(OOMFormatter(-3, "%1.1f"))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
 
 plt.plot(deg3d,mem3d_tr, 'rs--', label='Trilinos')
 plt.plot(deg3d,mem3d_sc, 'bo--', label='MF scalar')
 plt.plot(deg3d,mem3d_t2, 'g^--', label='MF tensor2')
 plt.plot(deg3d,mem3d_t4, 'cv--', label='MF tensor4')
-plt.plot(deg3d,mem3d_t4_ns, 'mD--', label='MF tensor4 P')
+#plt.plot(deg3d,mem3d_t4_ns, 'mD--', label='MF tensor4 P')
 plt.xlabel('polynomial degree')
 plt.ylabel('memory (Mb) / DoF')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'memory3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'memory3d.eps')
+# leg = plt.legend(loc='best', ncol=1)
+y_lim = ax.get_ylim()
+ax.set_aspect(1.0/ax.get_data_ratio()*ratio)
+plt.savefig(fig_prefix + 'memory3d.pdf', format='pdf', bbox_inches = 'tight')
+
+#
+# Plot Section 6.2:
+#
 
 # clear
 plt.clf()
-plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+ax = plt.figure().gca()
+plt.yscale('log', basey=10)
+plt.ylim(top=1e-2,bottom=1e-9)
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+plt.rcParams.update(params2)
 
 plt.plot(deg2d,solver2d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg2d,solver2d_sc, 'bo--', label='MF scalar')
 # plt.plot(deg2d,solver2d_t2, 'g^--', label='MF tensor2')
-plt.plot(deg2d,solver2d_t4_ns, 'mD--', label='MF Solver P')  # tensor4')
-plt.plot(deg2d,mf_gmg_2d_t4_ns,'mo--', label='MF Solver P setup')
+#plt.plot(deg2d,solver2d_t4_ns, 'mD--', label='MF Solver P')  # tensor4')
+#plt.plot(deg2d,mf_gmg_2d_t4_ns,'mo--', label='MF Solver P setup')
 plt.plot(deg2d,solver2d_t4, 'cv--', label='MF Solver')  # tensor4')
 plt.plot(deg2d,mf_gmg_2d_t4, 'c>--', label='MF Solver setup')  # tensor4')
 plt.plot(deg2d,solver2d_t4_coarse, 'g^--', label='MF Coarse Solver')
 plt.xlabel('polynomial degree')
 plt.ylabel('wall time (s) / DoF')
 plt.plot(deg2d,assembly2d_tr, 'bp--', label='Trilinos Assembly')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'solver2d.eps', format='eps')
-remove_creation_date(fig_prefix + 'solver2d.eps')
+leg = plt.legend(loc='lower right', ncol=1, labelspacing=0.1)
+plt.savefig(fig_prefix + 'solver2d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
 ax = plt.figure().gca()
+plt.yscale('log', basey=10)
+plt.ylim(top=1e-2,bottom=1e-9)
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+plt.rcParams.update(params2)
 
 plt.plot(deg3d,solver3d_tr, 'rs--', label='Trilinos Solver')
 # plt.plot(deg3d,solver3d_sc, 'bo--', label='MF scalar')
 # plt.plot(deg3d,solver3d_t2, 'g^--', label='MF tensor2')
-plt.plot(deg3d,solver3d_t4_ns, 'mD--', label='MF Solver P')
-plt.plot(deg3d,mf_gmg_3d_t4_ns,'mo--', label='MF Solver P setup')
+#plt.plot(deg3d,solver3d_t4_ns, 'mD--', label='MF Solver P')
+#plt.plot(deg3d,mf_gmg_3d_t4_ns,'mo--', label='MF Solver P setup')
 plt.plot(deg3d,solver3d_t4, 'cv--', label='MF Solver')
 plt.plot(deg3d,mf_gmg_3d_t4, 'c>--', label='MF Solver setup')
 plt.plot(deg3d,solver3d_t4_coarse, 'g^--', label='MF Coarse Solver')
 plt.plot(deg3d,assembly3d_tr, 'bp--', label='Trilinos Assembly')
 plt.xlabel('polynomial degree')
 plt.ylabel('wall time (s) / DoF')
-leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'solver3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'solver3d.eps')
+leg = plt.legend(loc='lower right', ncol=1, labelspacing=0.1)
+plt.savefig(fig_prefix + 'solver3d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
+plt.rcParams.update(params2)
 
 plt.plot(deg2d,cg2d_tr, 'rs--', label='Trilinos')
 plt.plot(deg2d,cg2d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'cg2d.eps', format='eps')
-remove_creation_date(fig_prefix + 'cg2d.eps')
+plt.savefig(fig_prefix + 'cg2d.pdf', format='pdf', bbox_inches = 'tight')
 
 # clear
 plt.clf()
+plt.rcParams.update(params2)
 
 ax = plt.figure().gca()
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -423,6 +467,4 @@ plt.plot(deg3d,cg3d_t4, 'cv--', label='MF')  # tensor4')
 plt.xlabel('polynomial degree')
 plt.ylabel('average number of CG iterations')
 leg = plt.legend(loc='best', ncol=1)
-plt.tight_layout()
-plt.savefig(fig_prefix + 'cg3d.eps', format='eps')
-remove_creation_date(fig_prefix + 'cg3d.eps')
+plt.savefig(fig_prefix + 'cg3d.pdf', format='pdf', bbox_inches = 'tight')

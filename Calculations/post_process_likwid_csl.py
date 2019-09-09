@@ -1,7 +1,7 @@
 import re
 import os
 import argparse
-from matplotlib.pyplot import figure, show
+from matplotlib.pyplot import figure
 import matplotlib.pyplot as plt
 import matplotlib as mp
 import numpy as np
@@ -18,20 +18,16 @@ def remove_creation_date(file_name):
 parser = argparse.ArgumentParser(
     description='Post-Process timing/memory info and plot figures.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--prefix', metavar='prefix', default='LIKWID_Emmy_RRZE',
+parser.add_argument('--prefix', metavar='prefix', default='LIKWID_CSL_Munich',
                     help='A folder to look for benchmark results')
 parser.add_argument('--dim', metavar='dim', default=2, type=int,
                     help='Dimension (2 or 3)')
-parser.add_argument('--breakdown', help='Post process breakdown results of vmult', action="store_true")
-
 parser.add_argument('--clockspeed', metavar='clockspeed', default=2.2, type=float,
                     help='CPU clock speed')
 
 args = parser.parse_args()
 
 prefix = args.prefix if args.prefix.startswith('/') else os.path.join(os.getcwd(), args.prefix)
-if args.breakdown:
-    prefix = prefix + '_breakdown'
 
 files = []
 for root, dirs, files_ in os.walk(prefix):
@@ -60,7 +56,7 @@ sections = [
 clock_speed = 2.0  # GHz
 # memory bandwidth
 # likwid-bench -t load_avx -w S0:1GB:20:1:2
-B=96.2 # 50 GB/s single socket
+B=120 # 120 GB/s single socket
 
 print 'Peak performance calculations:'
 P = clock_speed
@@ -78,26 +74,7 @@ table_names = [
 ]
 
 likwid_data = []
-
 regions = []
-if args.breakdown:
-    regions = [
-        'vmult_sum_factorization',
-        'vmult_reinit_read_write',
-        'vmult_quadrature_loop'
-    ]
-
-# labels/colors to be used for regions in breakdown run:
-region_labels = [
-    'sum factorization',
-    'read / write',
-    'quadrature loop'
-]
-region_colors = [
-    'b',
-    'g',
-    'c'
-]
 
 for f in files:
     # guess parameters from the file name:
@@ -106,10 +83,14 @@ for f in files:
     dim = int(re.findall(pattern,strings[2])[0])
     p   = int(re.findall(pattern,strings[3])[0])
     q   = int(re.findall(pattern,strings[3])[1])
-    if not args.breakdown:
-        regions = [
-            'vmult_MF' if 'MF_CG' in f else 'vmult_Trilinos'
-        ]
+    regions = [
+        'vmult_MF' if 'MF_CG' in f else 'vmult_Trilinos'
+    ]
+
+    # skip tensor4_ns for plotting
+    if '_tensor4_ns' in fname:
+        continue
+
     label = ''
     color = ''  # use colors consistent with post_process.py
     if 'MF_CG' in fname:
@@ -134,7 +115,7 @@ for f in files:
     fin = open(f, 'r')
 
     # store data for each requested section and region here:
-    timing = [ [ np.nan for i in range(len(sections))] for i in range(len(regions))]
+    timing = [ [ np.nan for i in range(len(sections))] for j in range(len(regions))]
 
     found_region = False
     found_table = False
@@ -190,10 +171,6 @@ for f in files:
     # finish processing the file, put the data
     for r_idx in range(len(regions)):
         t = timing[r_idx]
-        # overwrite label/color if we do breakdown:
-        if args.breakdown:
-            label = region_labels[r_idx]
-            color = region_colors[r_idx]
         tp = tuple((dim,p,q,label,color,t,r_idx,n_cells))
         likwid_data.append(tp)
 
@@ -204,13 +181,24 @@ likwid_data.sort(key=lambda tup: (tup[3], tup[1]))
 #####################
 #       PLOT        #
 #####################
+fig = plt.figure()
+ax = plt.subplot()
 
-params = {'legend.fontsize': 10,
-          'font.size': 20}
+fs = 10
+params = {'legend.fontsize': 9,
+          'font.size': fs}
 plt.rcParams.update(params)
 
 plt.xscale('log', basex=2)
 plt.yscale('log', basey=2)
+
+ax.set_ylim([2**2,20*2**7])
+ax.set_xlim([2**(-4),2**5])
+
+xtics = [2**i for i in range(-3,6)]
+ytics = [2**i for i in range(2,12)]
+ax.set_xticks(xtics)
+ax.set_yticks(ytics)
 
 # Roofline model
 # p = min (P, b I)
@@ -218,25 +206,22 @@ plt.yscale('log', basey=2)
 def Roofline(I,P,B):
     return np.array([min(P,B*i) for i in I])
 
-# log10:
-#x = np.linspace(1./B, 10. if not args.breakdown else 100., num=500 if not args.breakdown else 5000)
-#base = np.array([1./B for i in x])
-
 x = np.linspace(2**(-5), 2**6+10, num=2000)
 base = np.array([x[0] for i in x])
 
 roofline_style = 'b-'
 peak = Roofline(x,P,B)
 # see https://github.com/matplotlib/matplotlib/issues/8623#issuecomment-304892552
-plt.plot(x,peak, roofline_style, label='_nolegend_')
+ax.plot(x,peak, roofline_style, label='_nolegend_')
+ax.plot(x,Roofline(x,P,90), roofline_style, label='_nolegend_')
 
 # various ceilings (w/o FMA, w/o FMA and vectorization):
 for p_ in [P/2, P/2/8]:
-    plt.plot(x,Roofline(x,p_,B), roofline_style, label='_nolegend_')
+    ax.plot(x,Roofline(x,p_,B), roofline_style, label='_nolegend_')
 
-plt.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua', alpha=0.1)
+ax.fill_between(x, base, peak, where=peak>base, interpolate=True, zorder=1, color='aqua', alpha=0.1)
 
-plt.grid(True, which="both",color='grey', linestyle=':', zorder=5)
+ax.grid(True, which="both",color='grey', linestyle=':', zorder=5)
 
 
 # map degrees to point labels:
@@ -259,35 +244,27 @@ for d in likwid_data:
     y = [f/1000]  # MFLOP->GFLOP
     style = d[4] + degree_to_points[d[1]]
     label = '{0} (p={1})'.format(d[3],d[1])
-    plt.plot(x,y, style, label=label)
+    ax.plot(x,y, style, label=label)
     if 'MF' in label:
       mf_perf.append(y[0])
     else:
       tr_perf.append(y[0])
 
-plt.xlabel('intensity (Flop/byte)')
-plt.ylabel('performance (GFlop/s)')
-#plt.ylim(top=300,bottom=1)
-ymin = 2**2 if not args.breakdown else 2**(0) - 0.3
-plt.ylim(top=20*2**7,bottom=ymin)
-xmax = 1.5*2**7 if args.breakdown else 2**5
-xmin = 2**(-4)+0.01 if not args.breakdown else 2**(-5) + 1./80
-plt.xlim(right=xmax,left=xmin)
-plt.axes().set_aspect('equal', adjustable=None) #'datalim')
-plt.axes().yaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}'.format(int(round(x))) ))
-plt.axes().xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '1/{0}'.format(int(round(1./x))) if x < 1.0 else '{0}'.format(int(round(x))) ))
+ax.set_xlabel('intensity (Flop/byte)')
+ax.set_ylabel('performance (GFlop/s)')
+ax.set_aspect('equal', adjustable=None) #'datalim')
+ax.yaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '{0}'.format(int(round(x))) ))
+ax.xaxis.set_major_formatter(mp.ticker.FuncFormatter(lambda x, pos: '1/{0}'.format(int(round(1./x))) if x < 1.0 else '{0}'.format(int(round(x))) ))
 
-ang = 45
-y_pos = 7.5 if args.breakdown else 16.5
-plt.text(xmin, y_pos, 'B={:.1f} GB/s'.format(B), rotation=ang, fontsize=14)
+ax.text(2**(-4)+0.01, 37, 'B=120 GB/s', rotation=45, fontsize=fs)
+ax.text(2**(-4)+0.01, 12, 'B=90 GB/s', rotation=45, fontsize=fs)
 
-x_pos = 9 if not args.breakdown else 16
-plt.text(x_pos,1400,'Peak DP', fontsize=14)
-plt.text(x_pos,450,'w/o FMA', fontsize=14)
-plt.text(x_pos,58, 'w/o SIMD', fontsize=14)
+x_pos = 9
+ax.text(x_pos,1400,'Peak DP', fontsize=fs)
+ax.text(x_pos,450,'w/o FMA', fontsize=fs)
+ax.text(x_pos,58, 'w/o SIMD', fontsize=fs)
 
-leg = plt.legend(loc='upper left', ncol=1, labelspacing=0.1)
-
+leg = ax.legend(loc='upper left', ncol=1, labelspacing=0.1)
 
 # file location
 fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.normpath(prefix)) + '_')
@@ -298,75 +275,9 @@ fig_file = fig_prefix + name.format(args.dim)
 
 print 'Saving figure in: {0}'.format(fig_file)
 
-plt.tight_layout()
-plt.savefig(fig_file, format='pdf')  # pdf has better colors
-# remove_creation_date(fig_file)
+plt.savefig(fig_file, format='pdf', bbox_inches = 'tight')
 
 # Finally report average performance for all MF and Trilinos runs:
-if not args.breakdown:
-  print 'Average performance:'
-  print '  MF:       {0}'.format(np.mean(mf_perf))
-  print '  Trilinos: {0}'.format(np.mean(tr_perf))
-else:
-  # clear
-  plt.clf()
-  ax = plt.figure().gca()
-  ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-  plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-  # FIXME: hard-code degrees
-  ind = [2, 4, 6] if args.dim==2 else [2, 4]
-  ind_str = ['{0}'.format(s) for s in ind]
-  ind_plt = range(len(ind))
-  # plot stack bar graph for time
-  bar_data = [[ np.nan for i in range(len(ind))] for i in range(len(region_labels))]
-
-  for d in likwid_data:
-    if d[0] == args.dim:
-      r_idx = d[6] # region index
-      t = d[5][4] / d[7] # 4rd element in Sections - Runtime, report value per cell
-      p = d[1]
-      for idx, s in enumerate(ind):
-        if s == p:
-          bar_data[r_idx][idx] = t
-
-  # setup "bottom" for bar data
-  bar_data_bottom = [[ 0 for i in range(len(ind))] for i in range(len(region_labels))]
-  for i in range(len(region_labels)):
-    if i > 0:
-      for j in range(len(ind)):
-        for k in range(i):
-          bar_data_bottom[i][j] = bar_data_bottom[i][j] + bar_data[k][j]
-
-  print '============ Bar data {0}d ============'.format(args.dim)
-  print 'Label             2                 4'
-  for d, t in zip(bar_data, region_labels):
-    print '{0}'.format(t.ljust(18)) + '{0}'.format(d[0]).ljust(18) + '{0}'.format(d[1]).ljust(18)
-  print ''
-
-  print '============ Bar bottom {0}d ============'.format(args.dim)
-  print 'Label             2                 4'
-  for d, t in zip(bar_data_bottom, region_labels):
-    print '{0}'.format(t.ljust(18)) + '{0}'.format(d[0]).ljust(18) + '{0}'.format(d[1]).ljust(18)
-  print ''
-
-  width = 0.5
-  bars = [i for i in range(len(region_labels))]
-  for i in range(len(region_labels)):
-    if i==0:
-      b = plt.bar(ind_plt, bar_data[i], width, color=region_colors[i], align='center')
-    else:
-      b = plt.bar(ind_plt, bar_data[i], width, color=region_colors[i], align='center', bottom=bar_data_bottom[i])
-
-    bars[i] = b[0]
-
-  plt.legend(bars, region_labels, loc='upper left')
-
-  plt.ylabel('wall time (s) / number of elements')
-  plt.xticks(ind_plt, ind_str)
-  plt.xlabel('polynomial degree')
-
-  name = 'stackedbar_{0}d.pdf'
-  fig_file = fig_prefix + name.format(args.dim)
-  print 'Saving figure in: {0}'.format(fig_file)
-  plt.tight_layout()
-  plt.savefig(fig_file, format='pdf')  # pdf has better colors
+print 'Average performance:'
+print '  MF:       {0}'.format(np.mean(mf_perf))
+print '  Trilinos: {0}'.format(np.mean(tr_perf))
