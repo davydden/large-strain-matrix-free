@@ -1,4 +1,4 @@
-Dear Prof. Diez,
+Dear Prof. Farhat,
 
 Please find attached the manuscript: "A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid" authored by myself, Jean-Paul Pelteret, Daniel Arndt, Martin Kronbichler, and Paul Steinmann that we would like to publish in "International Journal for Numerical Methods in Engineering". It has not been published or submitted elsewhere.
 
