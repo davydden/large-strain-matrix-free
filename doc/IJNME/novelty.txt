@@ -1,7 +1,7 @@
 Novelty:
 
-- propose and do performance study (using the roofline model) of different matrix-free realizations of the finite-strain hyperelastic finite element tangent operator
+- development and roofline performance analysis of different matrix-free realizations of the finite-strain hyperelastic finite element tangent operator
 
 - propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner
 
-- compare the performance of the matrix-free operator and the geometric multigrid preconditioner to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
+- performance comparison of the matrix-free operator and the geometric multigrid preconditioner to a matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions, showing that matrix-free methods are several times faster

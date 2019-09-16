@@ -1,6 +1,6 @@
 Dear Prof. Diez,
 
-Please find attached the manuscript: "A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid" authored by myself, Jean-Paul Pelteret, Martin Kronbichler, Daniel Arndt and Paul Steinmann that we would like to publish in "International Journal for Numerical Methods in Engineering". It has not been published or submitted elsewhere.
+Please find attached the manuscript: "A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid" authored by myself, Jean-Paul Pelteret, Daniel Arndt, Martin Kronbichler, and Paul Steinmann that we would like to publish in "International Journal for Numerical Methods in Engineering". It has not been published or submitted elsewhere.
 
 Matrix-free methods are widely adopted in the fluid mechanics community, where matrix-vector products are computed on-the-fly.
 However they have not yet get enough attention for solid mechanics applications.
@@ -11,4 +11,4 @@ The performance of the matrix-free operator and the geometric multigrid precondi
 With many thanks for your efforts in advance,
 
 Kind regards,
-Dr. Denis Davydov.
+Dr. Denis Davydov
