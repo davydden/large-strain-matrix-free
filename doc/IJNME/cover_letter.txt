@@ -1,0 +1,14 @@
+Dear Prof. Diez,
+
+Please find attached the manuscript: "A matrix-free approach for finite-strain hyperelastic problems using geometric multigrid" authored by myself, Jean-Paul Pelteret, Martin Kronbichler, Daniel Arndt and Paul Steinmann that we would like to publish in "International Journal for Numerical Methods in Engineering". It has not been published or submitted elsewhere.
+
+Matrix-free methods are widely adopted in the fluid mechanics community, where matrix-vector products are computed on-the-fly.
+However they have not yet get enough attention for solid mechanics applications.
+In the quest for high performance numerical solution of PDEs in solid mechanics, in this contribution we extend the application of matrix-free approaches to problems in solid mechanics and propose and investigate different implementations of the finite-strain hyperelastic finite element tangent operator numerically.
+In order to improve the convergence behavior of iterative solvers, we also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner.
+The performance of the matrix-free operator and the geometric multigrid preconditioner is compared to the matrix-based implementation with an algebraic multigrid preconditioner for a representative numerical example of a heterogeneous hyperelastic material in two and three dimensions.
+
+With many thanks for your efforts in advance,
+
+Kind regards,
+Dr. Denis Davydov.
