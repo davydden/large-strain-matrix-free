@@ -10,5 +10,5 @@ The performance of the matrix-free operator and the geometric multigrid precondi
 
 With many thanks for your efforts in advance,
 
-Kind Regards,
+Kind regards,
 Dr. Denis Davydov.
