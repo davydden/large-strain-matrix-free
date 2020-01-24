@@ -12,6 +12,7 @@ To facilitate the review process, all significant changes are marked in red in t
 
 
 > A uniform convention should be adopted for author names in the list of references.
+The multiple first names were abbreviated the same way. This is the only non-uniformity we could find for the author names.
 
 ## Referee: 2
 
