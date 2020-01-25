@@ -12,6 +12,7 @@ To facilitate the review process, all significant changes are marked in red in t
 
 
 > A uniform convention should be adopted for author names in the list of references.
+
 The multiple first names were abbreviated the same way. This is the only non-uniformity we could find for the author names.
 
 ## Referee: 2
@@ -24,9 +25,17 @@ The multiple first names were abbreviated the same way. This is the only non-uni
 >  a) The period "." is wrong. Please make a comma
 >  b) And \forall \delta u reads strange wittout function space. I would write \forall \text{admissible directions } \delta u
 
+We have fixed these problems. Note that we removed \forall \delta u because it is explained in the text that follows, "vanishes for all admissible directions \delta u which satisfy homogeneous Dirichlet boundary conditions".
+
 > 2. To non-familiar Heidelberg-persons, IWR might be unknown. Please explain IWR on page 12.
+
+We have replaced the system name "IWR" by "Westmere", which is the name of the CPU architecture and consistent with the use of "Cascade Lake" for the other system.
 
 > 3. Section 6: Out of curiosity: how many nonlinear Newton steps are required to solve the problem?
 
+FIXME
+
 > 4. In the conclusions, I would specifically refer again to Alg. 1,2,3 and give some suggestions which Alg. 1 finally is prefererred and why.
 > On page 16, just before Section 6.2, there are some suggestions. Are these the final conclusions w.r.t. the proposed Alg.?
+
+FIXME
