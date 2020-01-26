@@ -10,11 +10,13 @@ To facilitate the review process, all significant changes are marked in red in t
 
 > Minor editing is required in figures (axis titles).
 
-FIXME
+We have re-examined axis titles in all figures. We did not find any typos, but increased the font size of some of them to make more readable.
 
 > A uniform convention should be adopted for author names in the list of references.
 
 The multiple first names were abbreviated the same way. This is the only non-uniformity we could find for the author names.
+
+----
 
 ## Referee: 2
 
