@@ -1374,11 +1374,21 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 In this contribution, we proposed and numerically investigated three different matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
 To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques on the partial differential equations arising in this case.
 Among the three examined algorithms,
-the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration is faster than
-caching only a scalar at quadrature points or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress.
-Given that we did not utilize the specific form of the material part of the stiffness tensor in the latter case, we conclude
-that the matrix-free implementation of the tangent operator is somewhat slower but more flexible because it can be applied to any constitutive model which
+the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration ({\color{red}Algorithm \ref{alg:mf_tensor2}}) is faster than
+caching only a scalar at quadrature points ({\color{red}Algorithm \ref{alg:mf_scalar}}) or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress ({\color{red}Algorithm \ref{alg:mf_tensor4}}).
+{\color{red}
+Algorithm \ref{alg:mf_tensor2} is recommended when linearization of the adopted material model allows to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor.
+Algorithm \ref{alg:mf_tensor4} does
+}
+not utilize the specific form of the material part of the stiffness tensor,
+{\color{red}
+in this case
+}
+the matrix-free implementation of the tangent operator is somewhat slower but more flexible because it can be applied to any constitutive model which
 operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
+{\color{red}
+This implementation is still considerably faster than matrix-based strategies for polynomial degrees higher than one.
+}
 
 The roofline model indicates that the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity.
 Despite the higher arithmetic intensity, the matrix-free implementations are still memory bandwidth-limited and in particular by the data
