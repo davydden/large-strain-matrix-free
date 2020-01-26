@@ -57,6 +57,7 @@ Current plots are done using: Python 2.7 + Matplotlib 2.2.4 + numpy-1.16.4 + mac
 ```
 python post_process.py CSL_Munich
 python post_process.py IWR_newest_patched
+python post_process_newton_iterations.py
 ```
 
 ## weak scaling

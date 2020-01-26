@@ -869,7 +869,11 @@ Note that although a relatively coarse mesh is used at the coarsest multigrid le
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ directions for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$
-whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
+whereas the relative and absolute tolerances for the residual forces is $10^{-8}$.
+{\color{red}
+With the chosen criteria it takes 4 Newton-Raphson iterations to converge within a load step for the 2D problem and 3 iterations for the 3D setup.
+}
+The relative convergence criteria for the linear solver is $10^{-6}$.
 %
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
 %

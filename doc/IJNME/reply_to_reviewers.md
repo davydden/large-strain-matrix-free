@@ -34,7 +34,7 @@ We have replaced the system name "IWR" by "Westmere", which is the name of the C
 
 > 3. Section 6: Out of curiosity: how many nonlinear Newton steps are required to solve the problem?
 
-FIXME
+With our settings it takes 4 Newton-Raphson iterations to converge within a load step for the 2D problem and 3 iterations for the 3D setup.
 
 > 4. In the conclusions, I would specifically refer again to Alg. 1,2,3 and give some suggestions which Alg. 1 finally is prefererred and why.
 > On page 16, just before Section 6.2, there are some suggestions. Are these the final conclusions w.r.t. the proposed Alg.?
