@@ -1377,7 +1377,7 @@ Among the three examined algorithms,
 the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration ({\color{red}Algorithm \ref{alg:mf_tensor2}}) is faster than
 caching only a scalar at quadrature points ({\color{red}Algorithm \ref{alg:mf_scalar}}) or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress ({\color{red}Algorithm \ref{alg:mf_tensor4}}).
 {\color{red}
-Algorithm \ref{alg:mf_tensor2} is recommended when linearization of the adopted material model allows to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on a second-order symmetric tensor.
+Algorithm \ref{alg:mf_tensor2} is recommended when linearization of the adopted material model allows to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on a second-order symmetric tensor by two scalar quantities.
 Algorithm \ref{alg:mf_tensor4} does
 }
 not utilize the specific form of the material part of the stiffness tensor.
