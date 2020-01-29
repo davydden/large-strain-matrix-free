@@ -305,10 +305,10 @@ conditions $\gz u = \overline{\gz u}$ on $\partial \mcl B_0^D := \partial \mcl B
 The principle of stationary potential energy at equilibrium requires that the directional derivative with respect to the displacement
 \begin{align}
 \D_{\displaystyle \delta \gz u} \mcl E :=
-\frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0 \, \qquad \forall \delta \gz u \, .
+\frac{\d}{\d \epsilon} \mcl E (\gz u + \epsilon \delta \gz u) \Bigr\rvert_{\epsilon=0}  = 0
 \label{eq:stationary}
 \end{align}
-vanishes for all directions $\delta \gz u$ which satisfy homogeneous Dirichlet boundary conditions.
+vanishes for all {\color{red}admissible} directions $\delta \gz u$ which satisfy homogeneous Dirichlet boundary conditions.
 %
 This leads to the following scalar-valued non-linear equation
 \begin{align}
@@ -456,7 +456,7 @@ a vector space spanned by standard vector--valued FE basis functions $\gz N_i(\g
 \end{alignat}
 where the superscript $h$ denotes that this representation is related to the FE mesh with size function $h(\gz X)$ and $\mcl I$ is the set of unknown degrees of freedom (DoF).
 
-The Newton-Raphson solution approach is adopted for the nonlinear problem considered here.
+The Newton--Raphson solution approach is adopted for the nonlinear problem considered here.
 Given the current trial solution field $\overline{\gz u^h}$, the correction $\Delta \gz u^h$ field is obtained as the solution to the following
 system of equations (see \eqref{eq:weak_form} and \eqref{eq:tangent}):
 \begin{align}
@@ -665,7 +665,7 @@ in order to apply the tangent operator. This in turn requires evaluating the def
         scatter results to the destination vector
   }
   compress remote integral contributions into $\gz y$ via MPI \;
-  \caption{Matrix-free tangent operator: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at when executed.}
+  \caption{Matrix-free tangent operator: cache second-order Kirchhoff stress $\gz \tau$ and thereby avoid the need to evaluate referential quantities like $\gz F$ at {\color{red}quadrature points} when executed.}
   \label{alg:mf_tensor2}
 \end{algorithm}
 
@@ -806,7 +806,7 @@ The discrete tangent operator described by \eqref{eq:algebraic_tangent} can be i
 namely through a classical matrix-based approach or, alternatively, a matrix-free approach.
 For the matrix-based approach adopted in this study, the Trilinos \cite{Heroux2005} library has been leveraged;
 the system tangent matrix is stored in a distributed \textit{Epetra\_FECrsMatrix} sparse data structure from the Epetra package \cite{Heroux2005b} and
-the linear solver was preconditioned with an algebraic multigrid (AMG) preconditioner from the ML package \cite{Gee2006a}.
+the linear solver is preconditioned with an algebraic multigrid (AMG) preconditioner from the ML package \cite{Gee2006a}.
 This is the most highly performant matrix-based approach using the Trilinos framework that, to date, is available in \texttt{deal.II}.
 
 The second implementation utilizes a matrix-free approach in conjunction with a geometric-multigrid (GMG) preconditioner.
@@ -869,7 +869,11 @@ Note that although a relatively coarse mesh is used at the coarsest multigrid le
 Both domains are fully fixed along the bottom surface and a distributed load is applied at the top in the $(1,0)$ or $(1,1,0)$ directions for the 2D and the 3D problems, respectively.
 The force density $12.5 \times 10^3 \rm{N/mm^2}$ or $12.5 \sqrt{2} \times 10^3 \rm{N/mm^3}$ is applied in 5 steps for the 2D and the 3D problems, respectively.
 With respect to the nonlinear solver, the displacement tolerance of the $\mathcal{\ell}_2$ norm for the Newton update is taken to be $10^{-5}$
-whereas the relative and absolute tolerances for the residual forces is $10^{-8}$. The relative convergence criteria for the linear solver is $10^{-6}$.
+whereas the relative and absolute tolerances for the residual forces is $10^{-8}$.
+{\color{red}
+With the chosen criteria it takes 4 Newton--Raphson iterations to converge within a load step for the 2D problem and 3 iterations for the 3D setup.
+}
+The relative convergence criteria for the linear solver is $10^{-6}$.
 %
 Figure \ref{fig:miehe_deformed} shows deformed meshes at the final loading step with quadratic elements and two global mesh refinements.
 %
@@ -936,7 +940,7 @@ of sufficient size are dominated by the local node-level performance with multig
 Multigrid solvers with small enough coarse-grid problems are well-known to be scalable even to the largest supercomputers \cite{gholami2016,ibeid2018} as the communication is mostly between nearest neighbors.
 The benchmark calculations are performed for 2D and 3D problems with various combinations of polynomial degrees and number of global refinements,
 as is stated in Tables \ref{tab:input_parameters_2d} and \ref{tab:input_parameters_3d}.
-We chose a problem size on the order of $10^6$ DoFs for each test case as this was an upper limit due to the memory requirements of the matrix-based approach with a high polynomial degree.
+We choose a problem size on the order of $10^6$ DoFs for each test case as this is an upper limit due to the memory requirements of the matrix-based approach with a high polynomial degree.
 Even so, the problem size is large enough so that the sparse matrix (in excess of $1$ Gb when using the lowest polynomial order finite element discretization)
 will not fit into the L3 cache (on the order of tens of Mb in size), and therefore we can observe that the matrix-based approach is memory bound.
 Furthermore, the data structures of the matrix-free approaches are also too large to fit completely into caches.
@@ -956,11 +960,11 @@ as opposed to most default smoothers which rely on an explicit matrix form.
 Computations were performed on two systems: A dual-socket Intel Xeon Gold 6230 (``Cascade Lake''), released in 2019,
 with 20 cores per socket and 96 GB of DDR4-2933 memory (nominal bandwidth per socket: 141 GB/s).
 Turbo mode is enabled with a power limit of 135 watt per socket, which results in the processor running at 2.8 GHz for scalar code and 2.0 GHz for AVX-512-heavy code in the experiments.
-The GNU compiler version 9.1.0 with flags ``-O3 -march=skylake-avx512' and OpenMPI version 4.0.1 were used, with the code run in pure MPI mode.
-The ``IWR'' results were obtained on a single machine with eight Intel Xeon E7-8870 ``Westmere'' chips, released in 2011,
+The GNU compiler version 9.1.0 with flags ``-O3 -march=skylake-avx512'' and OpenMPI version 4.0.1 were used, with the code run in pure MPI mode.
+The {\color{red}``Westmere''} results were obtained on a single machine with eight Intel Xeon E7-8870 ``Westmere'' chips, released in 2011,
 (10 cores per chip  + SMT) running at 2.4 GHz with 30 MB shared cache per chip. For the simulation, GCC version 8.1.0 with flags
 ``-O3 -march=native'' and OpenMPI version 3.0.0 were used.
-Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e. one socket for Cascade Lake and two sockets for ``IWR''.
+Unless noted otherwise, the simulations are performed with 20 MPI processes, i.e., one socket for Cascade Lake and two sockets for {\color{red}Westmere}.
 
 \subsection{Matrix-vector multiplication}
 
@@ -1053,7 +1057,7 @@ the linearization-related mapping required for evaluation of gradients with resp
     \caption{memory access (3D)}
     \label{fig:benchmark_miehe_IWR_memory3}
   \end{subfigure}
-  \caption{IWR cluster, 20 cores, matrix-vector multiplication}%
+  \caption{{\color{red}Westmere} cluster, 20 cores, matrix-vector multiplication}%
   \label{fig:benchmark_miehe_IWR}
 \end{figure}
 
@@ -1074,7 +1078,7 @@ When compared to the scalar caching implementation, the ``tensor2'' variant load
 as compared to both the spatial and the referential configuration in the scalar caching case in order to evaluate the Kirchhoff stress $\gz \tau$.
 Besides the memory access, the scalar caching strategy also involves considerably more computations at quadrature points.
 On the newer Cascade Lake system with a Flop/Byte ratio of 9.1 for the theoretical peak values, the scalar caching strategy is closer to the ``tensor2'' variant.
-On the IWR machine, the Flop/Byte ratio is 2.9, which means that much fewer computations can be sustained for the same memory transfer.
+On the {\color{red}Westmere} machine, the Flop/Byte ratio is 2.9, which means that much fewer computations can be sustained for the same memory transfer.
 
 Secondly, the approach where the material part of the fourth-order spatial tangent stiffness tensor is cached (``tensor4'') is slower than the ``tensor2'' approach,
 despite fewer arithmetic operations, on both systems.
@@ -1296,13 +1300,13 @@ whereas Algorithm~\ref{alg:mf_tensor2} is faster due to a higher arithmetic inte
     \caption{CG solution time (3D)}
     \label{fig:benchmark_miehe_IWR_sol3}
   \end{subfigure}
-  \caption{IWR cluster, 20 cores.}%
+  \caption{{\color{red}Westmere} cluster, 20 cores.}%
   \label{fig:benchmark_miehe_IWR_cg}
 \end{figure}
 
 Next, we evaluate the performance of the proposed geometric multigrid preconditioner.
 Our main goal is to examine whether or not the adopted level operators lead to an efficient preconditioner from the linear algebra perspective. To that end,
-we consider the average number of CG iterations throughout the entire simulation, i.e., averaged over each Newton-Raphson iteration and each loading step.
+we consider the average number of CG iterations throughout the entire simulation, i.e., averaged over each Newton--Raphson iteration and each loading step.
 Figures \ref{fig:benchmark_miehe_CSL_cg2}, \ref{fig:benchmark_miehe_CSL_cg3}, \ref{fig:benchmark_miehe_IWR_cg2} and \ref{fig:benchmark_miehe_IWR_cg3} show a
  noticeable increase in the average number of CG iterations for increasing polynomial degrees
  for the GMG preconditioner.
@@ -1370,11 +1374,21 @@ also compare \cite[Figure 7]{Krank2017} for scaling results for up to 147,456 CP
 In this contribution, we proposed and numerically investigated three different matrix-free implementations of tangent operators for finite-strain elasticity with heterogeneous materials.
 To the best of our knowledge, this is the first work that evaluates matrix-free sum factorization techniques on the partial differential equations arising in this case.
 Among the three examined algorithms,
-the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration is faster than
-caching only a scalar at quadrature points or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress.
-Given that we did not utilize the specific form of the material part of the stiffness tensor in the latter case, we conclude
-that the matrix-free implementation of the tangent operator is somewhat slower but more flexible because it can be applied to any constitutive model which
-operates with the material part of the fourth-order spatial tangent stiffness tensor on the quadrature point level.
+the implementation that caches the second-order Kirchhoff stress tensor and evaluates terms in the current configuration ({\color{red}Algorithm \ref{alg:mf_tensor2}}) is faster than
+caching only a scalar at quadrature points ({\color{red}Algorithm \ref{alg:mf_scalar}}) or caching the material part of the fourth-order spatial tangent stiffness tensor together with the second-order Kirchhoff stress ({\color{red}Algorithm \ref{alg:mf_tensor4}}).
+{\color{red}
+Algorithm \ref{alg:mf_tensor2} is recommended when linearization of the adopted material model allows to efficiently implement the action of the material part of the fourth-order spatial tangent stiffness tensor on a second-order symmetric tensor by two scalar quantities.
+Algorithm \ref{alg:mf_tensor4} does
+}
+not utilize the specific form of the material part of the stiffness tensor.
+{\color{red}
+In this case
+}
+the matrix-free implementation of the tangent operator is somewhat slower but more flexible because it can be applied to any constitutive model which
+operates with the material part of the fourth-order spatial tangent stiffness tensor at the quadrature points.
+{\color{red}
+This implementation is still considerably faster than matrix-based strategies for polynomial degrees higher than one.
+}
 
 The roofline model indicates that the matrix-free finite-strain elasticity tangent operators have an order magnitude higher algorithmic intensity.
 Despite the higher arithmetic intensity, the matrix-free implementations are still memory bandwidth-limited and in particular by the data
@@ -1382,15 +1396,15 @@ required at quadrature points in terms of fourth-order and second-order symmetri
 
 We also propose a method by which to construct level tangent operators and employ them to define a geometric multigrid preconditioner
 with standard geometric transfer operations between each level.
-The GMG was applied to a heterogeneous material assuming that the coarsest level can provide an adequate discretization of the heterogeneity.
+The GMG has been applied to a heterogeneous material assuming that the coarsest level can provide an adequate discretization of the heterogeneity.
 The numerical studies indicate that the proposed preconditioner
 leads to much fewer iterations of the iterative solver as compared to the algebraic multigrid preconditioner.
 The multigrid matrix-free preconditioner also
 leads to a solution approach that is faster than the matrix-based AMG for all polynomial degrees studied here.
-Most importantly, the wall time per degree of freedom for solving the problem is close to being constant.
+Most importantly, the wall time per degree of freedom for solving the problem is close to being constant {\color{red}for polynomial degrees between one and four}.
 On the other hand, the matrix-based implementation with AMG becomes prohibitively expensive for higher-order bases.
 We conclude that the matrix-free implementations of tangent operators for finite-strain elasticity together with
-the geometric multigrid preconditioner is a very competitive solution strategy, as compared to more traditional matrix-based approach.
+the geometric multigrid preconditioner is a very competitive solution strategy, as compared to traditional matrix-based approach.
 Our future work will be focused on adopting the proposed matrix-free multigrid solution approach to $\operatorname{FE}^2$ homogenization
 as well studying its behavior on the cluster level.
 

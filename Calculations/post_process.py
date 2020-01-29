@@ -277,7 +277,7 @@ fig_prefix = os.path.join(os.getcwd(), '../doc/' + os.path.basename(os.path.norm
 
 # 6.1:
 params   = {'legend.fontsize': 16,
-            'font.size': 16}
+            'font.size': 18}
 # 6.2:
 params2 = {'legend.fontsize': 14,
            'font.size': 16}

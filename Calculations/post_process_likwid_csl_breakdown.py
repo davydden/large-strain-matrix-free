@@ -164,6 +164,13 @@ for d, t in zip(bar_data, stack_labels):
 print ''
 
 
+#
+# MATPLOTLIB parameters
+#
+params   = {'legend.fontsize': 10,
+            'font.size': 16}
+plt.rcParams.update(params)
+
 plt.clf()
 ax = plt.figure().gca()
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
