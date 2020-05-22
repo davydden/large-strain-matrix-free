@@ -76,7 +76,7 @@ using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
-test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_elements)
+test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
 {
   constexpr int n_q_points = Utilities::pow(degree + 1, dim);
 
@@ -90,7 +90,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
 #endif
 
   std::cout << "--     . vectorization over "
-            << VectorizedArray<number>::n_array_elements
+            << VectorizedArray<number>::size()
             << " elements, VECTORIZATION_LEVEL="
             << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
@@ -108,7 +108,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::n_array_element
   std::cout << "dim                = " << dim << std::endl
             << "degree             = " << degree << std::endl
             << "SIMD width         = "
-            << VectorizedArray<number>::n_array_elements << std::endl
+            << VectorizedArray<number>::size() << std::endl
             << "n_cell_batches     = " << n_cells << std::endl
             << "n_q_points         = " << n_q_points << std::endl
             << "number of products = " << n_cells * n_q_points << std::endl
