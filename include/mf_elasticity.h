@@ -23,7 +23,6 @@ static const unsigned int debug_level = 0;
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/quadrature_point_data.h>
 #include <deal.II/base/revision.h>
-#include <deal.II/base/std_cxx11/shared_ptr.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
 #include <deal.II/base/timer.h>
@@ -1200,15 +1199,14 @@ namespace Cook_Membrane
   }
 
 
-  void merge(
-    parallel::distributed::Triangulation<3> &                   dst,
-    const std::initializer_list<const Triangulation<2> *const> &triangulations,
-    const double                                                scale,
-    const Point<3> &                                            center_dim_1,
-    const Point<3> &                                            center_dim_2,
-    const Point<3> &                                            center_dim_3,
-    const double                                                extrusion_height,
-    const unsigned int                                          extrusion_slices)
+  void merge(parallel::distributed::Triangulation<3> &    dst,
+             const std::vector<const Triangulation<2> *> &triangulations,
+             const double                                 scale,
+             const Point<3> &                             center_dim_1,
+             const Point<3> &                             center_dim_2,
+             const Point<3> &                             center_dim_3,
+             const double                                 extrusion_height,
+             const unsigned int                           extrusion_slices)
   {
     Triangulation<2> triangulation_2d;
     GridGenerator::merge_triangulations(triangulations,
@@ -1239,15 +1237,14 @@ namespace Cook_Membrane
     dst.set_manifold(3, cylindrical_manifold_3);
   }
 
-  void merge(
-    parallel::distributed::Triangulation<2> &                   dst,
-    const std::initializer_list<const Triangulation<2> *const> &triangulations,
-    const double                                                scale,
-    const Point<2> &                                            center_dim_1,
-    const Point<2> &                                            center_dim_2,
-    const Point<2> &                                            center_dim_3,
-    const double                                                /*extrusion_height*/,
-    const unsigned int                                          /*extrusion_slices*/)
+  void merge(parallel::distributed::Triangulation<2>     &dst,
+             const std::vector<const Triangulation<2> *> &triangulations,
+             const double                                 scale,
+             const Point<2> &                             center_dim_1,
+             const Point<2> &                             center_dim_2,
+             const Point<2> &                             center_dim_3,
+             const double                                 /*extrusion_height*/,
+             const unsigned int                           /*extrusion_slices*/)
 
   {
     GridGenerator::merge_triangulations(triangulations,
