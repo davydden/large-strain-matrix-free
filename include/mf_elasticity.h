@@ -1036,8 +1036,7 @@ namespace Cook_Membrane
     const int n_tasks =
       dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
     const int          n_threads = dealii::MultithreadInfo::n_threads();
-    const unsigned int n_vect_doubles =
-      VectorizedArray<double>::n_array_elements;
+    const unsigned int n_vect_doubles = VectorizedArray<double>::size();
     const unsigned int n_vect_bits = 8 * sizeof(double) * n_vect_doubles;
 
     timer_out
@@ -1670,7 +1669,7 @@ namespace Cook_Membrane
           if (cell->is_locally_owned_on_level())
             mg_additional_data[level].cell_vectorization_category[cell->index()] = cell->material_id();
 
-        mg_additional_data[level].level_mg_handler = level;
+        mg_additional_data[level].mg_level = level;
       }
 
     timer.leave_subsection();

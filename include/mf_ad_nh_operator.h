@@ -425,9 +425,7 @@ NeoHookOperatorAD<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   for (unsigned int q = 0; q < phi_reference.n_q_points; ++q)
     {
       Tensor<4, dim, VectorizedArray<double>> H;
-      for (unsigned int vec = 0;
-           vec < VectorizedArray<number>::n_array_elements;
-           ++vec)
+      for (unsigned int vec = 0; vec < VectorizedArray<number>::size(); ++vec)
         {
           Tensor<2, dim, ADType> grad_u;
           Tensor<2, dim>         tmp_grad;
