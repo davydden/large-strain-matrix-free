@@ -87,7 +87,7 @@ static const unsigned int debug_level = 0;
 #include <version.h>
 
 #ifdef WITH_LIKWID
-#include <likwid.h>
+#  include <likwid.h>
 #endif
 
 #include <fstream>
@@ -124,7 +124,6 @@ namespace Cook_Membrane
   // ParameterHandler object to read in the choices at run-time.
   namespace Parameters
   {
-
     template <int dim>
     class Misc
     {
@@ -353,17 +352,17 @@ namespace Cook_Membrane
     // nonlinear motion occurs within a Newton increment.
     struct LinearSolver
     {
-      std::string  type_lin                             = "CG";
-      double       tol_lin                              = 1e-6;
-      unsigned int max_iterations_lin                   = 1;
-      std::string  preconditioner_type                  = "jacobi";
-      double       preconditioner_relaxation            = 0.65;
-      double       preconditioner_aggregation_threshold = 1e-4;
-      unsigned int cond_number_cg_iterations            = 20;
-      std::string  mf_caching                           = "scalar";
-      bool mf_coarse_chebyshev                          = true;
-      bool mf_coarse_chebyshev_accurate_eigenval        = true;
-      unsigned int mf_chebyshev_n_cg_iterations         = 30;
+      std::string  type_lin                              = "CG";
+      double       tol_lin                               = 1e-6;
+      unsigned int max_iterations_lin                    = 1;
+      std::string  preconditioner_type                   = "jacobi";
+      double       preconditioner_relaxation             = 0.65;
+      double       preconditioner_aggregation_threshold  = 1e-4;
+      unsigned int cond_number_cg_iterations             = 20;
+      std::string  mf_caching                            = "scalar";
+      bool         mf_coarse_chebyshev                   = true;
+      bool         mf_coarse_chebyshev_accurate_eigenval = true;
+      unsigned int mf_chebyshev_n_cg_iterations          = 30;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -411,10 +410,12 @@ namespace Cook_Membrane
                           "estimate condition number",
                           Patterns::Integer(1));
 
-        prm.add_parameter("MF caching",
-                          mf_caching,
-                          "Type of caching for matrix-free operator",
-                          Patterns::Selection("scalar|scalar_referential|tensor2|tensor4|tensor4_ns"));
+        prm.add_parameter(
+          "MF caching",
+          mf_caching,
+          "Type of caching for matrix-free operator",
+          Patterns::Selection(
+            "scalar|scalar_referential|tensor2|tensor4|tensor4_ns"));
 
         prm.add_parameter(
           "MF Chebyshev number CG iterations",
@@ -491,8 +492,8 @@ namespace Cook_Membrane
     // Set the timestep size $ \varDelta t $ and the simulation end-time.
     struct Time
     {
-      double delta_t          = 0.1;
-      double end_time         = 1.;
+      double delta_t  = 0.1;
+      double end_time = 1.;
 
       void
       add_parameters(ParameterHandler &prm);
@@ -538,12 +539,13 @@ namespace Cook_Membrane
     };
 
     template <int dim>
-    void AllParameters<dim>::set_time(const double time) const
+    void
+    AllParameters<dim>::set_time(const double time) const
     {
-      for (const auto & d : this->dirichlet)
+      for (const auto &d : this->dirichlet)
         d.second->set_time(time);
 
-      for (const auto & n : this->neumann)
+      for (const auto &n : this->neumann)
         n.second->set_time(time);
     }
 
@@ -564,9 +566,10 @@ namespace Cook_Membrane
 
       prm.parse_input(input_file);
 
-      AssertDimension (dim, this->dim);
+      AssertDimension(dim, this->dim);
 
-      skip_tangent_assembly = (!this->always_assemble_tangent && (type_lin.find("MF") != std::string::npos) );
+      skip_tangent_assembly = (!this->always_assemble_tangent &&
+                               (type_lin.find("MF") != std::string::npos));
     }
 
   } // namespace Parameters
@@ -894,7 +897,7 @@ namespace Cook_Membrane
     bool print_mf_memory;
 
     unsigned long int total_n_cg_iterations;
-    unsigned int total_n_cg_solve;
+    unsigned int      total_n_cg_solve;
   };
 
   // @sect3{Implementation of the <code>Solid</code> class}
@@ -957,9 +960,8 @@ namespace Cook_Membrane
             timer_out,
             TimerOutput::summary,
             TimerOutput::wall_times)
-    ,
-    bcout(blessed_output_file,
-          Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+    , bcout(blessed_output_file,
+            Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
     ,
     // The Finite Element System is composed of dim continuous displacement
     // DOFs.
@@ -1035,9 +1037,9 @@ namespace Cook_Membrane
     // print some data about how we run:
     const int n_tasks =
       dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
-    const int          n_threads = dealii::MultithreadInfo::n_threads();
+    const int          n_threads      = dealii::MultithreadInfo::n_threads();
     const unsigned int n_vect_doubles = VectorizedArray<double>::size();
-    const unsigned int n_vect_bits = 8 * sizeof(double) * n_vect_doubles;
+    const unsigned int n_vect_bits    = 8 * sizeof(double) * n_vect_doubles;
 
     timer_out
       << "-----------------------------------------------------------------------------"
@@ -1071,7 +1073,8 @@ namespace Cook_Membrane
     timer_out << "), VECTORIZATION_LEVEL="
               << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
-    timer_out << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV << " on branch " << GIT_BRANCH <<")" << std::endl;
+    timer_out << "--     . version " << GIT_TAG << " (revision " << GIT_SHORTREV
+              << " on branch " << GIT_BRANCH << ")" << std::endl;
     timer_out << "--     . deal.II " << DEAL_II_PACKAGE_VERSION << " (revision "
               << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
               << ")" << std::endl;
@@ -1152,14 +1155,15 @@ namespace Cook_Membrane
       }
 
     // for post-processing, print average CG iterations over the whole run:
-    timer_out << std::endl << "Average CG iter = " << (total_n_cg_iterations/total_n_cg_solve) << std::endl
+    timer_out << std::endl
+              << "Average CG iter = "
+              << (total_n_cg_iterations / total_n_cg_solve) << std::endl
               << "Total CG iter = " << total_n_cg_iterations << std::endl
               << "Total CG solve = " << total_n_cg_solve << std::endl;
 #ifdef WITH_LIKWID
     pcout << "LIKWID_MARKER_CLOSE" << std::endl;
     LIKWID_MARKER_CLOSE;
 #endif
-
   }
 
 
@@ -1216,11 +1220,13 @@ namespace Cook_Membrane
     GridGenerator::extrude_triangulation(
       triangulation_2d, extrusion_slices, extrusion_height * scale, dst, true);
 
-    for (const auto& cell: dst.active_cell_iterators())
-      for (unsigned int face_no=0; face_no < GeometryInfo<3>::faces_per_cell; ++face_no)
+    for (const auto &cell : dst.active_cell_iterators())
+      for (unsigned int face_no = 0; face_no < GeometryInfo<3>::faces_per_cell;
+           ++face_no)
         if (!cell->at_boundary(face_no))
           if (cell->manifold_id() != cell->neighbor(face_no)->manifold_id())
-            cell->face(face_no)->set_all_manifold_ids(cell->face(face_no)->manifold_id());
+            cell->face(face_no)->set_all_manifold_ids(
+              cell->face(face_no)->manifold_id());
 
     // we need to set manifolds:
     Tensor<1, 3> dir;
@@ -1236,14 +1242,14 @@ namespace Cook_Membrane
     dst.set_manifold(3, cylindrical_manifold_3);
   }
 
-  void merge(parallel::distributed::Triangulation<2>     &dst,
+  void merge(parallel::distributed::Triangulation<2> &    dst,
              const std::vector<const Triangulation<2> *> &triangulations,
              const double                                 scale,
              const Point<2> &                             center_dim_1,
              const Point<2> &                             center_dim_2,
              const Point<2> &                             center_dim_3,
-             const double                                 /*extrusion_height*/,
-             const unsigned int                           /*extrusion_slices*/)
+             const double /*extrusion_height*/,
+             const unsigned int /*extrusion_slices*/)
 
   {
     GridGenerator::merge_triangulations(triangulations,
@@ -1269,7 +1275,8 @@ namespace Cook_Membrane
     if (parameters.type == "Cook")
       {
         // Divide the beam, but only along the x- and y-coordinate directions
-        std::vector<unsigned int> repetitions(dim, parameters.elements_per_edge);
+        std::vector<unsigned int> repetitions(dim,
+                                              parameters.elements_per_edge);
         // Only allow one element through the thickness
         // (modelling a plane strain condition)
         if (dim == 3)
@@ -1286,29 +1293,31 @@ namespace Cook_Membrane
                                                   top_right);
 
         // Since we wish to apply a Neumann BC to the right-hand surface, we
-        // must find the cell faces in this part of the domain and mark them with
-        // a distinct boundary ID number.  The faces we are looking for are on the
-        // +x surface and will get boundary ID 11.
-        // Dirichlet boundaries exist on the left-hand face of the beam (this fixed
-        // boundary will get ID 1) and on the +Z and -Z faces (which correspond to
-        // ID 2 and we will use to impose the plane strain condition)
+        // must find the cell faces in this part of the domain and mark them
+        // with a distinct boundary ID number.  The faces we are looking for are
+        // on the +x surface and will get boundary ID 11. Dirichlet boundaries
+        // exist on the left-hand face of the beam (this fixed boundary will get
+        // ID 1) and on the +Z and -Z faces (which correspond to ID 2 and we
+        // will use to impose the plane strain condition)
         const double tol_boundary = 1e-6;
-        // NOTE: we need to set IDs regardless of cell being locally owned or not
-        // as in the global refinement cells will be repartitioned and faces of
-        // their parents should have right IDs
+        // NOTE: we need to set IDs regardless of cell being locally owned or
+        // not as in the global refinement cells will be repartitioned and faces
+        // of their parents should have right IDs
         for (auto cell : triangulation.active_cell_iterators())
           {
-            for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-                ++face)
+            for (unsigned int face = 0;
+                 face < GeometryInfo<dim>::faces_per_cell;
+                 ++face)
               if (cell->face(face)->at_boundary() == true)
                 {
-                  if (std::abs(cell->face(face)->center()[0] - 0.0) < tol_boundary)
+                  if (std::abs(cell->face(face)->center()[0] - 0.0) <
+                      tol_boundary)
                     cell->face(face)->set_boundary_id(1); // -X faces
                   else if (std::abs(cell->face(face)->center()[0] - 48.0) <
-                          tol_boundary)
+                           tol_boundary)
                     cell->face(face)->set_boundary_id(11); // +X faces
-                  else if (std::abs(std::abs(cell->face(face)->center()[0]) - 0.5) <
-                          tol_boundary)
+                  else if (std::abs(std::abs(cell->face(face)->center()[0]) -
+                                    0.5) < tol_boundary)
                     cell->face(face)->set_boundary_id(2); // +Z and -Z faces
                 }
             // on the coarse mesh reset material ID
@@ -1324,33 +1333,32 @@ namespace Cook_Membrane
         // plate with a hole and 2 inclusions (geometry from Miehe 2007,
         // On multiscale FE analyses...)
         Point<2> center_1, center_2, center_3;
-        center_1[0] = -0.2*parameters.scale;
-        center_1[1] = -0.2*parameters.scale;
-        center_2[0] = -0.2*parameters.scale;
-        center_2[1] =  0.2*parameters.scale;
-        center_3[0] =  0.2*parameters.scale;
-        center_3[1] =  0.0*parameters.scale;
-        const double R = 0.15*parameters.scale;
-        const double R2 = 0.2*parameters.scale;
-        const double pLR = 0.1*parameters.scale;
-        const double pBT = 0.2*parameters.scale;
+        center_1[0]      = -0.2 * parameters.scale;
+        center_1[1]      = -0.2 * parameters.scale;
+        center_2[0]      = -0.2 * parameters.scale;
+        center_2[1]      = 0.2 * parameters.scale;
+        center_3[0]      = 0.2 * parameters.scale;
+        center_3[1]      = 0.0 * parameters.scale;
+        const double R   = 0.15 * parameters.scale;
+        const double R2  = 0.2 * parameters.scale;
+        const double pLR = 0.1 * parameters.scale;
+        const double pBT = 0.2 * parameters.scale;
 
         // inclusion:
         Triangulation<2> sphere_2, sphere_3;
 
-        auto create_inclusion = [&](Triangulation<2> &     out,
-                                    const Point<2> &       center,
+        auto create_inclusion = [&](Triangulation<2> &       out,
+                                    const Point<2> &         center,
                                     const double             radius,
                                     const types::manifold_id tfi_manifold_id,
                                     const types::manifold_id ball_id) -> void {
           Triangulation<2> sphere;
-          GridGenerator::hyper_ball(sphere,
-                                    center,
-                                    radius);
+          GridGenerator::hyper_ball(sphere, center, radius);
 
           for (const auto &cell : sphere.active_cell_iterators())
             {
-              if (cell->center().distance(center) < 1e-8*this->parameters.scale)
+              if (cell->center().distance(center) <
+                  1e-8 * this->parameters.scale)
                 {
                   cell->set_all_manifold_ids(numbers::flat_manifold_id);
                 }
@@ -1363,8 +1371,7 @@ namespace Cook_Membrane
 
           sphere.refine_global(1);
           // at this point we have 8 faces across circumference
-          GridGenerator::flatten_triangulation(sphere,
-                                               out);
+          GridGenerator::flatten_triangulation(sphere, out);
           out.set_all_manifold_ids_on_boundary(ball_id);
         };
 
@@ -1372,133 +1379,139 @@ namespace Cook_Membrane
         create_inclusion(sphere_3, center_3, R, 8, 3);
 
         Triangulation<2> plate_1;
-        GridGenerator::plate_with_a_hole(
-                          plate_1,
-                          R /*inner_radius*/,
-                          R2 /*outer_radius*/,
-                          0. /*pad_bottom*/,
-                          0. /*pad_top*/,
-                          pLR /*pad_left*/,
-                          0. /*pad_right*/,
-                          center_1 /*center*/,
-                          1 /*polar_manifold_id*/,
-                          4 /*tfi_manifold_id*/,
-                          1. /*L*/,
-                          1. /*n_slices*/,
-                          false /*colorize*/);
-         for (const auto &cell : plate_1.active_cell_iterators())
-            for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
-                 ++face_no)
-               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 1)
-                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+        GridGenerator::plate_with_a_hole(plate_1,
+                                         R /*inner_radius*/,
+                                         R2 /*outer_radius*/,
+                                         0. /*pad_bottom*/,
+                                         0. /*pad_top*/,
+                                         pLR /*pad_left*/,
+                                         0. /*pad_right*/,
+                                         center_1 /*center*/,
+                                         1 /*polar_manifold_id*/,
+                                         4 /*tfi_manifold_id*/,
+                                         1. /*L*/,
+                                         1. /*n_slices*/,
+                                         false /*colorize*/);
+        for (const auto &cell : plate_1.active_cell_iterators())
+          for (unsigned int face_no = 0;
+               face_no < GeometryInfo<2>::faces_per_cell;
+               ++face_no)
+            if (cell->at_boundary(face_no) &&
+                cell->face(face_no)->manifold_id() != 1)
+              cell->face(face_no)->set_all_manifold_ids(
+                numbers::flat_manifold_id);
 
         Triangulation<2> plate_2;
-        GridGenerator::plate_with_a_hole(
-                          plate_2,
-                          R /*inner_radius*/,
-                          R2 /*outer_radius*/,
-                          0. /*pad_bottom*/,
-                          0. /*pad_top*/,
-                          pLR /*pad_left*/,
-                          0. /*pad_right*/,
-                          center_2 /*center*/,
-                          2 /*polar_manifold_id*/,
-                          5 /*tfi_manifold_id*/,
-                          1. /*L*/,
-                          1. /*n_slices*/,
-                          false /*colorize*/);
-         for (const auto &cell : plate_2.active_cell_iterators())
-            for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
-                 ++face_no)
-               if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 2)
-                 cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+        GridGenerator::plate_with_a_hole(plate_2,
+                                         R /*inner_radius*/,
+                                         R2 /*outer_radius*/,
+                                         0. /*pad_bottom*/,
+                                         0. /*pad_top*/,
+                                         pLR /*pad_left*/,
+                                         0. /*pad_right*/,
+                                         center_2 /*center*/,
+                                         2 /*polar_manifold_id*/,
+                                         5 /*tfi_manifold_id*/,
+                                         1. /*L*/,
+                                         1. /*n_slices*/,
+                                         false /*colorize*/);
+        for (const auto &cell : plate_2.active_cell_iterators())
+          for (unsigned int face_no = 0;
+               face_no < GeometryInfo<2>::faces_per_cell;
+               ++face_no)
+            if (cell->at_boundary(face_no) &&
+                cell->face(face_no)->manifold_id() != 2)
+              cell->face(face_no)->set_all_manifold_ids(
+                numbers::flat_manifold_id);
 
         Triangulation<2> plate_3;
-        GridGenerator::plate_with_a_hole(
-                          plate_3,
-                          R /*inner_radius*/,
-                          R2 /*outer_radius*/,
-                          pBT /*pad_bottom*/,
-                          pBT /*pad_top*/,
-                          0.  /*pad_left*/,
-                          pLR /*pad_right*/,
-                          center_3 /*center*/,
-                          3 /*polar_manifold_id*/,
-                          6 /*tfi_manifold_id*/,
-                          1. /*L*/,
-                          1. /*n_slices*/,
-                          false /*colorize*/);
-         for (const auto &cell : plate_3.active_cell_iterators())
-           for (unsigned int face_no = 0; face_no < GeometryInfo<2>::faces_per_cell;
-                ++face_no)
-              if (cell->at_boundary(face_no) && cell->face(face_no)->manifold_id() != 3)
-                cell->face(face_no)->set_all_manifold_ids(numbers::flat_manifold_id);
+        GridGenerator::plate_with_a_hole(plate_3,
+                                         R /*inner_radius*/,
+                                         R2 /*outer_radius*/,
+                                         pBT /*pad_bottom*/,
+                                         pBT /*pad_top*/,
+                                         0. /*pad_left*/,
+                                         pLR /*pad_right*/,
+                                         center_3 /*center*/,
+                                         3 /*polar_manifold_id*/,
+                                         6 /*tfi_manifold_id*/,
+                                         1. /*L*/,
+                                         1. /*n_slices*/,
+                                         false /*colorize*/);
+        for (const auto &cell : plate_3.active_cell_iterators())
+          for (unsigned int face_no = 0;
+               face_no < GeometryInfo<2>::faces_per_cell;
+               ++face_no)
+            if (cell->at_boundary(face_no) &&
+                cell->face(face_no)->manifold_id() != 3)
+              cell->face(face_no)->set_all_manifold_ids(
+                numbers::flat_manifold_id);
 
-         Triangulation<2>                     top, bottom;
-         const std::vector<std::vector<double>> step_sizes = {
-           {0.1 * parameters.scale,
-            0.2 * parameters.scale,
-            0.2 * parameters.scale,
-            0.2 * parameters.scale,
-            0.2 * parameters.scale,
-            0.1 * parameters.scale},
-           {0.1 * parameters.scale}};
-         Point<2> bl, tr;
-         bl[0] = -0.5*parameters.scale;
-         bl[1] = 0.4*parameters.scale;
-         tr[0] = 0.5*parameters.scale;
-         tr[1] = 0.5*parameters.scale;
-         GridGenerator::subdivided_hyper_rectangle(top, step_sizes, bl, tr);
+        Triangulation<2>                       top, bottom;
+        const std::vector<std::vector<double>> step_sizes = {
+          {0.1 * parameters.scale,
+           0.2 * parameters.scale,
+           0.2 * parameters.scale,
+           0.2 * parameters.scale,
+           0.2 * parameters.scale,
+           0.1 * parameters.scale},
+          {0.1 * parameters.scale}};
+        Point<2> bl, tr;
+        bl[0] = -0.5 * parameters.scale;
+        bl[1] = 0.4 * parameters.scale;
+        tr[0] = 0.5 * parameters.scale;
+        tr[1] = 0.5 * parameters.scale;
+        GridGenerator::subdivided_hyper_rectangle(top, step_sizes, bl, tr);
 
-         bl[1] = -0.5*parameters.scale;
-         tr[1] = -0.4*parameters.scale;
-         GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
+        bl[1] = -0.5 * parameters.scale;
+        tr[1] = -0.4 * parameters.scale;
+        GridGenerator::subdivided_hyper_rectangle(bottom, step_sizes, bl, tr);
 
-         Point<dim> center_dim_1, center_dim_2, center_dim_3;
-         for (unsigned int d = 0; d < 2; ++d)
+        Point<dim> center_dim_1, center_dim_2, center_dim_3;
+        for (unsigned int d = 0; d < 2; ++d)
           {
             center_dim_1[d] = center_1[d];
             center_dim_2[d] = center_2[d];
             center_dim_3[d] = center_3[d];
           }
 
-         merge(
-           triangulation,
-           {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
-           parameters.scale,
-           center_dim_1,
-           center_dim_2,
-           center_dim_3,
-           parameters.extrusion_height,
-           parameters.extrusion_slices);
+        merge(
+          triangulation,
+          {&plate_1, &plate_2, &plate_3, &sphere_2, &sphere_3, &top, &bottom},
+          parameters.scale,
+          center_dim_1,
+          center_dim_2,
+          center_dim_3,
+          parameters.extrusion_height,
+          parameters.extrusion_slices);
 
-         for (unsigned int i = 4; i <= 8; ++i)
-           {
-             TransfiniteInterpolationManifold<dim> transfinite_manifold;
-             transfinite_manifold.initialize(triangulation);
-             triangulation.set_manifold(i, transfinite_manifold);
-           }
+        for (unsigned int i = 4; i <= 8; ++i)
+          {
+            TransfiniteInterpolationManifold<dim> transfinite_manifold;
+            transfinite_manifold.initialize(triangulation);
+            triangulation.set_manifold(i, transfinite_manifold);
+          }
 
-         const double tol_boundary = 1e-6*parameters.scale;
-         for (auto cell : triangulation.active_cell_iterators())
-           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
-                ++face)
-             if (cell->face(face)->at_boundary() == true)
-               {
-                 if (std::abs(cell->face(face)->center()[1] - (-0.5*parameters.scale)) <
-                     tol_boundary)
-                   cell->face(face)->set_boundary_id(1); // -Y faces
-                 else if (std::abs(cell->face(face)->center()[1] - 0.5*parameters.scale) <
-                          tol_boundary)
-                   cell->face(face)->set_boundary_id(11); // +Y faces
-               }
+        const double tol_boundary = 1e-6 * parameters.scale;
+        for (auto cell : triangulation.active_cell_iterators())
+          for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
+               ++face)
+            if (cell->face(face)->at_boundary() == true)
+              {
+                if (std::abs(cell->face(face)->center()[1] -
+                             (-0.5 * parameters.scale)) < tol_boundary)
+                  cell->face(face)->set_boundary_id(1); // -Y faces
+                else if (std::abs(cell->face(face)->center()[1] -
+                                  0.5 * parameters.scale) < tol_boundary)
+                  cell->face(face)->set_boundary_id(11); // +Y faces
+              }
 
-          // output coarse grid:
-          /*
-          GridOut grid_out;
-          std::ofstream output("grid.eps");
-          grid_out.write_eps(triangulation, output);
-          */
+        // output coarse grid:
+        /*
+        GridOut grid_out;
+        std::ofstream output("grid.eps");
+        grid_out.write_eps(triangulation, output);
+        */
       }
     else
       {
@@ -1545,15 +1558,14 @@ namespace Cook_Membrane
 
     locally_owned_dofs = dof_handler.locally_owned_dofs();
     locally_relevant_dofs.clear();
-    DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                            locally_relevant_dofs);
+    DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
 
     tangent_matrix.clear();
     if (!parameters.skip_tangent_assembly)
       {
         // Setup the sparsity pattern and tangent matrix
         TrilinosWrappers::SparsityPattern sp(locally_owned_dofs,
-                                            mpi_communicator);
+                                             mpi_communicator);
 
         DoFTools::make_sparsity_pattern(dof_handler,
                                         sp,
@@ -1594,15 +1606,18 @@ namespace Cook_Membrane
     timer.leave_subsection();
 
     // print some info
-    timer_out
-      << "dim   = " << dim << std::endl
-      << "p     = " << degree << std::endl
-      << "q     = " << n_q_points_1d << std::endl
-      << "cells = " << triangulation.n_global_active_cells() << std::endl
-      << "dofs  = " << dof_handler.n_dofs() << std::endl
-      << std::endl
-      << "Trilinos memory = " << dealii::Utilities::MPI::sum(tangent_matrix.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
-
+    timer_out << "dim   = " << dim << std::endl
+              << "p     = " << degree << std::endl
+              << "q     = " << n_q_points_1d << std::endl
+              << "cells = " << triangulation.n_global_active_cells()
+              << std::endl
+              << "dofs  = " << dof_handler.n_dofs() << std::endl
+              << std::endl
+              << "Trilinos memory = "
+              << dealii::Utilities::MPI::sum(
+                   tangent_matrix.memory_consumption() / 1000000,
+                   mpi_communicator)
+              << " Mb" << std::endl;
   }
 
 
@@ -1650,11 +1665,13 @@ namespace Cook_Membrane
     // make sure materials with different ID end up in different SIMD blocks:
     data.cell_vectorization_categories_strict = true;
     data.cell_vectorization_category.resize(triangulation.n_active_cells());
-    for (const auto & cell : triangulation.active_cell_iterators())
+    for (const auto &cell : triangulation.active_cell_iterators())
       if (cell->is_locally_owned())
-        data.cell_vectorization_category[cell->active_cell_index()] = cell->material_id();
+        data.cell_vectorization_category[cell->active_cell_index()] =
+          cell->material_id();
 
-    std::vector<typename MatrixFree<dim, float>::AdditionalData> mg_additional_data(max_level+1);
+    std::vector<typename MatrixFree<dim, float>::AdditionalData>
+      mg_additional_data(max_level + 1);
     for (unsigned int level = 0; level <= max_level; ++level)
       {
         mg_additional_data[level].tasks_parallel_scheme =
@@ -1664,10 +1681,12 @@ namespace Cook_Membrane
           update_gradients | update_JxW_values;
 
         mg_additional_data[level].cell_vectorization_categories_strict = true;
-        mg_additional_data[level].cell_vectorization_category.resize(triangulation.n_cells(level));
-        for (const auto & cell : triangulation.cell_iterators_on_level(level))
+        mg_additional_data[level].cell_vectorization_category.resize(
+          triangulation.n_cells(level));
+        for (const auto &cell : triangulation.cell_iterators_on_level(level))
           if (cell->is_locally_owned_on_level())
-            mg_additional_data[level].cell_vectorization_category[cell->index()] = cell->material_id();
+            mg_additional_data[level]
+              .cell_vectorization_category[cell->index()] = cell->material_id();
 
         mg_additional_data[level].mg_level = level;
       }
@@ -1710,7 +1729,8 @@ namespace Cook_Membrane
         mf_data_current   = std::make_shared<MatrixFree<dim, double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim, double>>();
 
-        mf_data_reference->reinit(StaticMappingQ1<dim>::mapping, dof_handler, constraints, quad, data);
+        mf_data_reference->reinit(
+          StaticMappingQ1<dim>::mapping, dof_handler, constraints, quad, data);
         mf_data_current->reinit(
           *eulerian_mapping, dof_handler, constraints, quad, data);
 
@@ -1725,7 +1745,11 @@ namespace Cook_Membrane
         // print memory consumption by MF
         if (print_mf_memory)
           {
-            timer_out << "MF cache memory = " << dealii::Utilities::MPI::sum(mf_nh_operator.memory_consumption()/1000000, mpi_communicator) << " Mb" << std::endl;
+            timer_out << "MF cache memory = "
+                      << dealii::Utilities::MPI::sum(
+                           mf_nh_operator.memory_consumption() / 1000000,
+                           mpi_communicator)
+                      << " Mb" << std::endl;
             print_mf_memory = false;
           }
 
@@ -1775,7 +1799,7 @@ namespace Cook_Membrane
               mg_mf_data_reference[level],
               mg_solution_total[level],
               parameters.mf_caching); // (mg_level_data, mg_constrained_dofs,
-                                         // level);
+                                      // level);
           }
       }
     else
@@ -1876,7 +1900,8 @@ namespace Cook_Membrane
 
     for (unsigned int level = 0; level <= max_level; ++level)
       {
-        mg_mf_nh_operator[level].set_material(material_level, material_inclusion_level);
+        mg_mf_nh_operator[level].set_material(material_level,
+                                              material_inclusion_level);
         mg_mf_nh_operator[level].cache();
         mg_mf_nh_operator[level].compute_diagonal();
 
@@ -2028,7 +2053,8 @@ namespace Cook_Membrane
 
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   bool
-  Solid<dim, degree, n_q_points_1d, NumberType>::check_convergence(const unsigned int newton_iteration)
+  Solid<dim, degree, n_q_points_1d, NumberType>::check_convergence(
+    const unsigned int newton_iteration)
   {
     if (newton_iteration == 0)
       error_residual_0 = error_residual;
@@ -2043,7 +2069,6 @@ namespace Cook_Membrane
     // do at least 3 NR iterations before converging,
     if (newton_iteration > 2)
       {
-
         // first check abosolute tolerance
         if (error_residual.u <= parameters.tol_f_abs ||
             error_update.u <= parameters.tol_u_abs)
@@ -2059,7 +2084,8 @@ namespace Cook_Membrane
             pcout << " CONVERGED! " << std::endl;
             print_conv_footer();
 
-            bcout << "Converged in " << newton_iteration << " Newton iterations" << std::endl;
+            bcout << "Converged in " << newton_iteration << " Newton iterations"
+                  << std::endl;
           }
       }
 
@@ -2159,8 +2185,10 @@ namespace Cook_Membrane
               }
 
           // adjust ghost according to MF data
-          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), dst_mf);
-          adjust_ghost_range_if_necessary(mf_data_current->get_vector_partitioner(), src);
+          adjust_ghost_range_if_necessary(
+            mf_data_current->get_vector_partitioner(), dst_mf);
+          adjust_ghost_range_if_necessary(
+            mf_data_current->get_vector_partitioner(), src);
 
           // 1. zero
           MPI_Barrier(mpi_communicator);
@@ -2230,11 +2258,13 @@ namespace Cook_Membrane
 
 #ifdef WITH_LIKWID
           // save HPC time and simply break out of NR loop
-          AssertThrow (parameters.delta_t == parameters.end_time,
-                      ExcMessage("LIKWID runs are fake and should have 1 timestep only"));
+          AssertThrow(
+            parameters.delta_t == parameters.end_time,
+            ExcMessage("LIKWID runs are fake and should have 1 timestep only"));
           pcout << " FAKE CONVERGED!" << std::endl;
           print_conv_footer();
-          total_n_cg_solve = 1;  // we later divide by that, so terminate gracefully
+          total_n_cg_solve =
+            1; // we later divide by that, so terminate gracefully
           break;
 #endif
 
@@ -2252,12 +2282,13 @@ namespace Cook_Membrane
 
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
-                        std::numeric_limits<double>::epsilon() * ulp *
-                          std::abs(dst_mf.local_element(i)),
-                      ExcMessage("MF and MB are different on local element " +
+                         std::numeric_limits<double>::epsilon() * ulp *
+                           std::abs(dst_mf.local_element(i)),
+                       ExcMessage("MF and MB are different on local element " +
                                   std::to_string(i) + ": " +
                                   std::to_string(dst_mf.local_element(i)) +
-                                  " diff " + std::to_string(diff.local_element(i)) +
+                                  " diff " +
+                                  std::to_string(diff.local_element(i)) +
                                   " at Newton iteration " +
                                   std::to_string(newton_iteration)));
 
@@ -2271,15 +2302,15 @@ namespace Cook_Membrane
               diff.add(-1, dst_mf);
               for (unsigned int i = 0; i < diff.local_size(); ++i)
                 Assert(std::abs(diff.local_element(i)) <=
-                        100000. * std::numeric_limits<double>::epsilon() *
-                          std::abs(dst_mf.local_element(i)),
-                      ExcMessage(
-                        "MF and MB Jacobi are different on local element " +
-                        std::to_string(i) + ": " +
-                        std::to_string(dst_mf.local_element(i)) + " diff " +
-                        std::to_string(diff.local_element(i)) +
-                        " at Newton iteration " +
-                        std::to_string(newton_iteration)));
+                         100000. * std::numeric_limits<double>::epsilon() *
+                           std::abs(dst_mf.local_element(i)),
+                       ExcMessage(
+                         "MF and MB Jacobi are different on local element " +
+                         std::to_string(i) + ": " +
+                         std::to_string(dst_mf.local_element(i)) + " diff " +
+                         std::to_string(diff.local_element(i)) +
+                         " at Newton iteration " +
+                         std::to_string(newton_iteration)));
             }
 #endif
         }
@@ -2382,8 +2413,7 @@ namespace Cook_Membrane
   // beam.
   template <int dim, int degree, int n_q_points_1d, typename NumberType>
   void
-  Solid<dim, degree, n_q_points_1d, NumberType>::
-    print_solution()
+  Solid<dim, degree, n_q_points_1d, NumberType>::print_solution()
   {
     static const unsigned int l_width = 87;
 
@@ -2392,49 +2422,48 @@ namespace Cook_Membrane
     pcout << std::endl;
 
     for (const auto &soln_pt : parameters.output_points)
-       {
-         Tensor<1, dim> displacement;
-         unsigned int found = 0;
+      {
+        Tensor<1, dim> displacement;
+        unsigned int   found = 0;
 
-         try
-           {
-             const MappingQ<dim> mapping(degree);
-             const auto          cell_point =
-               GridTools::find_active_cell_around_point(mapping,
-                                                        dof_handler,
-                                                        soln_pt);
-             // we may find artifical cells here:
-             if (cell_point.first->is_locally_owned())
-               {
-                 found = 1;
+        try
+          {
+            const MappingQ<dim> mapping(degree);
+            const auto          cell_point =
+              GridTools::find_active_cell_around_point(mapping,
+                                                       dof_handler,
+                                                       soln_pt);
+            // we may find artifical cells here:
+            if (cell_point.first->is_locally_owned())
+              {
+                found = 1;
 
-                 const Quadrature<dim> soln_qrule(cell_point.second);
-                 AssertThrow(soln_qrule.size() == 1, ExcInternalError());
-                 FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
-                 fe_values_soln.reinit(cell_point.first);
+                const Quadrature<dim> soln_qrule(cell_point.second);
+                AssertThrow(soln_qrule.size() == 1, ExcInternalError());
+                FEValues<dim> fe_values_soln(fe, soln_qrule, update_values);
+                fe_values_soln.reinit(cell_point.first);
 
-                 // Extract y-component of solution at given point
-                 std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-                 fe_values_soln[u_fe].get_function_values(solution_n,
-                                                          soln_values);
-                 displacement = soln_values[0];
-               }
-           }
-         catch (const GridTools::ExcPointNotFound<dim> &)
-           {}
+                // Extract y-component of solution at given point
+                std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
+                fe_values_soln[u_fe].get_function_values(solution_n,
+                                                         soln_values);
+                displacement = soln_values[0];
+              }
+          }
+        catch (const GridTools::ExcPointNotFound<dim> &)
+          {}
 
-         for (unsigned int d = 0; d < dim; ++d)
-           displacement[d] =
-             Utilities::MPI::max(displacement[d], mpi_communicator);
+        for (unsigned int d = 0; d < dim; ++d)
+          displacement[d] =
+            Utilities::MPI::max(displacement[d], mpi_communicator);
 
-         AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
-                     ExcMessage("Found no cell with point inside!"));
+        AssertThrow(Utilities::MPI::max(found, mpi_communicator) == 1,
+                    ExcMessage("Found no cell with point inside!"));
 
-         bcout
-           << "Solution @ " << soln_pt << std::endl
-           << "  displacement: " << displacement << std::endl;
+        bcout << "Solution @ " << soln_pt << std::endl
+              << "  displacement: " << displacement << std::endl;
 
-       } // end loop over output points
+      } // end loop over output points
   }
 
 
@@ -2478,15 +2507,18 @@ namespace Cook_Membrane
     FEValues<dim> fe_values(fe, qf_cell, update_gradients | update_JxW_values);
     FEFaceValues<dim> fe_face_values(fe,
                                      qf_face,
-                                     update_values | update_quadrature_points | update_JxW_values);
+                                     update_values | update_quadrature_points |
+                                       update_JxW_values);
 
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
         {
-          const auto & cell_mat = (cell->material_id()==2 ? material_inclusion : material);
+          const auto &cell_mat =
+            (cell->material_id() == 2 ? material_inclusion : material);
 
           bool skip_assembly_on_this_cell = parameters.skip_tangent_assembly;
-          // be conservative and do not skip assembly of boundary cells regardless of BC
+          // be conservative and do not skip assembly of boundary cells
+          // regardless of BC
           for (unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell;
                ++face)
             if (cell->face(face)->at_boundary())
@@ -2501,7 +2533,7 @@ namespace Cook_Membrane
           // inside the current cell and then we update each local QP using the
           // displacement gradient:
           fe_values[u_fe].get_function_gradients(solution_total,
-                                                     solution_grads_u_total);
+                                                 solution_grads_u_total);
 
           // Now we build the local cell stiffness matrix. Since the global and
           // local system matrices are symmetric, we can exploit this property
@@ -2520,15 +2552,16 @@ namespace Cook_Membrane
               const SymmetricTensor<2, dim, NumberType> b =
                 Physics::Elasticity::Kinematics::b(F);
 
-              const NumberType                 det_F = determinant(F);
+              const NumberType det_F = determinant(F);
               Assert(det_F > NumberType(0.0), ExcInternalError());
               const Tensor<2, dim, NumberType> F_inv = invert(F);
 
               // don't calculate b_bar if we don't need to:
               const SymmetricTensor<2, dim, NumberType> b_bar =
                 cell_mat->formulation == 0 ?
-                Physics::Elasticity::Kinematics::b(Physics::Elasticity::Kinematics::F_iso(F)) :
-                SymmetricTensor<2, dim, NumberType>();
+                  Physics::Elasticity::Kinematics::b(
+                    Physics::Elasticity::Kinematics::F_iso(F)) :
+                  SymmetricTensor<2, dim, NumberType>();
 
               for (unsigned int k = 0; k < dofs_per_cell; ++k)
                 {
@@ -2557,8 +2590,10 @@ namespace Cook_Membrane
                   const Tensor<2, dim> Jg_grad_Nx_j =
                     egeo_grad(grad_Nx[j], tau_ns);
 #else
-                  const unsigned int component_j = fe.system_to_component_index(j).first;
-                  const Tensor<1,dim> tau_grad_Nx_j_comp_j = tau_ns * grad_Nx[j][component_j];
+                  const unsigned int component_j =
+                    fe.system_to_component_index(j).first;
+                  const Tensor<1, dim> tau_grad_Nx_j_comp_j =
+                    tau_ns * grad_Nx[j][component_j];
 #endif
                   for (unsigned int i = 0; i <= j; ++i)
                     {
@@ -2576,9 +2611,13 @@ namespace Cook_Membrane
                       cell_matrix(i, j) +=
                         scalar_product(grad_Nx[i], Jg_grad_Nx_j) * JxW;
 #else
-                      const unsigned int component_i = fe.system_to_component_index(i).first;
-                      if (component_i == component_j) // geometrical stress contribution
-                        cell_matrix(i, j) += (grad_Nx[i][component_i] * tau_grad_Nx_j_comp_j) * JxW;
+                      const unsigned int component_i =
+                        fe.system_to_component_index(i).first;
+                      if (component_i ==
+                          component_j) // geometrical stress contribution
+                        cell_matrix(i, j) +=
+                          (grad_Nx[i][component_i] * tau_grad_Nx_j_comp_j) *
+                          JxW;
 #endif
                     }
                 }
@@ -2704,17 +2743,14 @@ namespace Cook_Membrane
                                                            {el.first},
                                                            mask->second);
 
-        Function<dim> * func;
+        Function<dim> *func;
         if (apply_dirichlet_bc)
           func = el.second.get();
         else
           func = &zero;
 
-        VectorTools::interpolate_boundary_values(dof_handler,
-                                                 el.first,
-                                                 *func,
-                                                 constraints,
-                                                 mask->second);
+        VectorTools::interpolate_boundary_values(
+          dof_handler, el.first, *func, constraints, mask->second);
       }
 
     constraints.close();
@@ -2783,43 +2819,51 @@ namespace Cook_Membrane
 
             std::unique_ptr<TrilinosWrappers::PreconditionBase> preconditioner;
             if (parameters.preconditioner_type == "jacobi")
-            {
-              TrilinosWrappers::PreconditionJacobi* p_preconditioner = new TrilinosWrappers::PreconditionJacobi ();
-              p_preconditioner->initialize(tangent_matrix,
-                                         parameters.preconditioner_relaxation);
-              preconditioner.reset(p_preconditioner);
-            }
+              {
+                TrilinosWrappers::PreconditionJacobi *p_preconditioner =
+                  new TrilinosWrappers::PreconditionJacobi();
+                p_preconditioner->initialize(
+                  tangent_matrix, parameters.preconditioner_relaxation);
+                preconditioner.reset(p_preconditioner);
+              }
             else if (parameters.preconditioner_type == "ssor")
-            {
-              TrilinosWrappers::PreconditionSSOR* p_preconditioner = new TrilinosWrappers::PreconditionSSOR ();
-              p_preconditioner->initialize(tangent_matrix,
-                                         parameters.preconditioner_relaxation);
-              preconditioner.reset(p_preconditioner);
-            }
+              {
+                TrilinosWrappers::PreconditionSSOR *p_preconditioner =
+                  new TrilinosWrappers::PreconditionSSOR();
+                p_preconditioner->initialize(
+                  tangent_matrix, parameters.preconditioner_relaxation);
+                preconditioner.reset(p_preconditioner);
+              }
             else if (parameters.preconditioner_type == "amg")
-            {
-              // Note: Default settings for AMG preconditioner are
-              // good for a Laplace problem
-              TrilinosWrappers::PreconditionAMG::AdditionalData additional_data;
-              additional_data.higher_order_elements =  (degree>1);
-              additional_data.elliptic = true;
-              additional_data.aggregation_threshold = parameters.preconditioner_aggregation_threshold;
+              {
+                // Note: Default settings for AMG preconditioner are
+                // good for a Laplace problem
+                TrilinosWrappers::PreconditionAMG::AdditionalData
+                  additional_data;
+                additional_data.higher_order_elements = (degree > 1);
+                additional_data.elliptic              = true;
+                additional_data.aggregation_threshold =
+                  parameters.preconditioner_aggregation_threshold;
 
-              // Build constant modes
-              std::vector< std::vector<bool> > constant_modes;
-              const ComponentMask component_mask (dof_handler.get_fe_collection().n_components(), true);
-              DoFTools::extract_constant_modes (dof_handler, component_mask, constant_modes);
-              additional_data.constant_modes = constant_modes;
+                // Build constant modes
+                std::vector<std::vector<bool>> constant_modes;
+                const ComponentMask            component_mask(
+                  dof_handler.get_fe_collection().n_components(), true);
+                DoFTools::extract_constant_modes(dof_handler,
+                                                 component_mask,
+                                                 constant_modes);
+                additional_data.constant_modes = constant_modes;
 
-              TrilinosWrappers::PreconditionAMG* p_preconditioner = new TrilinosWrappers::PreconditionAMG ();
-              p_preconditioner->initialize(tangent_matrix,
-                  additional_data);
-              preconditioner.reset(p_preconditioner);
-            }
+                TrilinosWrappers::PreconditionAMG *p_preconditioner =
+                  new TrilinosWrappers::PreconditionAMG();
+                p_preconditioner->initialize(tangent_matrix, additional_data);
+                preconditioner.reset(p_preconditioner);
+              }
             else
-            {
-              AssertThrow(false,  ExcMessage("Unknown preconditioner type selected."));
-            }
+              {
+                AssertThrow(
+                  false, ExcMessage("Unknown preconditioner type selected."));
+              }
 
             solver_CG_trilinos.solve(tangent_matrix,
                                      newton_update_trilinos,
@@ -2965,7 +3009,8 @@ namespace Cook_Membrane
              std::to_string(proc) + ".vtu";
     };
 
-    const std::string filename = parameters.output_folder +
+    const std::string filename =
+      parameters.output_folder +
       name_func(triangulation.locally_owned_subdomain());
     std::ofstream output(filename.c_str());
     data_out.write_vtu(output);
@@ -2979,8 +3024,9 @@ namespace Cook_Membrane
              ++i)
           filenames.push_back(name_func(i));
 
-        const std::string filename_pvtu = parameters.output_folder +
-          "solution-" + std::to_string(time.get_timestep()) + ".pvtu";
+        const std::string filename_pvtu =
+          parameters.output_folder + "solution-" +
+          std::to_string(time.get_timestep()) + ".pvtu";
         std::ofstream pvtu_master(filename_pvtu.c_str());
         data_out.write_pvtu_record(pvtu_master, filenames);
       }

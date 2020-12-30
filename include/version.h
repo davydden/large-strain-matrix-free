@@ -8,4 +8,4 @@ namespace Cook_Membrane
   extern const std::string GIT_BRANCH;
   extern const std::string GIT_SHORTREV;
   extern const std::string GIT_TAG;
-}
+} // namespace Cook_Membrane

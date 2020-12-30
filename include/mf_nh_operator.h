@@ -15,83 +15,85 @@
 #include <config.h>
 #include <material.h>
 
-  // Define an operation that takes two tensors $ \mathbf{A} $ and
-  // $ \mathbf{B} $ such that their outer-product
-  // $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{il} B_{jk}
-  // $
-  template <int dim, typename NumberType>
-  Tensor<4, dim, NumberType>
-  outer_product_iljk(const Tensor<2, dim, NumberType> &A,
-                     const Tensor<2, dim, NumberType> &B)
-  {
-    Tensor<4, dim, NumberType> A_il_B_jk{};
+// Define an operation that takes two tensors $ \mathbf{A} $ and
+// $ \mathbf{B} $ such that their outer-product
+// $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{il} B_{jk}
+// $
+template <int dim, typename NumberType>
+Tensor<4, dim, NumberType>
+outer_product_iljk(const Tensor<2, dim, NumberType> &A,
+                   const Tensor<2, dim, NumberType> &B)
+{
+  Tensor<4, dim, NumberType> A_il_B_jk{};
 
-    for (unsigned int i = 0; i < dim; ++i)
-      {
-        for (unsigned int j = 0; j < dim; ++j)
-          {
-            for (unsigned int k = 0; k < dim; ++k)
-              {
-                for (unsigned int l = 0; l < dim; ++l)
-                  {
-                    A_il_B_jk[i][j][k][l] += A[i][l] * B[j][k];
-                  }
-              }
-          }
-      }
+  for (unsigned int i = 0; i < dim; ++i)
+    {
+      for (unsigned int j = 0; j < dim; ++j)
+        {
+          for (unsigned int k = 0; k < dim; ++k)
+            {
+              for (unsigned int l = 0; l < dim; ++l)
+                {
+                  A_il_B_jk[i][j][k][l] += A[i][l] * B[j][k];
+                }
+            }
+        }
+    }
 
-    return A_il_B_jk;
-  }
+  return A_il_B_jk;
+}
 
-  // Define an operation that takes two tensors $ \mathbf{A} $ and
-  // $ \mathbf{B} $ such that their outer-product
-  // $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{ik} B_{jl}
-  // $
-  template <int dim, typename NumberType>
-  Tensor<4, dim, NumberType>
-  outer_product_ikjl(const Tensor<2, dim, NumberType> &A,
-                     const Tensor<2, dim, NumberType> &B)
-  {
-    Tensor<4, dim, NumberType> A_ik_B_jl{};
-    for (unsigned int i = 0; i < dim; ++i)
-      {
-        for (unsigned int j = 0; j < dim; ++j)
-          {
-            for (unsigned int k = 0; k < dim; ++k)
-              {
-                for (unsigned int l = 0; l < dim; ++l)
-                  {
-                    A_ik_B_jl[i][j][k][l] += A[i][k] * B[j][l];
-                  }
-              }
-          }
-      }
+// Define an operation that takes two tensors $ \mathbf{A} $ and
+// $ \mathbf{B} $ such that their outer-product
+// $ \mathbf{A} \bar{\otimes} \mathbf{B} \Rightarrow C_{ijkl} = A_{ik} B_{jl}
+// $
+template <int dim, typename NumberType>
+Tensor<4, dim, NumberType>
+outer_product_ikjl(const Tensor<2, dim, NumberType> &A,
+                   const Tensor<2, dim, NumberType> &B)
+{
+  Tensor<4, dim, NumberType> A_ik_B_jl{};
+  for (unsigned int i = 0; i < dim; ++i)
+    {
+      for (unsigned int j = 0; j < dim; ++j)
+        {
+          for (unsigned int k = 0; k < dim; ++k)
+            {
+              for (unsigned int l = 0; l < dim; ++l)
+                {
+                  A_ik_B_jl[i][j][k][l] += A[i][k] * B[j][l];
+                }
+            }
+        }
+    }
 
-    return A_ik_B_jl;
-  }
+  return A_ik_B_jl;
+}
 
 // mask for various ops in MF operator
 enum class MFMask : unsigned
 {
-  Empty = 0,
-  Zero = 1 << 0,                    // zero source vector
-  MPI = 1 << 1,                     // do MPI communication (ghosts/compress)
-  RW = 1 << 2,                      // read/write, constraints and reinit() of FEEvaluation
-  SF = 1 << 3,                      // Local integration with sum factorization
-  QD = 1 << 4,                      // Quadrature loop
-  Default = (Zero | MPI | RW | SF| QD), // do all
-  CellLoop = (RW | SF| QD),  // cell loop only
-  RWSF     = (RW | SF)       // cell loop without QD
+  Empty    = 0,
+  Zero     = 1 << 0, // zero source vector
+  MPI      = 1 << 1, // do MPI communication (ghosts/compress)
+  RW       = 1 << 2, // read/write, constraints and reinit() of FEEvaluation
+  SF       = 1 << 3, // Local integration with sum factorization
+  QD       = 1 << 4, // Quadrature loop
+  Default  = (Zero | MPI | RW | SF | QD), // do all
+  CellLoop = (RW | SF | QD),              // cell loop only
+  RWSF     = (RW | SF)                    // cell loop without QD
 };
 
-inline constexpr MFMask operator|(MFMask lhs, MFMask rhs)
+inline constexpr MFMask
+operator|(MFMask lhs, MFMask rhs)
 {
   return static_cast<MFMask>(
     static_cast<std::underlying_type<MFMask>::type>(lhs) |
     static_cast<std::underlying_type<MFMask>::type>(rhs));
 }
 
-inline MFMask &operator|=(MFMask &f1, MFMask f2)
+inline MFMask &
+operator|=(MFMask &f1, MFMask f2)
 {
   f1 = f1 | f2;
   return f1;
@@ -106,14 +108,14 @@ inline constexpr bool operator&(MFMask f1, MFMask f2)
 #ifdef WITH_LIKWID
 #  include <likwid.h>
 #else
-#define LIKWID_MARKER_INIT
-#define LIKWID_MARKER_THREADINIT
-#define LIKWID_MARKER_SWITCH
-#define LIKWID_MARKER_REGISTER(regionTag)
-#define LIKWID_MARKER_START(regionTag)
-#define LIKWID_MARKER_STOP(regionTag)
-#define LIKWID_MARKER_CLOSE
-#define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
+#  define LIKWID_MARKER_INIT
+#  define LIKWID_MARKER_THREADINIT
+#  define LIKWID_MARKER_SWITCH
+#  define LIKWID_MARKER_REGISTER(regionTag)
+#  define LIKWID_MARKER_START(regionTag)
+#  define LIKWID_MARKER_STOP(regionTag)
+#  define LIKWID_MARKER_CLOSE
+#  define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
 
@@ -158,7 +160,7 @@ public:
   initialize(std::shared_ptr<const MatrixFree<dim, number>>    data_current,
              std::shared_ptr<const MatrixFree<dim, number>>    data_reference,
              const LinearAlgebra::distributed::Vector<number> &displacement,
-             const std::string caching);
+             const std::string                                 caching);
 
   void
   set_material(
@@ -217,7 +219,8 @@ public:
   /**
    * Cache memory consumption by this class.
    */
-  std::size_t memory_consumption() const;
+  std::size_t
+  memory_consumption() const;
 
 private:
   /**
@@ -274,19 +277,19 @@ private:
   Table<2, VectorizedArray<number>>                 cached_second_scalar;
   Table<2, Tensor<2, dim, VectorizedArray<number>>> cached_tensor2;
   Table<2, SymmetricTensor<4, dim, VectorizedArray<number>>> cached_tensor4;
-  Table<2, Tensor<4, dim, VectorizedArray<number>>> cached_tensor4_ns;
+  Table<2, Tensor<4, dim, VectorizedArray<number>>>          cached_tensor4_ns;
 
   bool diagonal_is_available;
 
   enum class MFCaching
-    {
-     none,
-     scalar_referential,
-     scalar,
-     tensor2,
-     tensor4,
-     tensor4_ns
-    };
+  {
+    none,
+    scalar_referential,
+    scalar,
+    tensor2,
+    tensor4,
+    tensor4_ns
+  };
   MFCaching mf_caching;
 
   Tensor<4, dim, VectorizedArray<number>> IxI_ikjl;
@@ -300,10 +303,10 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
   const
 {
   auto res = cached_scalar.memory_consumption() +
-         cached_second_scalar.memory_consumption() +
-         cached_tensor2.memory_consumption() +
-         cached_tensor4.memory_consumption() +
-         cached_tensor4_ns.memory_consumption();
+             cached_second_scalar.memory_consumption() +
+             cached_tensor2.memory_consumption() +
+             cached_tensor4.memory_consumption() +
+             cached_tensor4_ns.memory_consumption();
 
   // matrix-free data:
   if (mf_caching == MFCaching::tensor4_ns ||
@@ -314,11 +317,13 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::memory_consumption()
   else
     {
       res += data_current->memory_consumption() +
-        (mf_caching == MFCaching::scalar ? data_reference->memory_consumption() : 0);
+             (mf_caching == MFCaching::scalar ?
+                data_reference->memory_consumption() :
+                0);
     }
 
-  // note: do not include diagonals, we want to measure only memory needed for vmult
-  // for performance analysis.
+  // note: do not include diagonals, we want to measure only memory needed for
+  // vmult for performance analysis.
   return res;
 }
 
@@ -330,10 +335,10 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::NeoHookOperator()
   , diagonal_is_available(false)
   , mf_caching(MFCaching::none)
 {
-  Tensor<2,dim,VectorizedArray<number>> I;
+  Tensor<2, dim, VectorizedArray<number>> I;
   for (unsigned int i = 0; i < dim; ++i)
     for (unsigned int j = 0; j < dim; ++j)
-      I[i][j] = make_vectorized_array<number>(i==j);
+      I[i][j] = make_vectorized_array<number>(i == j);
 
   IxI_ikjl = outer_product_ikjl(I, I);
 }
@@ -392,7 +397,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::initialize(
   std::shared_ptr<const MatrixFree<dim, number>>    data_current_,
   std::shared_ptr<const MatrixFree<dim, number>>    data_reference_,
   const LinearAlgebra::distributed::Vector<number> &displacement_,
-  const std::string caching)
+  const std::string                                 caching)
 {
   data_current   = data_current_;
   data_reference = data_reference_;
@@ -410,7 +415,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::initialize(
     {
       mf_caching = MFCaching::scalar_referential;
       cached_scalar.reinit(n_cells, phi.n_q_points);
-      cached_second_scalar.reinit(n_cells, phi.n_q_points*dim);
+      cached_second_scalar.reinit(n_cells, phi.n_q_points * dim);
     }
   else if (caching == "tensor2")
     {
@@ -507,18 +512,24 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
                 {
                   cached_scalar(cell, q) = scalar;
                   // MK:
-                  // This is to avoid the phi_reference.read_dof_values() call and the full
-                  // phi_reference.evaluate(false, true) calls. With this quadrature point information,
-                  // I only need to call a cheap "collocation gradient" function, which is likely the
-                  // best compromise in terms of caching some data versus computing: read_dof_values is
-                  // expensive because it is not fully vectorized (indirect addressing gather access)
-                  // and once you start to store things element-by-element you can eliminate the
-                  // interpolation from nodes to quadrature points (that happens in the usual matrix-free
-                  // interpolations as well). So my code makes use of some internal workings of the matrix-free
-                  // framework that one would need to clean up in case one really wanted to make user-friendly programs
-                  for (unsigned int d=0; d<dim; ++d)
-                    cached_second_scalar(cell, q + d * phi_reference.n_q_points)
-                      = phi_reference.begin_values()[q + d * phi_reference.n_q_points];
+                  // This is to avoid the phi_reference.read_dof_values() call
+                  // and the full phi_reference.evaluate(false, true) calls.
+                  // With this quadrature point information, I only need to call
+                  // a cheap "collocation gradient" function, which is likely
+                  // the best compromise in terms of caching some data versus
+                  // computing: read_dof_values is expensive because it is not
+                  // fully vectorized (indirect addressing gather access) and
+                  // once you start to store things element-by-element you can
+                  // eliminate the interpolation from nodes to quadrature points
+                  // (that happens in the usual matrix-free interpolations as
+                  // well). So my code makes use of some internal workings of
+                  // the matrix-free framework that one would need to clean up
+                  // in case one really wanted to make user-friendly programs
+                  for (unsigned int d = 0; d < dim; ++d)
+                    cached_second_scalar(cell,
+                                         q + d * phi_reference.n_q_points) =
+                      phi_reference
+                        .begin_values()[q + d * phi_reference.n_q_points];
                 }
               else if (mf_caching == MFCaching::tensor2)
                 {
@@ -550,19 +561,22 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
                 }
               else if (mf_caching == MFCaching::tensor4_ns)
                 {
-                  const Tensor<2, dim, VectorizedArray<number>> F_inv = invert(F);
-                  const Tensor<2, dim, VectorizedArray<number>> F_inv_t(transpose(F_inv));
-                  const VectorizedArray<number>                 ln_J = std::log(det_F);
+                  const Tensor<2, dim, VectorizedArray<number>> F_inv =
+                    invert(F);
+                  const Tensor<2, dim, VectorizedArray<number>> F_inv_t(
+                    transpose(F_inv));
+                  const VectorizedArray<number> ln_J = std::log(det_F);
 
-                  const Tensor<4, dim, VectorizedArray<number>> F_inv_t_otimes_F_inv_t =
-                    outer_product(F_inv_t, F_inv_t);
+                  const Tensor<4, dim, VectorizedArray<number>>
+                    F_inv_t_otimes_F_inv_t = outer_product(F_inv_t, F_inv_t);
 
                   const Tensor<4, dim, VectorizedArray<number>> F_inv_t_F_inv =
                     outer_product_iljk(F_inv_t, F_inv);
 
                   cached_tensor4_ns(cell, q) =
                     (2. * cell_mat->lambda) * F_inv_t_otimes_F_inv_t +
-                    (cell_mat->mu - 2.0 * cell_mat->lambda * ln_J) * F_inv_t_F_inv +
+                    (cell_mat->mu - 2.0 * cell_mat->lambda * ln_J) *
+                      F_inv_t_F_inv +
                     cell_mat->mu * IxI_ikjl;
                 }
               else
@@ -668,10 +682,10 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::vmult_add(
 
   // 2. loop over all locally owned cell blocks
   local_apply_cell<mask>(*data_current,
-                   dst,
-                   src,
-                   std::make_pair<unsigned int, unsigned int>(
-                     0, data_current->n_cell_batches()));
+                         dst,
+                         src,
+                         std::make_pair<unsigned int, unsigned int>(
+                           0, data_current->n_cell_batches()));
 
   // 3. communicate results with MPI
   if (mask & MFMask::MPI)
@@ -722,7 +736,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
             {
               phi_current.reinit(cell);
 
-              // read-in total displacement and src vector and evaluate gradients
+              // read-in total displacement and src vector and evaluate
+              // gradients
               phi_current.read_dof_values(src);
             }
 
@@ -758,7 +773,6 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_apply_cell(
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
       LIKWID_MARKER_STOP("vmult_reinit_read_write");
 #endif
-
     }
 }
 
@@ -784,44 +798,46 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
   if (mf_caching == MFCaching::tensor4_ns ||
       mf_caching == MFCaching::scalar_referential)
     {
-      for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
+      for (unsigned int cell = cell_range.first; cell < cell_range.second;
+           ++cell)
         {
           phi_reference.reinit(cell);
           AlignedVector<VectorizedArray<number>> local_diagonal_vector(
             phi_reference.dofs_per_component * phi_reference.n_components);
 
-          // Loop over all DoFs and set dof values to zero everywhere but i-th DoF.
-          // With this input (instead of read_dof_values()) we do the action and
-          // store the result in a diagonal vector
+          // Loop over all DoFs and set dof values to zero everywhere but i-th
+          // DoF. With this input (instead of read_dof_values()) we do the
+          // action and store the result in a diagonal vector
           for (unsigned int i = 0; i < phi_reference.dofs_per_component; ++i)
             for (unsigned int ic = 0; ic < phi_reference.n_components; ++ic)
               {
-                for (unsigned int j = 0; j < phi_reference.dofs_per_component; ++j)
-                  for (unsigned int jc = 0; jc < phi_reference.n_components; ++jc)
+                for (unsigned int j = 0; j < phi_reference.dofs_per_component;
+                     ++j)
+                  for (unsigned int jc = 0; jc < phi_reference.n_components;
+                       ++jc)
                     {
-                      const auto ind_j = j + jc * phi_reference.dofs_per_component;
-                      phi_reference.begin_dof_values()[ind_j]   = zero;
+                      const auto ind_j =
+                        j + jc * phi_reference.dofs_per_component;
+                      phi_reference.begin_dof_values()[ind_j] = zero;
                     }
 
                 const auto ind_i = i + ic * phi_reference.dofs_per_component;
 
                 phi_reference.begin_dof_values()[ind_i] = one;
 
-                do_operation_on_cell(phi_current,
-                                     phi_reference,
-                                     cell);
+                do_operation_on_cell(phi_current, phi_reference, cell);
 
                 local_diagonal_vector[ind_i] =
                   phi_reference.begin_dof_values()[ind_i];
               }
 
-          // Finally, in order to distribute diagonal, write it again into one of
-          // FEEvaluations and do the standard distribute_local_to_global.
+          // Finally, in order to distribute diagonal, write it again into one
+          // of FEEvaluations and do the standard distribute_local_to_global.
           // Note that here non-diagonal matrix elements are ignored and so the
-          // result is not equivalent to matrix-based case when hanging nodes are
-          // present. see Section 5.3 in Korman 2016, A time-space adaptive method
-          // for the Schrodinger equation, doi: 10.4208/cicp.101214.021015a for a
-          // discussion.
+          // result is not equivalent to matrix-based case when hanging nodes
+          // are present. see Section 5.3 in Korman 2016, A time-space adaptive
+          // method for the Schrodinger equation,
+          // doi: 10.4208/cicp.101214.021015a for a discussion.
           for (unsigned int i = 0; i < phi_reference.dofs_per_component; ++i)
             for (unsigned int ic = 0; ic < phi_reference.n_components; ++ic)
               {
@@ -861,16 +877,14 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
               for (unsigned int jc = 0; jc < phi_current.n_components; ++jc)
                 {
                   const auto ind_j = j + jc * phi_current.dofs_per_component;
-                  phi_current.begin_dof_values()[ind_j]   = zero;
+                  phi_current.begin_dof_values()[ind_j] = zero;
                 }
 
             const auto ind_i = i + ic * phi_current.dofs_per_component;
 
-            phi_current.begin_dof_values()[ind_i]   = one;
+            phi_current.begin_dof_values()[ind_i] = one;
 
-            do_operation_on_cell(phi_current,
-                                 phi_reference,
-                                 cell);
+            do_operation_on_cell(phi_current, phi_reference, cell);
 
             local_diagonal_vector[ind_i] =
               phi_current.begin_dof_values()[ind_i];
@@ -911,7 +925,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
   // make sure all filled cells have the same ID
 #ifdef DEBUG
-  for (unsigned int i = 1; i < data_current->n_active_entries_per_cell_batch(cell); ++i)
+  for (unsigned int i = 1;
+       i < data_current->n_active_entries_per_cell_batch(cell);
+       ++i)
     {
       const unsigned int other_id =
         data_current->get_cell_iterator(cell, i)->material_id();
@@ -927,7 +943,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   // make sure both MatrixFree objects use the same cells
   AssertDimension(data_current->n_active_entries_per_cell_batch(cell),
                   data_reference->n_active_entries_per_cell_batch(cell));
-  for (unsigned int i = 0; i < data_current->n_active_entries_per_cell_batch(cell); ++i)
+  for (unsigned int i = 0;
+       i < data_current->n_active_entries_per_cell_batch(cell);
+       ++i)
     Assert(data_current->get_cell_iterator(cell, i) ==
              data_reference->get_cell_iterator(cell, i),
            ExcMessage("Cell block " + std::to_string(cell) + " element " +
@@ -983,17 +1001,20 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const Tensor<2, dim, NumberType> F =
                 Physics::Elasticity::Kinematics::F(grad_u);
               const NumberType                 det_F = determinant(F);
-              const Tensor<2, dim, NumberType> F_bar = F * cached_scalar(cell, q);
+              const Tensor<2, dim, NumberType> F_bar =
+                F * cached_scalar(cell, q);
               const SymmetricTensor<2, dim, NumberType> b_bar =
                 Physics::Elasticity::Kinematics::b(F_bar);
 
-              Assert(cached_scalar(cell, q) == std::pow(det_F, number(-1.0 / dim)),
-                    ExcMessage("Cached scalar and det_F do not match"));
+              Assert(cached_scalar(cell, q) ==
+                       std::pow(det_F, number(-1.0 / dim)),
+                     ExcMessage("Cached scalar and det_F do not match"));
 
-              for (unsigned int i = 0; i < data_current->n_active_entries_per_cell_batch(cell);
-                  ++i)
+              for (unsigned int i = 0;
+                   i < data_current->n_active_entries_per_cell_batch(cell);
+                   ++i)
                 Assert(det_F[i] > 0,
-                      ExcMessage("det_F[" + std::to_string(i) +
+                       ExcMessage("det_F[" + std::to_string(i) +
                                   "] is not positive"));
 
               // current configuration
@@ -1018,7 +1039,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               // Derivative of the volumetric free energy with respect to
               // $J$ return $\frac{\partial
               // \Psi_{\text{vol}}(J)}{\partial J}$
-              const NumberType dPsi_vol_dJ = (kappa / 2.0) * (det_F - 1.0 / det_F);
+              const NumberType dPsi_vol_dJ =
+                (kappa / 2.0) * (det_F - 1.0 / det_F);
 
               const NumberType dPsi_vol_dJ_J = dPsi_vol_dJ * det_F;
 
@@ -1031,11 +1053,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 tau = NumberType();
                 // See Holzapfel p231 eq6.98 onwards
 
-                // The following functions are used internally in determining the
-                // result of some of the public functions above. The first one
-                // determines the volumetric Kirchhoff stress
-                // $\boldsymbol{\tau}_{\textrm{vol}}$. Note the difference in its
-                // definition when compared to step-44.
+                // The following functions are used internally in determining
+                // the result of some of the public functions above. The first
+                // one determines the volumetric Kirchhoff stress
+                // $\boldsymbol{\tau}_{\textrm{vol}}$. Note the difference in
+                // its definition when compared to step-44.
                 for (unsigned int d = 0; d < dim; ++d)
                   tau[d][d] = dPsi_vol_dJ_J - tr_tau_bar_dim;
 
@@ -1043,8 +1065,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               }
 
               // material part of the action of tangent:
-              // The action of the fourth-order material elasticity tensor in the
-              // spatial setting on symmetric tensor.
+              // The action of the fourth-order material elasticity tensor in
+              // the spatial setting on symmetric tensor.
               // $\mathfrak{c}$ is calculated from the SEF $\Psi$ as $ J
               // \mathfrak{c}_{ijkl} = F_{iA} F_{jB} \mathfrak{C}_{ABCD} F_{kC}
               // F_{lD}$ where $ \mathfrak{C} = 4 \frac{\partial^2
@@ -1059,9 +1081,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
                 // 1) The volumetric part of the tangent $J
                 // \mathfrak{c}_\textrm{vol}$. Again, note the difference in its
-                // definition when compared to step-44. The extra terms result from
-                // two quantities in $\boldsymbol{\tau}_{\textrm{vol}}$ being
-                // dependent on
+                // definition when compared to step-44. The extra terms result
+                // from two quantities in $\boldsymbol{\tau}_{\textrm{vol}}$
+                // being dependent on
                 // $\boldsymbol{F}$.
                 // See Holzapfel p265
 
@@ -1098,30 +1120,32 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 // c_bar==0 so we don't have a term with it.
               }
 
-    #ifdef DEBUG
+#ifdef DEBUG
               const VectorizedArray<number> &JxW_current = phi_current.JxW(q);
               VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
-              for (unsigned int i = 0; i < data_current->n_active_entries_per_cell_batch(cell);
-                  ++i)
+              for (unsigned int i = 0;
+                   i < data_current->n_active_entries_per_cell_batch(cell);
+                   ++i)
                 {
                   Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
                   JxW_scale[i] *= 1. / JxW_current[i];
                   // indirect check of consistency between MappingQEulerian in
                   // MatrixFree data and displacement vector stored in this
                   // operator.
-                  Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
-                          1000. * std::numeric_limits<number>::epsilon(),
-                        ExcMessage(
-                          std::to_string(i) + " out of " +
-                          std::to_string(
-                            VectorizedArray<number>::size()) +
-                          ", filled " +
-                          std::to_string(data_current->n_active_entries_per_cell_batch(cell)) +
-                          " : " + std::to_string(det_F[i]) +
-                          "!=" + std::to_string(1. / JxW_scale[i]) + " " +
-                          std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+                  Assert(
+                    std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                      1000. * std::numeric_limits<number>::epsilon(),
+                    ExcMessage(
+                      std::to_string(i) + " out of " +
+                      std::to_string(VectorizedArray<number>::size()) +
+                      ", filled " +
+                      std::to_string(
+                        data_current->n_active_entries_per_cell_batch(cell)) +
+                      " : " + std::to_string(det_F[i]) +
+                      "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                      std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
                 }
-    #endif
+#endif
 
               // jc_part is the $\mathsf{\mathbf{k}}_{\mathbf{u} \mathbf{u}}$
               // contribution. It comprises a material contribution, and a
@@ -1130,9 +1154,9 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 
               // geometrical stress contribution
               // In index notation this tensor is $ [j e^{geo}]_{ijkl} = j
-              // \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $. the
-              // product is actually  GradN * tau^T but due to symmetry of tau we
-              // can do GradN * tau
+              // \delta_{ik} \sigma^{tot}_{jl} = \delta_{ik} \tau^{tot}_{jl} $.
+              // the product is actually  GradN * tau^T but due to symmetry of
+              // tau we can do GradN * tau
               const VectorizedArray<number> inv_det_F = number(1.0) / det_F;
               const Tensor<2, dim, VectorizedArray<number>> tau_ns(tau);
               const Tensor<2, dim, VectorizedArray<number>> geo =
@@ -1172,10 +1196,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                   tau[d][d] -= cached_scalar(cell, q);
               }
 
-              SymmetricTensor<2, dim, NumberType>
-              jc_part = (number(2.0) * cached_scalar(cell, q)) * symm_grad_Nx_v;
+              SymmetricTensor<2, dim, NumberType> jc_part =
+                (number(2.0) * cached_scalar(cell, q)) * symm_grad_Nx_v;
               {
-                const NumberType tmp = number(2.0) * lambda * trace(symm_grad_Nx_v);
+                const NumberType tmp =
+                  number(2.0) * lambda * trace(symm_grad_Nx_v);
                 for (unsigned int i = 0; i < dim; ++i)
                   jc_part[i][i] += tmp;
               }
@@ -1183,32 +1208,34 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const NumberType det_F = determinant(F);
               Assert(cached_scalar(cell, q) ==
                        (mu - number(2.0) * lambda * std::log(det_F)),
-                    ExcMessage("Cached scalar and det_F do not match"));
+                     ExcMessage("Cached scalar and det_F do not match"));
 
-    #ifdef DEBUG
-              const VectorizedArray<number>  JxW_current = phi_current.JxW(q);
-              VectorizedArray<number>        JxW_scale   = phi_reference.JxW(q);
-              for (unsigned int i = 0; i < data_current->n_active_entries_per_cell_batch(cell);
-                  ++i)
+#ifdef DEBUG
+              const VectorizedArray<number> JxW_current = phi_current.JxW(q);
+              VectorizedArray<number>       JxW_scale   = phi_reference.JxW(q);
+              for (unsigned int i = 0;
+                   i < data_current->n_active_entries_per_cell_batch(cell);
+                   ++i)
                 {
                   Assert(std::abs(JxW_current[i]) > 0., ExcInternalError());
                   JxW_scale[i] *= 1. / JxW_current[i];
                   // indirect check of consistency between MappingQEulerian in
                   // MatrixFree data and displacement vector stored in this
                   // operator.
-                  Assert(std::abs(JxW_scale[i] * det_F[i] - 1.) <
-                          100000. * std::numeric_limits<number>::epsilon(),
-                        ExcMessage(
-                          std::to_string(i) + " out of " +
-                          std::to_string(
-                            VectorizedArray<number>::size()) +
-                          ", filled " +
-                          std::to_string(data_current->n_active_entries_per_cell_batch(cell)) +
-                          " : " + std::to_string(det_F[i]) +
-                          "!=" + std::to_string(1. / JxW_scale[i]) + " " +
-                          std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
+                  Assert(
+                    std::abs(JxW_scale[i] * det_F[i] - 1.) <
+                      100000. * std::numeric_limits<number>::epsilon(),
+                    ExcMessage(
+                      std::to_string(i) + " out of " +
+                      std::to_string(VectorizedArray<number>::size()) +
+                      ", filled " +
+                      std::to_string(
+                        data_current->n_active_entries_per_cell_batch(cell)) +
+                      " : " + std::to_string(det_F[i]) +
+                      "!=" + std::to_string(1. / JxW_scale[i]) + " " +
+                      std::to_string(std::abs(JxW_scale[i] * det_F[i] - 1.))));
                 }
-    #endif
+#endif
 
               const Tensor<2, dim, VectorizedArray<number>> tau_ns(tau);
               const Tensor<2, dim, VectorizedArray<number>> geo =
@@ -1217,37 +1244,53 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               phi_current.submit_gradient((jc_part + geo) * inv_det_F, q);
             }
         }
-      else if (cell_mat->formulation == 1 && mf_caching == MFCaching::scalar_referential)
+      else if (cell_mat->formulation == 1 &&
+               mf_caching == MFCaching::scalar_referential)
         // the least amount of cache and the most calculations
         // MK:
-        // What I implemented here is essentially the same as the usual scalar variant.
-        // The only thing I had to change was to replace grad x (and submit_gradient() in the spatial frame)
-        // by Grad x (get_gradient() in referential frame) and then multiplying by F^{-T}.
-        // And this is the F that gets computed in the scalar case as well,
-        // I just hardcoded it as this was the way I thought about it in the implementation,
-        // but one could of course use the phi_reference.get_gradient() function.
-        // And similarly by F^{-1} for submit_gradient(). In other words,
-        // I simply pulled out the Eulerian motion of the grid into F; nothing else changed.
+        // What I implemented here is essentially the same as the usual scalar
+        // variant. The only thing I had to change was to replace grad x (and
+        // submit_gradient() in the spatial frame) by Grad x (get_gradient() in
+        // referential frame) and then multiplying by F^{-T}. And this is the F
+        // that gets computed in the scalar case as well, I just hardcoded it as
+        // this was the way I thought about it in the implementation, but one
+        // could of course use the phi_reference.get_gradient() function. And
+        // similarly by F^{-1} for submit_gradient(). In other words, I simply
+        // pulled out the Eulerian motion of the grid into F; nothing else
+        // changed.
         {
-          const NumberType one = make_vectorized_array<number>(1.);
-          const NumberType *cached_position =
-            &cached_second_scalar(cell, 0);
-          constexpr unsigned int n_q_points = Utilities::pow(n_q_points_1d, dim);
+          const NumberType  one             = make_vectorized_array<number>(1.);
+          const NumberType *cached_position = &cached_second_scalar(cell, 0);
+          constexpr unsigned int n_q_points =
+            Utilities::pow(n_q_points_1d, dim);
           NumberType *ref_grads = phi_current.begin_gradients();
-          NumberType *x_grads = phi_reference.begin_gradients();
-#if DEAL_II_VERSION_GTE(9,3,0)
-          dealii::internal::FEEvaluationImplCollocation<dim,n_q_points_1d-1,NumberType>
-            ::evaluate(dim,
-                       EvaluationFlags::gradients,
-                       data_reference->get_shape_info(),
-                       cached_position,
-                       nullptr, ref_grads, nullptr, nullptr);
+          NumberType *x_grads   = phi_reference.begin_gradients();
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+          dealii::internal::FEEvaluationImplCollocation<
+            dim,
+            n_q_points_1d - 1,
+            NumberType>::evaluate(dim,
+                                  EvaluationFlags::gradients,
+                                  data_reference->get_shape_info(),
+                                  cached_position,
+                                  nullptr,
+                                  ref_grads,
+                                  nullptr,
+                                  nullptr);
 #else
-          dealii::internal::FEEvaluationImplCollocation<dim,n_q_points_1d-1,dim,NumberType>
-            ::evaluate(data_reference->get_shape_info(),
-                       cached_position,
-                       nullptr, ref_grads, nullptr, nullptr,
-                       false, true, false);
+          dealii::internal::FEEvaluationImplCollocation<
+            dim,
+            n_q_points_1d - 1,
+            dim,
+            NumberType>::evaluate(data_reference->get_shape_info(),
+                                  cached_position,
+                                  nullptr,
+                                  ref_grads,
+                                  nullptr,
+                                  nullptr,
+                                  false,
+                                  true,
+                                  false);
 #endif
           for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
             {
@@ -1256,23 +1299,26 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 phi_reference.inverse_jacobian(q);
               Tensor<2, dim, NumberType> F;
               Tensor<2, dim, NumberType> grad_Nx_v;
-              for (unsigned int d=0; d<dim; ++d)
+              for (unsigned int d = 0; d < dim; ++d)
                 {
-                  for (unsigned int e=0; e<dim; ++e)
+                  for (unsigned int e = 0; e < dim; ++e)
                     {
                       NumberType sum =
-                        inv_jac[e][0] * ref_grads[(d * dim + 0)*n_q_points + q];
-                      for (unsigned int f=1; f<dim; ++f)
-                        sum += inv_jac[e][f] * ref_grads[(d * dim + f)*n_q_points + q];
+                        inv_jac[e][0] *
+                        ref_grads[(d * dim + 0) * n_q_points + q];
+                      for (unsigned int f = 1; f < dim; ++f)
+                        sum += inv_jac[e][f] *
+                               ref_grads[(d * dim + f) * n_q_points + q];
                       F[d][e] = sum;
 
-                      // since we already have the inverse Jacobian, simply apply the
-                      // inverse Jacobian here rather than call get_gradient
-                      // (the operations are the same otherwise)
+                      // since we already have the inverse Jacobian, simply
+                      // apply the inverse Jacobian here rather than call
+                      // get_gradient (the operations are the same otherwise)
                       NumberType sum2 =
-                        inv_jac[e][0] * x_grads[(d * dim + 0)*n_q_points + q];
-                      for (unsigned int f=1; f<dim; ++f)
-                        sum2 += inv_jac[e][f] * x_grads[(d * dim + f)*n_q_points + q];
+                        inv_jac[e][0] * x_grads[(d * dim + 0) * n_q_points + q];
+                      for (unsigned int f = 1; f < dim; ++f)
+                        sum2 += inv_jac[e][f] *
+                                x_grads[(d * dim + f) * n_q_points + q];
                       grad_Nx_v[d][e] = sum2;
                     }
                   F[d][d] += one;
@@ -1285,22 +1331,22 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 tau[d][d] -= cached_scalar(cell, q);
 
               const Tensor<2, dim, NumberType> F_inv = invert(F);
-              for (unsigned int d=0; d<dim; ++d)
+              for (unsigned int d = 0; d < dim; ++d)
                 {
                   NumberType tmp[dim];
-                  for (unsigned int e=0; e<dim; ++e)
+                  for (unsigned int e = 0; e < dim; ++e)
                     tmp[e] = grad_Nx_v[d][e];
-                  for (unsigned int e=0; e<dim; ++e)
+                  for (unsigned int e = 0; e < dim; ++e)
                     {
                       NumberType sum = F_inv[0][e] * tmp[0];
-                      for (unsigned int f=1; f<dim; ++f)
+                      for (unsigned int f = 1; f < dim; ++f)
                         sum += F_inv[f][e] * tmp[f];
                       grad_Nx_v[d][e] = sum;
                     }
-                  }
+                }
 
-              SymmetricTensor<2, dim, NumberType>
-                jc_part = (number(2.0) * cached_scalar(cell, q)) * symmetrize(grad_Nx_v);
+              SymmetricTensor<2, dim, NumberType> jc_part =
+                (number(2.0) * cached_scalar(cell, q)) * symmetrize(grad_Nx_v);
               {
                 const NumberType tmp = number(2.0) * lambda * trace(grad_Nx_v);
                 for (unsigned int i = 0; i < dim; ++i)
@@ -1310,11 +1356,13 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               Tensor<2, dim, NumberType> queued =
                 jc_part + (grad_Nx_v * Tensor<2, dim, NumberType>(tau));
               phi_reference.submit_gradient(F_inv * queued, q);
-              // MK: The 60 lines above this are the interesting part: I only need to work with phi_reference.
-              // What happens in addition to the scalar caching variant is that I have to multiply grad_Nx_v also
-              // by F^{-T} to transform it to the spatial configuration.
-              // Note that I expanded some of the contractions manually in terms of the loops to be fully
-              // sure what happens but we could also express them via operator* between Tensor<2,dim> objects.
+              // MK: The 60 lines above this are the interesting part: I only
+              // need to work with phi_reference. What happens in addition to
+              // the scalar caching variant is that I have to multiply grad_Nx_v
+              // also by F^{-T} to transform it to the spatial configuration.
+              // Note that I expanded some of the contractions manually in terms
+              // of the loops to be fully sure what happens but we could also
+              // express them via operator* between Tensor<2,dim> objects.
             }
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor2)
@@ -1327,8 +1375,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               const SymmetricTensor<2, dim, NumberType> symm_grad_Nx_v =
                 symmetrize(grad_Nx_v);
 
-              SymmetricTensor<2, dim, VectorizedArray<number>>
-                jc_part = cached_scalar(cell, q) * symm_grad_Nx_v;
+              SymmetricTensor<2, dim, VectorizedArray<number>> jc_part =
+                cached_scalar(cell, q) * symm_grad_Nx_v;
               {
                 const NumberType tmp =
                   cached_second_scalar(cell, q) * trace(symm_grad_Nx_v);
@@ -1337,7 +1385,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
               }
 
               phi_current.submit_gradient(jc_part +
-                                          grad_Nx_v * cached_tensor2(cell, q), q);
+                                            grad_Nx_v * cached_tensor2(cell, q),
+                                          q);
             }
         }
       else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor4)
@@ -1351,11 +1400,13 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 symmetrize(grad_Nx_v);
 
               phi_current.submit_gradient(grad_Nx_v * cached_tensor2(cell, q) +
-                                          cached_tensor4(cell, q) *
-                                          symm_grad_Nx_v, q);
+                                            cached_tensor4(cell, q) *
+                                              symm_grad_Nx_v,
+                                          q);
             }
         }
-      else if (cell_mat->formulation == 1 && mf_caching == MFCaching::tensor4_ns)
+      else if (cell_mat->formulation == 1 &&
+               mf_caching == MFCaching::tensor4_ns)
         // dP/dF, fully referential
         {
           for (unsigned int q = 0; q < phi_current.n_q_points; ++q)
@@ -1364,7 +1415,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                 phi_reference.get_gradient(q);
 
               phi_reference.submit_gradient(
-                double_contract<2,0,3,1>(cached_tensor4_ns(cell, q), grad_Nx_v),
+                double_contract<2, 0, 3, 1>(cached_tensor4_ns(cell, q),
+                                            grad_Nx_v),
                 q);
             }
         }
@@ -1411,7 +1463,6 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)
   LIKWID_MARKER_STOP("vmult_sum_factorization");
 #endif
-
 }
 
 

@@ -35,8 +35,8 @@
 
 
 #if (!defined(__GNUC__) && !defined(__clang__)) || defined(__pnacl__) || \
-    defined(__EMSCRIPTEN__)
-#define BENCHMARK_HAS_NO_INLINE_ASSEMBLY
+  defined(__EMSCRIPTEN__)
+#  define BENCHMARK_HAS_NO_INLINE_ASSEMBLY
 #endif
 
 // The DoNotOptimize(...) function can be used to prevent a value or
@@ -45,28 +45,36 @@
 // See: https://youtu.be/nXaxk27zwlk?t=2441
 #ifndef BENCHMARK_HAS_NO_INLINE_ASSEMBLY
 template <class Tp>
-inline __attribute__((always_inline)) void DoNotOptimize(Tp const& value) {
+inline __attribute__((always_inline)) void
+DoNotOptimize(Tp const &value)
+{
   asm volatile("" : : "r,m"(value) : "memory");
 }
 
 template <class Tp>
-inline __attribute__((always_inline)) void DoNotOptimize(Tp& value) {
-#if defined(__clang__)
+inline __attribute__((always_inline)) void
+DoNotOptimize(Tp &value)
+{
+#  if defined(__clang__)
   asm volatile("" : "+r,m"(value) : : "memory");
-#else
+#  else
   asm volatile("" : "+m,r"(value) : : "memory");
-#endif
+#  endif
 }
 
 // Force the compiler to flush pending writes to global memory. Acts as an
 // effective read/write barrier
-inline __attribute__((always_inline)) void ClobberMemory() {
+inline __attribute__((always_inline)) void
+ClobberMemory()
+{
   asm volatile("" : : : "memory");
 }
 #else
 template <class Tp>
-inline __attribute__((always_inline)) void DoNotOptimize(Tp const& value) {
-  internal::UseCharPointer(&reinterpret_cast<char const volatile&>(value));
+inline __attribute__((always_inline)) void
+DoNotOptimize(Tp const &value)
+{
+  internal::UseCharPointer(&reinterpret_cast<char const volatile &>(value));
 }
 // FIXME Add ClobberMemory() for non-gnu and non-msvc compilers
 #endif
@@ -76,7 +84,7 @@ using namespace Cook_Membrane;
 
 template <int dim = 2, int degree = 4, typename number = double>
 void
-test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
+test(const unsigned int n_cells = 90112 / VectorizedArray<number>::size())
 {
   constexpr int n_q_points = Utilities::pow(degree + 1, dim);
 
@@ -89,8 +97,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
     << "--     . running in OPTIMIZED mode" << std::endl;
 #endif
 
-  std::cout << "--     . vectorization over "
-            << VectorizedArray<number>::size()
+  std::cout << "--     . vectorization over " << VectorizedArray<number>::size()
             << " elements, VECTORIZATION_LEVEL="
             << DEAL_II_COMPILER_VECTORIZATION_LEVEL << std::endl;
 
@@ -107,8 +114,8 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
 
   std::cout << "dim                = " << dim << std::endl
             << "degree             = " << degree << std::endl
-            << "SIMD width         = "
-            << VectorizedArray<number>::size() << std::endl
+            << "SIMD width         = " << VectorizedArray<number>::size()
+            << std::endl
             << "n_cell_batches     = " << n_cells << std::endl
             << "n_q_points         = " << n_q_points << std::endl
             << "number of products = " << n_cells * n_q_points << std::endl
@@ -127,7 +134,7 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
   cached_tensor2sym.reinit(n_cells, n_q_points);
 
   // set tensors to something (does not matter)
-  const VectorizedArray<number> one = make_vectorized_array(1.);
+  const VectorizedArray<number> one  = make_vectorized_array(1.);
   const VectorizedArray<number> zero = make_vectorized_array(0.);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
@@ -198,7 +205,8 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
       for (unsigned int q = 0; q < n_q_points; ++q)
         {
           // the results which goes to FEEvaluation::submit_gradient()
-          DoNotOptimize(res = contract<1,0>(grad_Nx_v, cached_tensor2(cell, q)));
+          DoNotOptimize(res =
+                          contract<1, 0>(grad_Nx_v, cached_tensor2(cell, q)));
         }
     LIKWID_MARKER_STOP("tensor2_c10");
     timer.leave_subsection();
@@ -213,7 +221,10 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
       for (unsigned int q = 0; q < n_q_points; ++q)
         {
           // the results which goes to FEEvaluation::submit_gradient()
-          DoNotOptimize(res = contract<1,1>(grad_Nx_v, cached_tensor2(cell, q))); // use the fact that \tau is symmetric
+          DoNotOptimize(
+            res = contract<1, 1>(
+              grad_Nx_v,
+              cached_tensor2(cell, q))); // use the fact that \tau is symmetric
         }
     LIKWID_MARKER_STOP("tensor2_c11");
     timer.leave_subsection();
@@ -227,19 +238,22 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
       for (unsigned int q = 0; q < n_q_points; ++q)
         {
           // the results which goes to FEEvaluation::submit_gradient()
-          Tensor<2, dim, VectorizedArray<number>> res;
-          const Tensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2(cell, q);
+          Tensor<2, dim, VectorizedArray<number>>        res;
+          const Tensor<2, dim, VectorizedArray<number>> &rhs =
+            cached_tensor2(cell, q);
           for (unsigned int i = 0; i < dim; ++i)
             {
-              auto & res_i = res[i];
-              auto & grad_Nx_v_i = grad_Nx_v[i];
+              auto &res_i       = res[i];
+              auto &grad_Nx_v_i = grad_Nx_v[i];
               for (unsigned int j = 0; j < dim; ++j)
                 {
-                  auto & res_ij = res_i[j];
-                  auto & rhs_j = rhs[j];
-                  res_ij = zero;
+                  auto &res_ij = res_i[j];
+                  auto &rhs_j  = rhs[j];
+                  res_ij       = zero;
                   for (unsigned int k = 0; k < dim; ++k)
-                    DoNotOptimize(res_ij += grad_Nx_v_i[k] * rhs_j[k]); // rhs is symmetric, actually
+                    DoNotOptimize(res_ij +=
+                                  grad_Nx_v_i[k] *
+                                  rhs_j[k]); // rhs is symmetric, actually
                 }
             }
         }
@@ -255,18 +269,21 @@ test(const unsigned int n_cells = 90112/VectorizedArray<number>::size())
       for (unsigned int q = 0; q < n_q_points; ++q)
         {
           // the results which goes to FEEvaluation::submit_gradient()
-          Tensor<2, dim, VectorizedArray<number>> res;
-          const SymmetricTensor<2, dim, VectorizedArray<number>> & rhs = cached_tensor2sym(cell, q);
+          Tensor<2, dim, VectorizedArray<number>>                 res;
+          const SymmetricTensor<2, dim, VectorizedArray<number>> &rhs =
+            cached_tensor2sym(cell, q);
           for (unsigned int i = 0; i < dim; ++i)
             {
-              auto & res_i = res[i];
-              auto & grad_Nx_v_i = grad_Nx_v[i];
+              auto &res_i       = res[i];
+              auto &grad_Nx_v_i = grad_Nx_v[i];
               for (unsigned int j = 0; j < dim; ++j)
                 {
-                  auto & res_ij = res_i[j];
-                  res_ij = zero;
+                  auto &res_ij = res_i[j];
+                  res_ij       = zero;
                   for (unsigned int k = 0; k < dim; ++k)
-                    DoNotOptimize(res_ij += grad_Nx_v_i[k] * rhs[j][k]); // rhs is symmetric, actually
+                    DoNotOptimize(res_ij +=
+                                  grad_Nx_v_i[k] *
+                                  rhs[j][k]); // rhs is symmetric, actually
                 }
             }
         }
@@ -289,11 +306,11 @@ main(int argc, char *argv[])
   // size over quadrature points.
   if (dim == 2)
     {
-      test<2,4>();
+      test<2, 4>();
     }
   else
     {
-      test<3,4>();
+      test<3, 4>();
     }
 
   return 0;
