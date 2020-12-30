@@ -282,7 +282,7 @@ NeoHookOperatorAD<dim, fe_degree, n_q_points_1d, number>::vmult_add(
                    dst,
                    src,
                    std::make_pair<unsigned int, unsigned int>(
-                     0, data_reference->n_macro_cells()));
+                     0, data_reference->n_cell_batches()));
 
   // 3. communicate results with MPI
   dst.compress(VectorOperation::add);
@@ -505,7 +505,7 @@ NeoHookOperatorAD<dim, fe_degree, n_q_points_1d, number>::compute_diagonal()
                       diagonal_vector,
                       dummy,
                       std::make_pair<unsigned int, unsigned int>(
-                        0, data_reference->n_macro_cells()));
+                        0, data_reference->n_cell_batches()));
   diagonal_vector.compress(VectorOperation::add);
 
   // data_current->cell_loop (&NeoHookOperatorAD::local_diagonal_cell,

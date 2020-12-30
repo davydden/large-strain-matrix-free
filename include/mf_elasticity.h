@@ -1710,7 +1710,7 @@ namespace Cook_Membrane
         mf_data_current   = std::make_shared<MatrixFree<dim, double>>();
         mf_data_reference = std::make_shared<MatrixFree<dim, double>>();
 
-        mf_data_reference->reinit(dof_handler, constraints, quad, data);
+        mf_data_reference->reinit(StaticMappingQ1<dim>::mapping, dof_handler, constraints, quad, data);
         mf_data_current->reinit(
           *eulerian_mapping, dof_handler, constraints, quad, data);
 
@@ -1757,7 +1757,8 @@ namespace Cook_Membrane
                 std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
                   degree, dof_handler, mg_solution_total[level], level);
 
-            mg_mf_data_reference[level]->reinit(dof_handler,
+            mg_mf_data_reference[level]->reinit(StaticMappingQ1<dim>::mapping,
+                                                dof_handler,
                                                 level_constraints,
                                                 quad,
                                                 mg_additional_data[level]);
