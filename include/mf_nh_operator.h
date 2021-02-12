@@ -835,7 +835,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
           // of FEEvaluations and do the standard distribute_local_to_global.
           // Note that here non-diagonal matrix elements are ignored and so the
           // result is not equivalent to matrix-based case when hanging nodes
-          // are present. see Section 5.3 in Korman 2016, A time-space adaptive
+          // are present. see Section 5.3 in Kormann 2016, A time-space adaptive
           // method for the Schrodinger equation,
           // doi: 10.4208/cicp.101214.021015a for a discussion.
           for (unsigned int i = 0; i < phi_reference.dofs_per_component; ++i)
@@ -894,7 +894,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::local_diagonal_cell(
       // FEEvaluations and do the standard distribute_local_to_global.
       // Note that here non-diagonal matrix elements are ignored and so the
       // result is not equivalent to matrix-based case when hanging nodes are
-      // present. see Section 5.3 in Korman 2016, A time-space adaptive method
+      // present. see Section 5.3 in Kormann 2016, A time-space adaptive method
       // for the Schrodinger equation, doi: 10.4208/cicp.101214.021015a for a
       // discussion.
       for (unsigned int i = 0; i < phi_current.dofs_per_component; ++i)
