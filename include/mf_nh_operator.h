@@ -1265,7 +1265,15 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
             Utilities::pow(n_q_points_1d, dim);
           NumberType *ref_grads = phi_current.begin_gradients();
           NumberType *x_grads   = phi_reference.begin_gradients();
-#if DEAL_II_VERSION_GTE(9, 3, 0)
+#if DEAL_II_VERSION_GTE(9, 4, 0)
+          dealii::internal::FEEvaluationImplCollocation<
+            dim,
+            n_q_points_1d - 1,
+            NumberType>::evaluate(dim,
+                                  EvaluationFlags::gradients,
+                                  cached_position,
+                                  phi_reference);
+#elif DEAL_II_VERSION_GTE(9, 3, 0)
           dealii::internal::FEEvaluationImplCollocation<
             dim,
             n_q_points_1d - 1,
@@ -1503,7 +1511,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::compute_diagonal()
   // calculate inverse:
   inverse_diagonal_vector = diagonal_vector;
 
+#if DEAL_II_VERSION_GTE(9, 4, 0)
+  for (unsigned int i = 0; i < inverse_diagonal_vector.locally_owned_size(); ++i)
+#else
   for (unsigned int i = 0; i < inverse_diagonal_vector.local_size(); ++i)
+#endif
     {
       Assert(inverse_diagonal_vector.local_element(i) > 0.,
              ExcMessage("No diagonal entry in a positive definite operator "
