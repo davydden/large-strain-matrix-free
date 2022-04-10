@@ -2280,11 +2280,11 @@ namespace Cook_Membrane
               // FIXME: looks like there are some severe round-off errors.
               const double ulp = 1.e+10;
 
-#if DEAL_II_VERSION_GTE(9, 4, 0)
+#  if DEAL_II_VERSION_GTE(9, 4, 0)
               for (unsigned int i = 0; i < diff.locally_owned_size(); ++i)
-#else
+#  else
               for (unsigned int i = 0; i < diff.local_size(); ++i)
-#endif
+#  endif
                 Assert(std::abs(diff.local_element(i)) <=
                          std::numeric_limits<double>::epsilon() * ulp *
                            std::abs(dst_mf.local_element(i)),
@@ -2304,11 +2304,11 @@ namespace Cook_Membrane
 
               copy_trilinos(diff, dst_mb);
               diff.add(-1, dst_mf);
-#if DEAL_II_VERSION_GTE(9, 4, 0)
+#  if DEAL_II_VERSION_GTE(9, 4, 0)
               for (unsigned int i = 0; i < diff.locally_owned_size(); ++i)
-#else
+#  else
               for (unsigned int i = 0; i < diff.local_size(); ++i)
-#endif
+#  endif
                 Assert(std::abs(diff.local_element(i)) <=
                          100000. * std::numeric_limits<double>::epsilon() *
                            std::abs(dst_mf.local_element(i)),
@@ -2437,11 +2437,12 @@ namespace Cook_Membrane
 #if DEAL_II_VERSION_GTE(9, 4, 0)
         const MappingQ<dim> mapping(degree);
         const auto          cell_point =
-        GridTools::find_active_cell_around_point(mapping,
-                                                 dof_handler,
-                                                 soln_pt);
+          GridTools::find_active_cell_around_point(mapping,
+                                                   dof_handler,
+                                                   soln_pt);
         // we may find artifical cells here:
-        if (cell_point.first != dof_handler.end() && cell_point.first->is_locally_owned())
+        if (cell_point.first != dof_handler.end() &&
+            cell_point.first->is_locally_owned())
           {
             found = 1;
 
@@ -2452,8 +2453,7 @@ namespace Cook_Membrane
 
             // Extract y-component of solution at given point
             std::vector<Tensor<1, dim>> soln_values(soln_qrule.size());
-            fe_values_soln[u_fe].get_function_values(solution_n,
-                                                     soln_values);
+            fe_values_soln[u_fe].get_function_values(solution_n, soln_values);
             displacement = soln_values[0];
           }
 #else

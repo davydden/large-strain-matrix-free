@@ -1512,7 +1512,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::compute_diagonal()
   inverse_diagonal_vector = diagonal_vector;
 
 #if DEAL_II_VERSION_GTE(9, 4, 0)
-  for (unsigned int i = 0; i < inverse_diagonal_vector.locally_owned_size(); ++i)
+  for (unsigned int i = 0; i < inverse_diagonal_vector.locally_owned_size();
+       ++i)
 #else
   for (unsigned int i = 0; i < inverse_diagonal_vector.local_size(); ++i)
 #endif
