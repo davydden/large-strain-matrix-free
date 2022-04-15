@@ -2434,7 +2434,7 @@ namespace Cook_Membrane
         Tensor<1, dim> displacement;
         unsigned int   found = 0;
 
-#if DEAL_II_VERSION_GTE(9, 4, 0)
+#if DEAL_II_VERSION_GTE(9, 3, 0)
         const MappingQ<dim> mapping(degree);
         const auto          cell_point =
           GridTools::find_active_cell_around_point(mapping,

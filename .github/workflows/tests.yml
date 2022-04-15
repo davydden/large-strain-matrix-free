@@ -25,15 +25,12 @@ jobs:
       matrix:
         build_type: ["Release"]
         dealii_version: ["master", "v9.3.0", "v9.2.0"]
-    
+
     container:
       image: dealii/dealii:${{ matrix.dealii_version }}-focal
+      options: --user root
 
     steps:
-      - name: Setup
-        run: |
-          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
-          
       - uses: actions/checkout@v2
 
       - name: Compile
@@ -42,4 +39,3 @@ jobs:
           cd build
           cmake ../ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           make -j${{ env.COMPILE_JOBS }}
-          
