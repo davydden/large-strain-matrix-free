@@ -689,7 +689,10 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::vmult_add(
 
   // 3. communicate results with MPI
   if (mask & MFMask::MPI)
-    dst.compress(VectorOperation::add);
+    {
+      dst.compress(VectorOperation::add);
+      src.zero_out_ghosts();
+    }
 
   // 4. constraints
   if (mask & MFMask::RW)

@@ -851,8 +851,6 @@ namespace Cook_Membrane
     std::shared_ptr<MatrixFree<dim, double>> mf_data_reference;
 
 
-    std::vector<std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>>
-                                                         mg_eulerian_mapping;
     std::vector<std::shared_ptr<MatrixFree<dim, float>>> mg_mf_data_current;
     std::vector<std::shared_ptr<MatrixFree<dim, float>>> mg_mf_data_reference;
 
@@ -1648,7 +1646,6 @@ namespace Cook_Membrane
         mg_transfer.reset();
         // Now we can reset mg_matrices
         mg_mf_nh_operator.resize(0, max_level);
-        mg_eulerian_mapping.clear();
 
         mg_solution_total.resize(0, max_level);
       }
@@ -1696,25 +1693,9 @@ namespace Cook_Membrane
 
     if (it_nr <= 1)
       {
-        mg_transfer =
-          std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
-            mg_constrained_dofs);
-        mg_transfer->build(dof_handler);
-
         mg_mf_data_current.resize(triangulation.n_global_levels());
         mg_mf_data_reference.resize(triangulation.n_global_levels());
       }
-
-    timer.leave_subsection();
-    timer.enter_subsection("Setup MF: interpolate_to_mg");
-
-    // transfer displacement to MG levels:
-    LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
-    solution_total_transfer.reinit(solution_total);
-    solution_total_transfer = solution_total;
-    mg_transfer->interpolate_to_mg(dof_handler,
-                                   mg_solution_total,
-                                   solution_total_transfer);
 
     timer.leave_subsection();
     timer.enter_subsection("Setup MF: MappingQEulerian");
@@ -1753,7 +1734,6 @@ namespace Cook_Membrane
             print_mf_memory = false;
           }
 
-        mg_eulerian_mapping.resize(0);
         for (unsigned int level = 0; level <= max_level; ++level)
           {
             AffineConstraints<double> level_constraints;
@@ -1776,65 +1756,87 @@ namespace Cook_Membrane
             mg_mf_data_reference[level] =
               std::make_shared<MatrixFree<dim, float>>();
 
-            std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
-              euler_level =
-                std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler, mg_solution_total[level], level);
-
             mg_mf_data_reference[level]->reinit(StaticMappingQ1<dim>::mapping,
                                                 dof_handler,
                                                 level_constraints,
                                                 quad,
                                                 mg_additional_data[level]);
-            mg_mf_data_current[level]->reinit(*euler_level,
+            mg_mf_data_current[level]->reinit(StaticMappingQ1<dim>::mapping,
                                               dof_handler,
                                               level_constraints,
                                               quad,
                                               mg_additional_data[level]);
-
-            mg_eulerian_mapping.push_back(euler_level);
-
-            mg_mf_nh_operator[level].initialize(
-              mg_mf_data_current[level],
-              mg_mf_data_reference[level],
-              mg_solution_total[level],
-              parameters.mf_caching); // (mg_level_data, mg_constrained_dofs,
-                                      // level);
           }
       }
-    else
+
+    if (it_nr <= 1)
       {
-        // here reinitialize MatrixFree with initialize_indices=false
-        // as the mapping has to be recomputed but the topology of cells is the
-        // same
-        data.initialize_indices = false;
-        mf_data_current->reinit(
-          *eulerian_mapping, dof_handler, constraints, quad, data);
+        mg_transfer =
+          std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
+            mg_constrained_dofs);
+
+        std::vector<std::shared_ptr<const Utilities::MPI::Partitioner>>
+          external_partitioners;
 
         for (unsigned int level = 0; level <= max_level; ++level)
-          {
-            mg_additional_data[level].initialize_indices = false;
+          external_partitioners.push_back(
+            mg_mf_data_reference[level]->get_vector_partitioner());
 
-            AffineConstraints<double> level_constraints;
-            IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
-                                                          level,
-                                                          relevant_dofs);
-            level_constraints.reinit(relevant_dofs);
-            level_constraints.add_lines(
-              mg_constrained_dofs.get_boundary_indices(level));
-            level_constraints.close();
+        mg_transfer->build(dof_handler, external_partitioners);
+      }
 
-            std::shared_ptr<MappingQEulerian<dim, LevelVectorType>>
-              euler_level =
-                std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-                  degree, dof_handler, mg_solution_total[level], level);
-            mg_mf_data_current[level]->reinit(*euler_level,
-                                              dof_handler,
-                                              level_constraints,
-                                              quad,
-                                              mg_additional_data[level]);
-          }
+    timer.enter_subsection("Setup MF: interpolate_to_mg");
+
+    // transfer displacement to MG levels:
+    LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
+    solution_total_transfer.reinit(solution_total);
+    solution_total_transfer = solution_total;
+    mg_transfer->interpolate_to_mg(dof_handler,
+                                   mg_solution_total,
+                                   solution_total_transfer);
+
+    timer.leave_subsection();
+
+    // here reinitialize MatrixFree with initialize_indices=false
+    // as the mapping has to be recomputed but the topology of cells is the
+    // same
+    data.initialize_indices = false;
+    mf_data_current->reinit(
+      *eulerian_mapping, dof_handler, constraints, quad, data);
+
+    for (unsigned int level = 0; level <= max_level; ++level)
+      {
+        mg_additional_data[level].initialize_indices = false;
+
+        AffineConstraints<double> level_constraints;
+        IndexSet                  relevant_dofs;
+        DoFTools::extract_locally_relevant_level_dofs(dof_handler,
+                                                      level,
+                                                      relevant_dofs);
+        level_constraints.reinit(relevant_dofs);
+        level_constraints.add_lines(
+          mg_constrained_dofs.get_boundary_indices(level));
+        level_constraints.close();
+
+        std::shared_ptr<MappingQEulerian<dim, LevelVectorType>> euler_level =
+          std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
+            degree, dof_handler, mg_solution_total[level], level);
+        mg_mf_data_current[level]->reinit(*euler_level,
+                                          dof_handler,
+                                          level_constraints,
+                                          quad,
+                                          mg_additional_data[level]);
+      }
+
+    if (it_nr <= 1)
+      {
+        for (unsigned int level = 0; level <= max_level; ++level)
+          mg_mf_nh_operator[level].initialize(
+            mg_mf_data_current[level],
+            mg_mf_data_reference[level],
+            mg_solution_total[level],
+            parameters.mf_caching); // (mg_level_data, mg_constrained_dofs,
+                                    // level);
       }
 
     timer.leave_subsection();
