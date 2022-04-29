@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: ["Release"]
+        build_type: ["Release", "Debug"]
         dealii_version: ["master", "v9.3.0", "v9.2.0"]
 
     container:
@@ -39,3 +39,13 @@ jobs:
           cd build
           cmake ../ -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           make -j${{ env.COMPILE_JOBS }}
+
+      - name: Compile
+        if: matrix.build_type == 'Release'
+        run: |
+          export OMPI_ALLOW_RUN_AS_ROOT=1
+          export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          cd build
+          ctest --output-on-failure
+          
+

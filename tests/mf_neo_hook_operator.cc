@@ -348,8 +348,12 @@ test_elasticity(const Function<dim> &displacement_function)
         const SymmetricTensor<2, dim, VectorizedArray<number>> b_bar =
           Physics::Elasticity::Kinematics::b(F_bar);
 
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        for (unsigned int i = 0; i < VectorizedArray<number>::size(); ++i)
+#else
         for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements;
              ++i)
+#endif
           Assert(det_F[i] > 0,
                  ExcMessage("det_F[" + std::to_string(i) +
                             "] is not positive"));

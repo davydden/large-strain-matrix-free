@@ -354,8 +354,12 @@ test_elasticity(const Function<dim> &displacement_function)
 
         // cached part
         const VectorizedArray<number> det_F = determinant(F);
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        for (unsigned int i = 0; i < VectorizedArray<number>::size(); ++i)
+#else
         for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements;
              ++i)
+#endif
           Assert(det_F[i] > 0,
                  ExcMessage("det_F[" + std::to_string(i) +
                             "] is not positive"));
