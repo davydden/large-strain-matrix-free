@@ -1818,6 +1818,14 @@ namespace Cook_Membrane
           mg_constrained_dofs.get_boundary_indices(level));
         level_constraints.close();
 
+#if DEAL_II_VERSION_GTE(9, 4, 0)
+#else
+        adjust_ghost_range_if_necessary(
+          mg_mf_data_reference[level]->get_vector_partitioner(),
+          mg_solution_total[level]);
+        mg_solution_total[level].update_ghost_values();
+#endif
+
         std::shared_ptr<MappingQEulerian<dim, LevelVectorType>> euler_level =
           std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
             degree, dof_handler, mg_solution_total[level], level);
