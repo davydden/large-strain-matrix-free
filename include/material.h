@@ -36,7 +36,12 @@ VectorizedArray<number>
 divide_by_dim(const VectorizedArray<number> &x, const int dim)
 {
   VectorizedArray<number> res(x);
+
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+  for (unsigned int i = 0; i < VectorizedArray<number>::size(); i++)
+#else
   for (unsigned int i = 0; i < VectorizedArray<number>::n_array_elements; i++)
+#endif
     res[i] *= 1.0 / dim;
 
   return res;
