@@ -691,7 +691,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::vmult_add(
   if (mask & MFMask::MPI)
     {
       dst.compress(VectorOperation::add);
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+      src.zero_out_ghost_values();
+#else
       src.zero_out_ghosts();
+#endif
     }
 
   // 4. constraints

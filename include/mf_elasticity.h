@@ -67,6 +67,9 @@ static const unsigned int debug_level = 0;
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_tools.h>
 #include <deal.II/multigrid/mg_transfer.h>
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+#  include <deal.II/multigrid/mg_transfer_global_coarsening.h>
+#endif
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
 #include <deal.II/multigrid/multigrid.h>
 
@@ -94,6 +97,34 @@ static const unsigned int debug_level = 0;
 #include <iostream>
 
 using namespace dealii;
+
+#if !DEAL_II_VERSION_GTE(9, 4, 0)
+namespace dealii
+{
+  namespace DoFTools
+  {
+    template <int dim, int spacedim>
+    IndexSet
+    extract_locally_relevant_dofs(const DoFHandler<dim, spacedim> &dof_handler)
+    {
+      IndexSet is;
+      extract_locally_relevant_dofs(dof_handler, is);
+      return is;
+    }
+
+    template <int dim, int spacedim>
+    IndexSet
+    extract_locally_relevant_level_dofs(
+      const DoFHandler<dim, spacedim> &dof_handler,
+      const unsigned int               level)
+    {
+      IndexSet is;
+      extract_locally_relevant_level_dofs(dof_handler, level, is);
+      return is;
+    }
+  } // namespace DoFTools
+} // namespace dealii
+#endif
 
 template <typename Number>
 void
@@ -392,7 +423,8 @@ namespace Cook_Membrane
         prm.add_parameter("Preconditioner type",
                           preconditioner_type,
                           "Type of preconditioner",
-                          Patterns::Selection("jacobi|ssor|amg|gmg|none"));
+                          Patterns::Selection(
+                            "jacobi|ssor|amg|gmg|gmg-gc|none"));
 
         prm.add_parameter("Preconditioner relaxation",
                           preconditioner_relaxation,
@@ -697,6 +729,12 @@ namespace Cook_Membrane
     void
     output_results() const;
 
+    unsigned int
+    n_levels() const
+    {
+      return triangulation.n_global_levels();
+    }
+
     /**
      * MPI communicator
      */
@@ -844,6 +882,8 @@ namespace Cook_Membrane
     void
     print_solution();
 
+    std::vector<std::shared_ptr<const Triangulation<dim>>> mg_triangulations_gc;
+
     std::shared_ptr<
       MappingQEulerian<dim, LinearAlgebra::distributed::Vector<double>>>
                                              eulerian_mapping;
@@ -862,6 +902,16 @@ namespace Cook_Membrane
     MGLevelObject<LevelMatrixType> mg_mf_nh_operator;
 
     std::shared_ptr<MGTransferMatrixFree<dim, float>> mg_transfer;
+
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    MGLevelObject<
+      MGTwoLevelTransfer<dim, LinearAlgebra::distributed::Vector<float>>>
+      mg_two_level_transfer_gc;
+    std::shared_ptr<
+      MGTransferGlobalCoarsening<dim,
+                                 LinearAlgebra::distributed::Vector<float>>>
+      mg_transfer_gc;
+#endif
 
     typedef PreconditionChebyshev<LevelMatrixType, LevelVectorType>
       SmootherChebyshev;
@@ -890,7 +940,19 @@ namespace Cook_Membrane
       PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>
       multigrid_preconditioner;
 
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    std::shared_ptr<PreconditionMG<
+      dim,
+      LevelVectorType,
+      MGTransferGlobalCoarsening<dim,
+                                 LinearAlgebra::distributed::Vector<float>>>>
+      multigrid_preconditioner_gc;
+#endif
+
     MGConstrainedDoFs mg_constrained_dofs;
+
+    std::vector<std::shared_ptr<DoFHandler<dim>>> dof_handlers_gc;
+    std::vector<AffineConstraints<float>>         mg_constraints;
 
     bool print_mf_memory;
 
@@ -1096,12 +1158,20 @@ namespace Cook_Membrane
     dof_handler.clear();
 
     multigrid_preconditioner.reset();
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    multigrid_preconditioner_gc.reset();
+#endif
+
     multigrid.reset();
     mg_coarse_chebyshev.clear();
     mg_smoother_chebyshev.clear();
     mg_operator_wrapper.reset();
     mg_mf_nh_operator.clear_elements();
     mg_transfer.reset();
+
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    mg_transfer_gc.reset();
+#endif
   }
 
 
@@ -1522,6 +1592,13 @@ namespace Cook_Membrane
     vol_current   = vol_reference;
     pcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
     bcout << "Grid:\n  Reference volume: " << vol_reference << std::endl;
+
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    if (parameters.preconditioner_type == "gmg-gc")
+      mg_triangulations_gc =
+        MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(
+          triangulation);
+#endif
   }
 
 
@@ -1541,6 +1618,18 @@ namespace Cook_Membrane
     dof_handler.distribute_dofs(fe);
     dof_handler.distribute_mg_dofs();
     DoFRenumbering::Cuthill_McKee(dof_handler);
+
+    if (parameters.preconditioner_type == "gmg-gc")
+      {
+        dof_handlers_gc.resize(n_levels());
+        for (unsigned int l = 0; l < n_levels(); ++l)
+          {
+            dof_handlers_gc[l] =
+              std::make_shared<DoFHandler<dim>>(*mg_triangulations_gc[l]);
+            dof_handlers_gc[l]->distribute_dofs(fe);
+            DoFRenumbering::Cuthill_McKee(*dof_handlers_gc[l]);
+          }
+      }
 
     pcout << "Triangulation:"
           << "\n  Number of active cells: "
@@ -1627,6 +1716,7 @@ namespace Cook_Membrane
   {
     timer.enter_subsection("Setup MF: AdditionalData");
 
+    const unsigned int min_level = 0;
     const unsigned int max_level = triangulation.n_global_levels() - 1;
 
     mg_coarse_iterative.clear();
@@ -1636,6 +1726,9 @@ namespace Cook_Membrane
       {
         // GMG main classes
         multigrid_preconditioner.reset();
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        multigrid_preconditioner_gc.reset();
+#endif
         multigrid.reset();
         // clear all pointers to level matrices in smoothers:
         mg_coarse_chebyshev.clear();
@@ -1644,6 +1737,9 @@ namespace Cook_Membrane
         mg_operator_wrapper.reset();
         // and clean up transfer which is also initialized with mg_matrices:
         mg_transfer.reset();
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        mg_transfer_gc.reset();
+#endif
         // Now we can reset mg_matrices
         mg_mf_nh_operator.resize(0, max_level);
 
@@ -1669,7 +1765,7 @@ namespace Cook_Membrane
 
     std::vector<typename MatrixFree<dim, float>::AdditionalData>
       mg_additional_data(max_level + 1);
-    for (unsigned int level = 0; level <= max_level; ++level)
+    for (unsigned int level = min_level; level <= max_level; ++level)
       {
         mg_additional_data[level].tasks_parallel_scheme =
           MatrixFree<dim, float>::AdditionalData::none; // partition_color;
@@ -1678,14 +1774,33 @@ namespace Cook_Membrane
           update_gradients | update_JxW_values;
 
         mg_additional_data[level].cell_vectorization_categories_strict = true;
-        mg_additional_data[level].cell_vectorization_category.resize(
-          triangulation.n_cells(level));
-        for (const auto &cell : triangulation.cell_iterators_on_level(level))
-          if (cell->is_locally_owned_on_level())
-            mg_additional_data[level]
-              .cell_vectorization_category[cell->index()] = cell->material_id();
 
-        mg_additional_data[level].mg_level = level;
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        if (parameters.preconditioner_type == "gmg-gc")
+          {
+            mg_additional_data[level].cell_vectorization_category.resize(
+              mg_triangulations_gc[level]->n_active_cells());
+            for (const auto &cell :
+                 mg_triangulations_gc[level]->active_cell_iterators())
+              if (cell->is_locally_owned())
+                mg_additional_data[level]
+                  .cell_vectorization_category[cell->index()] =
+                  cell->material_id();
+          }
+        else
+#endif
+          {
+            mg_additional_data[level].cell_vectorization_category.resize(
+              triangulation.n_cells(level));
+            for (const auto &cell :
+                 triangulation.cell_iterators_on_level(level))
+              if (cell->is_locally_owned_on_level())
+                mg_additional_data[level]
+                  .cell_vectorization_category[cell->index()] =
+                  cell->material_id();
+
+            mg_additional_data[level].mg_level = level;
+          }
       }
 
     timer.leave_subsection();
@@ -1736,16 +1851,6 @@ namespace Cook_Membrane
 
         for (unsigned int level = 0; level <= max_level; ++level)
           {
-            AffineConstraints<double> level_constraints;
-            IndexSet                  relevant_dofs;
-            DoFTools::extract_locally_relevant_level_dofs(dof_handler,
-                                                          level,
-                                                          relevant_dofs);
-            level_constraints.reinit(relevant_dofs);
-            level_constraints.add_lines(
-              mg_constrained_dofs.get_boundary_indices(level));
-            level_constraints.close();
-
             // GMG MF operators do not support edge indices yet
             Assert(
               mg_constrained_dofs.get_refinement_edge_indices(level).is_empty(),
@@ -1756,14 +1861,20 @@ namespace Cook_Membrane
             mg_mf_data_reference[level] =
               std::make_shared<MatrixFree<dim, float>>();
 
-            mg_mf_data_reference[level]->reinit(StaticMappingQ1<dim>::mapping,
-                                                dof_handler,
-                                                level_constraints,
-                                                quad,
-                                                mg_additional_data[level]);
+            mg_mf_data_reference[level]->reinit(
+              StaticMappingQ1<dim>::mapping,
+              (parameters.preconditioner_type == "gmg-gc") ?
+                *dof_handlers_gc[level] :
+                dof_handler,
+              mg_constraints[level],
+              quad,
+              mg_additional_data[level]);
             mg_mf_data_current[level]->reinit(StaticMappingQ1<dim>::mapping,
-                                              dof_handler,
-                                              level_constraints,
+                                              (parameters.preconditioner_type ==
+                                               "gmg-gc") ?
+                                                *dof_handlers_gc[level] :
+                                                dof_handler,
+                                              mg_constraints[level],
                                               quad,
                                               mg_additional_data[level]);
           }
@@ -1771,18 +1882,45 @@ namespace Cook_Membrane
 
     if (it_nr <= 1)
       {
-        mg_transfer =
-          std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
-            mg_constrained_dofs);
-
         std::vector<std::shared_ptr<const Utilities::MPI::Partitioner>>
           external_partitioners;
 
         for (unsigned int level = 0; level <= max_level; ++level)
           external_partitioners.push_back(
-            mg_mf_data_reference[level]->get_vector_partitioner());
+            mg_mf_data_current[level]->get_vector_partitioner());
 
-        mg_transfer->build(dof_handler, external_partitioners);
+        if (parameters.preconditioner_type == "gmg-gc")
+          {
+#if DEAL_II_VERSION_GTE(9, 4, 0)
+            const unsigned int min_level = 0;
+
+            MGLevelObject<
+              MGTwoLevelTransfer<dim,
+                                 LinearAlgebra::distributed::Vector<float>>>
+              transfers(min_level, max_level);
+
+            for (unsigned int l = min_level; l < max_level; ++l)
+              transfers[l + 1].reinit(*dof_handlers_gc[l + 1],
+                                      *dof_handlers_gc[l],
+                                      mg_constraints[l + 1],
+                                      mg_constraints[l]);
+
+            mg_transfer_gc = std::make_shared<MGTransferGlobalCoarsening<
+              dim,
+              LinearAlgebra::distributed::Vector<float>>>(transfers);
+
+            mg_transfer_gc->build(external_partitioners);
+#else
+            AssertThrow(false, ExcNotImplemented());
+#endif
+          }
+        else
+          {
+            mg_transfer =
+              std::make_shared<MGTransferMatrixFree<dim, LevelNumberType>>(
+                mg_constrained_dofs);
+            mg_transfer->build(dof_handler, external_partitioners);
+          }
       }
 
     timer.enter_subsection("Setup MF: interpolate_to_mg");
@@ -1791,9 +1929,17 @@ namespace Cook_Membrane
     LinearAlgebra::distributed::Vector<LevelNumberType> solution_total_transfer;
     solution_total_transfer.reinit(solution_total);
     solution_total_transfer = solution_total;
-    mg_transfer->interpolate_to_mg(dof_handler,
-                                   mg_solution_total,
-                                   solution_total_transfer);
+
+#if DEAL_II_VERSION_GTE(9, 4, 0)
+    if (parameters.preconditioner_type == "gmg-gc")
+      mg_transfer_gc->interpolate_to_mg(dof_handler,
+                                        mg_solution_total,
+                                        solution_total_transfer);
+    else
+#endif
+      mg_transfer->interpolate_to_mg(dof_handler,
+                                     mg_solution_total,
+                                     solution_total_transfer);
 
     timer.leave_subsection();
 
@@ -1806,34 +1952,33 @@ namespace Cook_Membrane
 
     for (unsigned int level = 0; level <= max_level; ++level)
       {
-        mg_additional_data[level].initialize_indices = false;
-
-        AffineConstraints<double> level_constraints;
-        IndexSet                  relevant_dofs;
-        DoFTools::extract_locally_relevant_level_dofs(dof_handler,
-                                                      level,
-                                                      relevant_dofs);
-        level_constraints.reinit(relevant_dofs);
-        level_constraints.add_lines(
-          mg_constrained_dofs.get_boundary_indices(level));
-        level_constraints.close();
-
 #if DEAL_II_VERSION_GTE(9, 4, 0)
 #else
         adjust_ghost_range_if_necessary(
           mg_mf_data_reference[level]->get_vector_partitioner(),
           mg_solution_total[level]);
-        mg_solution_total[level].update_ghost_values();
 #endif
 
+        mg_solution_total[level].update_ghost_values();
+
         std::shared_ptr<MappingQEulerian<dim, LevelVectorType>> euler_level =
-          std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
-            degree, dof_handler, mg_solution_total[level], level);
+          (parameters.preconditioner_type == "gmg-gc") ?
+            std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
+              degree, *dof_handlers_gc[level], mg_solution_total[level]) :
+            std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
+              degree, dof_handler, mg_solution_total[level], level);
+
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+        mg_mf_data_current[level]->update_mapping(*euler_level);
+#else
+        Assert(parameters.preconditioner_type != "gmg-gc", ExcNotImplemented());
+        mg_additional_data[level].initialize_indices = false;
         mg_mf_data_current[level]->reinit(*euler_level,
                                           dof_handler,
-                                          level_constraints,
+                                          mg_constraints[level],
                                           quad,
                                           mg_additional_data[level]);
+#endif
       }
 
     if (it_nr <= 1)
@@ -1868,7 +2013,7 @@ namespace Cook_Membrane
 
     // FIXME: interpolate_to_mg will resize MG vector, make sure it has the
     // right partition for MF
-    for (unsigned int level = 0; level <= max_level; ++level)
+    for (unsigned int level = min_level; level <= max_level; ++level)
       {
         const std::shared_ptr<const Utilities::MPI::Partitioner> &partitioner =
           mg_mf_data_current[level]->get_vector_partitioner();
@@ -1908,7 +2053,7 @@ namespace Cook_Membrane
         mf_ad_nh_operator.compute_diagonal();
       }
 
-    for (unsigned int level = 0; level <= max_level; ++level)
+    for (unsigned int level = min_level; level <= max_level; ++level)
       {
         mg_mf_nh_operator[level].set_material(material_level,
                                               material_inclusion_level);
@@ -1936,10 +2081,11 @@ namespace Cook_Membrane
     {
       MGLevelObject<typename SmootherChebyshev::AdditionalData> smoother_data;
       smoother_data.resize(0, triangulation.n_global_levels() - 1);
-      for (unsigned int level = 0; level < triangulation.n_global_levels();
+      for (unsigned int level = min_level;
+           level < triangulation.n_global_levels();
            ++level)
         {
-          if (cheb_coarse && level == 0)
+          if (cheb_coarse && level == min_level)
             {
               smoother_data[level].smoothing_range =
                 1e-3; // reduce residual by this relative tolerance
@@ -1978,30 +2124,56 @@ namespace Cook_Membrane
     coarse_solver =
       std::make_shared<SolverCG<LevelVectorType>>(*coarse_solver_control);
     mg_coarse_iterative.initialize(*coarse_solver,
-                                   mg_mf_nh_operator[0],
-                                   mg_smoother_chebyshev[0]);
+                                   mg_mf_nh_operator[min_level],
+                                   mg_smoother_chebyshev[min_level]);
 
     // wrap our level and interface matrices in an object having the required
     // multiplication functions.
     mg_operator_wrapper.initialize(mg_mf_nh_operator);
 
     multigrid_preconditioner.reset();
-    if (cheb_coarse)
-      multigrid =
-        std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
-                                                     mg_coarse_chebyshev,
-                                                     *mg_transfer,
-                                                     mg_smoother_chebyshev,
-                                                     mg_smoother_chebyshev,
-                                                     /*min_level*/ 0);
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    multigrid_preconditioner_gc.reset();
+
+    if (parameters.preconditioner_type == "gmg-gc")
+      {
+        if (cheb_coarse)
+          multigrid =
+            std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                         mg_coarse_chebyshev,
+                                                         *mg_transfer_gc,
+                                                         mg_smoother_chebyshev,
+                                                         mg_smoother_chebyshev,
+                                                         min_level);
+        else
+          multigrid =
+            std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                         mg_coarse_iterative,
+                                                         *mg_transfer_gc,
+                                                         mg_smoother_chebyshev,
+                                                         mg_smoother_chebyshev,
+                                                         min_level);
+      }
     else
-      multigrid =
-        std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
-                                                     mg_coarse_iterative,
-                                                     *mg_transfer,
-                                                     mg_smoother_chebyshev,
-                                                     mg_smoother_chebyshev,
-                                                     /*min_level*/ 0);
+#endif
+      {
+        if (cheb_coarse)
+          multigrid =
+            std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                         mg_coarse_chebyshev,
+                                                         *mg_transfer,
+                                                         mg_smoother_chebyshev,
+                                                         mg_smoother_chebyshev,
+                                                         min_level);
+        else
+          multigrid =
+            std::make_shared<Multigrid<LevelVectorType>>(mg_operator_wrapper,
+                                                         mg_coarse_iterative,
+                                                         *mg_transfer,
+                                                         mg_smoother_chebyshev,
+                                                         mg_smoother_chebyshev,
+                                                         min_level);
+      }
 
     // set_debug() is deprecated, keep this commented for now
     // if (debug_level > 2)
@@ -2052,9 +2224,19 @@ namespace Cook_Membrane
       });
 
     // and a preconditioner object which uses GMG
-    multigrid_preconditioner = std::make_shared<
-      PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>(
-      dof_handler, *multigrid, *mg_transfer);
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+    if (parameters.preconditioner_type == "gmg-gc")
+      multigrid_preconditioner_gc = std::make_shared<PreconditionMG<
+        dim,
+        LevelVectorType,
+        MGTransferGlobalCoarsening<dim,
+                                   LinearAlgebra::distributed::Vector<float>>>>(
+        dof_handler, *multigrid, *mg_transfer_gc);
+    else
+#endif
+      multigrid_preconditioner = std::make_shared<
+        PreconditionMG<dim, LevelVectorType, MGTransferMatrixFree<dim, float>>>(
+        dof_handler, *multigrid, *mg_transfer);
 
     timer.leave_subsection();
   }
@@ -2768,6 +2950,17 @@ namespace Cook_Membrane
     mg_constrained_dofs.clear();
     mg_constrained_dofs.initialize(dof_handler);
 
+    mg_constraints.clear();
+    mg_constraints.resize(n_levels());
+    for (unsigned int l = 0; l < n_levels(); ++l)
+      if (parameters.preconditioner_type == "gmg-gc")
+        mg_constraints[l].reinit(
+          DoFTools::extract_locally_relevant_dofs(*dof_handlers_gc[l]));
+      else
+        mg_constraints[l].reinit(
+          DoFTools::extract_locally_relevant_level_dofs(dof_handler, l));
+
+
     const bool apply_dirichlet_bc = (it_nr == 0);
 
     // Use constraints functions and parameters as given from the input file
@@ -2785,6 +2978,13 @@ namespace Cook_Membrane
                                                            {el.first},
                                                            mask->second);
 
+        if (parameters.preconditioner_type == "gmg-gc")
+          for (unsigned int l = 0; l < n_levels(); ++l)
+            DoFTools::make_zero_boundary_constraints(*dof_handlers_gc[l],
+                                                     {el.first},
+                                                     mg_constraints[l],
+                                                     mask->second);
+
         Function<dim> *func;
         if (apply_dirichlet_bc)
           func = el.second.get();
@@ -2796,6 +2996,15 @@ namespace Cook_Membrane
       }
 
     constraints.close();
+
+    for (unsigned int l = 0; l < n_levels(); ++l)
+      {
+        if (parameters.preconditioner_type != "gmg-gc")
+          mg_constraints[l].add_lines(
+            mg_constrained_dofs.get_boundary_indices(l));
+
+        mg_constraints[l].close();
+      }
   }
 
   // @sect4{Solid::solve_linear_system}
@@ -2953,6 +3162,15 @@ namespace Cook_Membrane
                                 system_rhs,
                                 PreconditionIdentity());
               }
+#if DEAL_II_VERSION_GTE(9, 3, 0)
+            else if (parameters.preconditioner_type == "gmg-gc")
+              {
+                solver_CG.solve(mf_nh_operator,
+                                newton_update,
+                                system_rhs,
+                                *multigrid_preconditioner_gc);
+              }
+#endif
             else
               {
                 Assert(parameters.preconditioner_type == "gmg",
