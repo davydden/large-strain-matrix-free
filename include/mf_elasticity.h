@@ -1968,7 +1968,17 @@ namespace Cook_Membrane
             std::make_shared<MappingQEulerian<dim, LevelVectorType>>(
               degree, dof_handler, mg_solution_total[level], level);
 
+#if DEAL_II_VERSION_GTE(9, 3, 0)
         mg_mf_data_current[level]->update_mapping(*euler_level);
+#else
+        Assert(parameters.preconditioner_type != "gmg-gc", ExcNotImplemented());
+        mg_additional_data[level].initialize_indices = false;
+        mg_mf_data_current[level]->reinit(*euler_level,
+                                          dof_handler,
+                                          mg_constraints[level],
+                                          quad,
+                                          mg_additional_data[level]);
+#endif
       }
 
     if (it_nr <= 1)
