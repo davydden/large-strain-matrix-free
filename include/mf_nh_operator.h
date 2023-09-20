@@ -461,7 +461,8 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
 
       phi_reference.reinit(cell);
       phi_reference.read_dof_values_plain(*displacement);
-      phi_reference.evaluate(EvaluationFlags::values | EvaluationFlags::gradients);
+      phi_reference.evaluate(EvaluationFlags::values |
+                             EvaluationFlags::gradients);
 
       if (cell_mat->formulation == 0)
         {
