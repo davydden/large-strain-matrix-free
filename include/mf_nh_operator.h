@@ -1320,20 +1320,37 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
                     {
                       NumberType sum =
                         inv_jac[e][0] *
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+                        ref_grads[(d * n_q_points + q) * dim + 0];
+#else
                         ref_grads[(d * dim + 0) * n_q_points + q];
+#endif
                       for (unsigned int f = 1; f < dim; ++f)
                         sum += inv_jac[e][f] *
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+                               ref_grads[(d * n_q_points + q) * dim + f];
+#else
                                ref_grads[(d * dim + f) * n_q_points + q];
+#endif
                       F[d][e] = sum;
 
                       // since we already have the inverse Jacobian, simply
                       // apply the inverse Jacobian here rather than call
                       // get_gradient (the operations are the same otherwise)
                       NumberType sum2 =
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+                        inv_jac[e][0] * x_grads[(d * n_q_points + q) * dim + 0];
+#else
                         inv_jac[e][0] * x_grads[(d * dim + 0) * n_q_points + q];
+#endif
+
                       for (unsigned int f = 1; f < dim; ++f)
                         sum2 += inv_jac[e][f] *
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+                                x_grads[(d * n_q_points + q) * dim + f];
+#else
                                 x_grads[(d * dim + f) * n_q_points + q];
+#endif
                       grad_Nx_v[d][e] = sum2;
                     }
                   F[d][d] += one;
