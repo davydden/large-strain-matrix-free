@@ -461,7 +461,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::cache()
 
       phi_reference.reinit(cell);
       phi_reference.read_dof_values_plain(*displacement);
-      phi_reference.evaluate(true, true, false);
+      phi_reference.evaluate(EvaluationFlags::values | EvaluationFlags::gradients);
 
       if (cell_mat->formulation == 0)
         {
@@ -976,14 +976,14 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
       if (mf_caching == MFCaching::tensor4_ns ||
           mf_caching == MFCaching::scalar_referential)
         {
-          phi_reference.evaluate(false, true, false);
+          phi_reference.evaluate(EvaluationFlags::gradients);
         }
       else
         {
           if (mf_caching == MFCaching::scalar)
-            phi_reference.evaluate(false, true, false);
+            phi_reference.evaluate(EvaluationFlags::gradients);
 
-          phi_current.evaluate(false, true, false);
+          phi_current.evaluate(EvaluationFlags::gradients);
         }
     }
 
@@ -1485,11 +1485,11 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
       if (mf_caching == MFCaching::tensor4_ns ||
           mf_caching == MFCaching::scalar_referential)
         {
-          phi_reference.integrate(false, true);
+          phi_reference.integrate(EvaluationFlags::gradients);
         }
       else
         {
-          phi_current.integrate(false, true);
+          phi_current.integrate(EvaluationFlags::gradients);
         }
     }
 #if defined(WITH_LIKWID) && defined(WITH_BREAKDOWN)

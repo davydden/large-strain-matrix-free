@@ -154,7 +154,7 @@ public:
         // tau -= tmp_1*Physics::Elasticity::StandardTensors<dim>::I;
 
         tau                  = mu * b;
-        const OutputType tmp = mu - 2.0 * lambda * std::log(det_F);
+        const OutputType tmp = mu - 2.0 * lambda * log(det_F);
         for (unsigned int d = 0; d < dim; ++d)
           tau[d][d] -= tmp;
       }

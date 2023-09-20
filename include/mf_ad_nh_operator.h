@@ -417,8 +417,8 @@ NeoHookOperatorAD<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
   FEEvaluation<dim, fe_degree, n_q_points_1d, dim, number> &phi_solution,
   const unsigned int /*cell*/) const
 {
-  phi_reference.evaluate(false, true, false);
-  phi_solution.evaluate(false, true, false);
+  phi_reference.evaluate(EvaluationFlags::gradients);
+  phi_solution.evaluate(EvaluationFlags::gradients);
 
   using ADType = Sacado::Fad::DFad<double>;
 
@@ -481,7 +481,7 @@ NeoHookOperatorAD<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
     } // end of the loop over quadrature points
 
   // actually do the contraction
-  phi_reference.integrate(false, true);
+  phi_reference.integrate(EvaluationFlags::gradients);
 }
 
 
