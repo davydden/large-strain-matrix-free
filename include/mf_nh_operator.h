@@ -1280,7 +1280,7 @@ NeoHookOperator<dim, fe_degree, n_q_points_1d, number>::do_operation_on_cell(
             NumberType>::evaluate(dim,
                                   EvaluationFlags::gradients,
                                   cached_position,
-                                  phi_reference);
+                                  phi_current);
 #elif DEAL_II_VERSION_GTE(9, 3, 0)
           dealii::internal::FEEvaluationImplCollocation<
             dim,

@@ -2031,9 +2031,9 @@ namespace Cook_Membrane
 
     // need to cache prior to diagonal computations:
     mf_nh_operator.cache();
-    mf_nh_operator.compute_diagonal();
     if (debug_level > 0)
       {
+        mf_nh_operator.compute_diagonal();
         deallog << "GMG setup Newton iteration " << it_nr << std::endl;
         deallog
           << "Number of constrained DoFs "
@@ -2050,7 +2050,6 @@ namespace Cook_Membrane
     if (parameters.type_lin == "MF_AD_CG")
       {
         mf_ad_nh_operator.cache();
-        mf_ad_nh_operator.compute_diagonal();
       }
 
     for (unsigned int level = min_level; level <= max_level; ++level)
